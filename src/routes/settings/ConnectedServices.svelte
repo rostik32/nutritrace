@@ -9,6 +9,7 @@
   import { showSuccess, showError } from '../../stores/toast.js';
   import { envLocks, scheduleSave } from '../../stores/settings.js';
   import { currentUser } from '../../stores/auth.js';
+  import { parseOffLanguages, serializeOffLanguages } from '../../lib/off-languages.js';
 
   function set(key, value) { DB.setSetting(key, value); scheduleSave(key, value); }
 
@@ -32,8 +33,8 @@
 
   const OFF_LANGUAGE_OPTS = [
     ['en','English'],['fr','French'],['de','German'],['es','Spanish'],['it','Italian'],
-    ['pt','Portuguese'],['nl','Dutch'],['pl','Polish'],['ru','Russian'],['ja','Japanese'],
-    ['zh','Chinese'],['ar','Arabic'],['ko','Korean']
+    ['pt','Portuguese'],['nl','Dutch'],['pl','Polish'],['ru','Russian'],['uk','Ukrainian'],
+    ['cs','Czech'],['ja','Japanese'],['zh','Chinese'],['ar','Arabic'],['ko','Korean']
   ];
   // Alphabetized (World stays first as the "no filter" default). Kept
   // aligned with the OFF regions where user demand actually shows up:
@@ -43,11 +44,21 @@
   // openfoodfacts.org before shipping.
   const OFF_COUNTRY_OPTS = ['World',
     'Argentina','Australia','Austria','Belgium','Brazil','Canada','Chile','China',
-    'Denmark','Finland','France','Germany','India','Ireland','Italy','Japan',
+    'Czech Republic','Denmark','Finland','France','Germany','India','Ireland','Italy','Japan',
     'Mexico','Netherlands','New Zealand','Norway','Poland','Portugal','Singapore',
-    'South Africa','South Korea','Spain','Sweden','Switzerland','United Kingdom',
+    'South Africa','South Korea','Spain','Sweden','Switzerland','Ukraine','United Kingdom',
     'United States'];
-  let offSearchLanguage = DB.getSetting('offSearchLanguage', 'en');
+  // Stored as an ordered list "uk,ru,cs": the primary language first, then the
+  // extra languages searched alongside it (see lib/off-languages.js).
+  const _offLangs = parseOffLanguages(DB.getSetting('offSearchLanguage', 'en'));
+  let offPrimaryLang = _offLangs[0];
+  let offExtraLangs = _offLangs.slice(1);
+  $: offSearchLanguage = serializeOffLanguages([offPrimaryLang, ...offExtraLangs.filter(l => l !== offPrimaryLang)]);
+  function toggleOffExtraLang(code) {
+    offExtraLangs = offExtraLangs.includes(code)
+      ? offExtraLangs.filter(l => l !== code)
+      : OFF_LANGUAGE_OPTS.map(([v]) => v).filter(v => v === code || offExtraLangs.includes(v));
+  }
   let offSearchCountry  = DB.getSetting('offSearchCountry',  'World');
   let offUploadCountry  = DB.getSetting('offUploadCountry',  'Auto');
   let offImportPortion  = DB.getSetting('offImportPortion',  'per100g');
@@ -660,9 +671,23 @@
       <div class="setting-row">
         <span class="setting-label">{$_('settings.connected_services.off.search_language')}</span>
         <div class="select-wrap" style="width:120px">
-          <select class="select sel-sm" bind:value={offSearchLanguage}>
+          <select class="select sel-sm" bind:value={offPrimaryLang}>
             {#each OFF_LANGUAGE_OPTS as [v,l]}<option value={v}>{l}</option>{/each}
           </select>
+        </div>
+      </div>
+      <div class="setting-divider"></div>
+      <div style="padding:0 16px 12px">
+        <span class="setting-label">{$_('settings.connected_services.off.search_language_extra')}</span>
+        <div class="setting-desc" style="margin-bottom:8px">{$_('settings.connected_services.off.search_language_extra_desc')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          {#each OFF_LANGUAGE_OPTS.filter(([v]) => v !== offPrimaryLang) as [v,l]}
+            <button type="button" class="chip" class:accent={offExtraLangs.includes(v)}
+              aria-pressed={offExtraLangs.includes(v)} on:click={() => toggleOffExtraLang(v)}>
+              {#if offExtraLangs.includes(v)}<span class="material-symbols-rounded" style="font-size:14px">check</span>{/if}
+              {l}
+            </button>
+          {/each}
         </div>
       </div>
       <div class="setting-divider"></div>

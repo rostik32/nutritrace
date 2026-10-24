@@ -28,8 +28,9 @@ naming paths; mirror naming driven by the same request.
 2. **Shared parser** `parseOffLanguages(value) → string[]` (lower-case, two-letter codes, de-duplicated,
    order kept, default `['en']`) in a small module used by `api.js`, `off-name.js` and the settings screen.
 3. **Remote `langs` = user list + `en` if absent.** Measured gains for Cyrillic queries; harmless otherwise.
-4. **Naming ladder generalised to a list:** non-English chosen languages first (in order), then
-   `product_name`, then the remaining ladder as today. With `['en']` this is exactly the current ladder.
+4. **Naming ladder generalised to a list:** the chosen languages first (in order), then `product_name`,
+   then the remaining ladder as today. English alone is the default and is not treated as a choice (so
+   `['en']` is exactly the current ladder); English inside a longer list was picked on purpose and counts.
 5. **Mirror naming from the request:** the proxy passes the request's `langs` to `searchByName`, which passes
    them to `_toOffProduct` → `_extractLocalized` tries each in order, then `main`, then any. Keeps the mirror
    stateless (no settings lookup on the server).

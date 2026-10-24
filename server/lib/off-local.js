@@ -277,8 +277,9 @@ export async function lookupByBarcode(code) {
   }
 }
 
-/** Search by free-text against product_name + brands. */
-export async function searchByName(query, { page = 1, pageSize = 20 } = {}) {
+/** Search by free-text against product_name + brands. `langs` orders which
+ *  localized name each hit is shown under (default English, as before). */
+export async function searchByName(query, { page = 1, pageSize = 20, langs = ['en'] } = {}) {
   const conn = await _init();
   if (!conn) return null;
   // The frontend now builds Lucene-syntax queries for search-a-licious
@@ -431,7 +432,7 @@ export async function searchByName(query, { page = 1, pageSize = 20 } = {}) {
       total = Number(countReader.getRowObjects()[0]?.n ?? rows.length);
     }
     return {
-      hits: rows.map(_toOffProduct),
+      hits: rows.map(row => _toOffProduct(row, langs)),
       count: total,
       page,
       page_size: pageSize,
@@ -628,7 +629,7 @@ function _sniffParquet(filePath) {
 // response shape so callers (proxy.js, the client) don't need to know
 // which file format was used.
 
-function _toOffProduct(row) {
+function _toOffProduct(row, langs = ['en']) {
   // Normalize LIST<STRUCT> columns up front: DuckDB Node API can return
   // LIST values as either a real Array (typical) or a list-like object
   // (iterable but not Array.isArray) depending on version. The previous
@@ -694,7 +695,7 @@ function _toOffProduct(row) {
     // came through as null (the helpers below tolerate empty input).
     const pn       = pnList || [];
     const generic  = _asArray(row.generic_name) || _maybeParseListString(row.generic_name) || [];
-    const name     = _extractLocalized(pn) || _extractLocalized(generic);
+    const name     = _extractLocalized(pn, langs) || _extractLocalized(generic, langs);
     return {
       code: _coerceString(row.code),
       product_name: _coerceString(name),
@@ -1002,20 +1003,24 @@ let _loggedExtractFallthrough = false;
 
 /** Pull the best-fit text from an OFF localized field
  *  (`product_name`, `generic_name`, `ingredients_text`, etc.).
- *  Preference order: requested lang → 'main' (OFF's canonical entry) →
- *  first entry with non-empty text. Returns '' if nothing usable.
- *  preferLang defaults to 'en'; could later read from the user's offSearchLanguage setting. */
+ *  Preference order: requested langs in order → 'main' (OFF's canonical
+ *  entry) → first entry with non-empty text. Returns '' if nothing usable.
+ *  preferLang is one code or an ordered list (the user's OFF languages, as
+ *  sent in the search request's `langs`); defaults to 'en'. */
 function _extractLocalized(list, preferLang = 'en') {
   if (!Array.isArray(list) || list.length === 0) return '';
-  const wantLang = String(preferLang || '').toLowerCase();
+  const wantLangs = (Array.isArray(preferLang) ? preferLang : [preferLang])
+    .map(l => String(l || '').toLowerCase()).filter(Boolean);
   const getLang = x => _coerceString(_readField(x, 'lang')
                       ?? _readField(x, 'language')
                       ?? _readField(x, 'language_code')).toLowerCase();
   const getText = x => _coerceString(_readField(x, 'text')
                       ?? _readField(x, 'value')
                       ?? _readField(x, 'name'));
-  // Pass 1: requested lang. Pass 2: 'main'. Pass 3: any non-empty text.
-  for (const x of list) { if (getLang(x) === wantLang) { const t = getText(x); if (t) return t; } }
+  // Pass 1: requested langs, in order. Pass 2: 'main'. Pass 3: any non-empty text.
+  for (const want of wantLangs) {
+    for (const x of list) { if (getLang(x) === want) { const t = getText(x); if (t) return t; } }
+  }
   for (const x of list) { if (getLang(x) === 'main')   { const t = getText(x); if (t) return t; } }
   for (const x of list) { const t = getText(x);          if (t) return t; }
 

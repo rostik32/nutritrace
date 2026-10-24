@@ -11,15 +11,15 @@
  *
  * Order, first non-blank wins:
  *
- *  1. The user's OFF language, but only when they chose one other than
- *     English. English is the default, and opening Connected Services writes
- *     it back, so it cannot tell "chose English" from "never looked". Putting
- *     it first would swap the names of every product that already had one for
- *     everyone on the default. A language anyone picks on purpose is safe to
- *     honor.
+ *  1. The user's OFF languages, in their order ("uk,ru,cs"), but only when
+ *     they chose something other than English alone. English is the default,
+ *     and opening Connected Services writes it back, so it cannot tell "chose
+ *     English" from "never looked". Putting it first would swap the names of
+ *     every product that already had one for everyone on the default. Languages
+ *     anyone picks on purpose are safe to honor.
  *  2. `product_name`, exactly what was shown before. A product that had a
  *     name keeps it.
- *  3. The user's language, then the product's main language, then English,
+ *  3. The user's languages, then the product's main language, then English,
  *     then any other language in a fixed order.
  *  4. The same ladder over `generic_name` ("Milch, teilentrahmt"), so a
  *     product with nutrition but no product name in any language is still
@@ -29,6 +29,8 @@
  * product we can show", as before.
  */
 
+import { parseOffLanguages } from './off-languages.js';
+
 // OFF language codes are two letters. Longer suffixes are other fields
 // (product_name_en_imported, product_name_en_debug_tags), not names.
 const LANG_SUFFIX = /^[a-z]{2}$/;
@@ -37,11 +39,11 @@ function _text(v) {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-function _ladder(p, field, lang, main, userChoseLang) {
+function _ladder(p, field, langs, main, userChoseLang) {
   const tries = [];
-  if (userChoseLang) tries.push(p[`${field}_${lang}`]);
+  if (userChoseLang) for (const lang of langs) tries.push(p[`${field}_${lang}`]);
   tries.push(p[field]);
-  if (lang) tries.push(p[`${field}_${lang}`]);
+  for (const lang of langs) tries.push(p[`${field}_${lang}`]);
   if (main) tries.push(p[`${field}_${main}`]);
   tries.push(p[`${field}_en`]);
   const prefix = `${field}_`;
@@ -56,14 +58,16 @@ function _ladder(p, field, lang, main, userChoseLang) {
 }
 
 /**
- * @param {object} p     an OFF product (v3 product, search hit or mirror row)
- * @param {string} lang  the user's OFF language, a two-letter code
+ * @param {object} p             an OFF product (v3 product, search hit or mirror row)
+ * @param {string|string[]} lang the user's OFF languages: one two-letter code,
+ *                               an ordered comma-separated list, or an array
  */
 export function offProductName(p, lang) {
   if (!p || typeof p !== 'object') return '';
-  const want = String(lang || '').toLowerCase();
+  const blank = lang == null || (Array.isArray(lang) ? lang.length === 0 : !String(lang).trim());
+  const langs = blank ? [] : parseOffLanguages(Array.isArray(lang) ? lang.join(',') : lang);
   const main = String(p.lang || p.lc || '').toLowerCase();
-  const userChoseLang = !!want && want !== 'en';
-  return _ladder(p, 'product_name', want, main, userChoseLang)
-      || _ladder(p, 'generic_name', want, main, userChoseLang);
+  const userChoseLang = langs.length > 0 && !(langs.length === 1 && langs[0] === 'en');
+  return _ladder(p, 'product_name', langs, main, userChoseLang)
+      || _ladder(p, 'generic_name', langs, main, userChoseLang);
 }
