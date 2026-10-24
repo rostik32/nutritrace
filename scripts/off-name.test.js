@@ -83,3 +83,27 @@ test('the OFF mapper uses it for both the check and the name it stores', () => {
   assert.match(fn, /\n      name,\n/);
   assert.doesNotMatch(fn.slice(0, fn.indexOf('\n  }\n')), /p\.product_name/, 'nothing reads product_name directly any more');
 });
+
+// Multi-language preference ("uk,ru,cs"), see openspec off-multilang-search.
+const MULTI = { lang: 'uk', product_name: 'Potatoes', product_name_en: 'Potatoes', product_name_uk: 'Картопля', product_name_ru: 'Картофель', product_name_cs: 'Brambory' };
+
+test('several chosen languages: the first one the product has wins', () => {
+  assert.equal(offProductName(MULTI, 'uk,ru'), 'Картопля');
+  assert.equal(offProductName({ ...MULTI, product_name_uk: '' }, 'uk,ru'), 'Картофель');
+  assert.equal(offProductName({ product_name_ru: 'Сметана', product_name_cs: 'Zakysaná smetana' }, 'uk,ru'), 'Сметана',
+    'Ukrainian missing, Russian present');
+  assert.equal(offProductName(MULTI, 'cs,uk'), 'Brambory', 'order matters');
+  assert.equal(offProductName(MULTI, ['ru', 'uk']), 'Картофель', 'arrays work too');
+});
+
+test('a list with English in it is a deliberate choice, unlike English alone', () => {
+  assert.equal(offProductName(MULTI, 'en'), 'Potatoes', 'default user unchanged');
+  assert.equal(offProductName({ ...MULTI, product_name: 'Картопля' }, 'en'), 'Картопля', 'English alone never overrides product_name');
+  assert.equal(offProductName({ ...MULTI, product_name: 'Картопля' }, 'en,ru'), 'Potatoes', 'English picked on purpose in a list');
+});
+
+test('a single non-English code behaves exactly as before', () => {
+  assert.equal(offProductName(TRANSLATED, 'de'), 'Bio Milch UHT');
+  assert.equal(offProductName(TRANSLATED, 'de,'), 'Bio Milch UHT');
+  assert.equal(offProductName(TRANSLATED, 'it'), 'UHT Milch Drink');
+});

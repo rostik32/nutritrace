@@ -4,6 +4,7 @@
 import { settingPrefix } from './setting-key.js';
 import { rankOFFResults } from './off-rank.js';
 import { offProductName } from './off-name.js';
+import { parseOffLanguages, serializeOffLanguages, offSearchLangs } from './off-languages.js';
 import { asSoldNutriments } from './off-nutrition-sets.js';
 
 // In native mode, call external APIs directly (no CORS in WebView).
@@ -107,18 +108,18 @@ function _offSearchUrl(query, page, pageSize) {
     q: qWithFilter,
     page_size: String(pageSize),
     page: String(page),
-    langs: _getOffSearchLanguage(),
+    langs: offSearchLangs(_getOffSearchLanguage()).join(','),
   });
   return `https://search.openfoodfacts.org/search?${params.toString()}`;
 }
 
-// Read the user's saved OFF language preference (short ISO 639-1 code
-// like 'en', 'fr', 'de'). Passed to OFF as `lc=<code>` so product
-// names, ingredients, categories, and labels come back translated to
-// the user's language when OFF has that translation. Defaults to 'en'
-// (matches the setting store default) so we don't have to special-case
-// null downstream. Same store-free localStorage pattern as
-// _getOffSearchCountry.
+// Read the user's saved OFF languages: an ordered, comma-separated list of
+// two-letter codes ("uk,ru,cs"), primary first; a single code ("ru") from
+// before multi-language support reads the same as before. See
+// off-languages.js. Search sends the whole list (plus English) as `langs=`;
+// endpoints that take one language (`lc=`) use the primary one. Defaults to
+// 'en' (matches the setting store default). Same store-free localStorage
+// pattern as _getOffSearchCountry.
 function _getOffSearchLanguage() {
   try {
     const setKey = settingPrefix() + 'offSearchLanguage';
@@ -126,7 +127,7 @@ function _getOffSearchLanguage() {
     if (!raw) return 'en';
     const lang = JSON.parse(raw);
     if (!lang || typeof lang !== 'string') return 'en';
-    return lang.slice(0, 2).toLowerCase();
+    return serializeOffLanguages(lang);
   } catch { return 'en'; }
 }
 
@@ -248,7 +249,7 @@ const API = {
 
   async lookupBarcode(barcode, { live = false } = {}) {
     try {
-      const lc = _getOffSearchLanguage();
+      const lc = parseOffLanguages(_getOffSearchLanguage())[0];
       // v3 is the current canonical product endpoint. v0/v2 still work
       // (OFF marks v2 deprecated but supported for back-compat) and the
       // local mirror at server/routes/proxy.js intercepts any /api/vN/
@@ -294,7 +295,7 @@ const API = {
       return cached;
     }
     try {
-      const lc = _getOffSearchLanguage();
+      const lc = parseOffLanguages(_getOffSearchLanguage())[0];
       const url = `${this.OFF_BASE}/api/v3/product/${code}?lc=${encodeURIComponent(lc)}`;
       const res = await _extFetch(url);
       if (!res.ok) return null;

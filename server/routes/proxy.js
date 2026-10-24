@@ -147,7 +147,11 @@ async function _tryLocalOff(parsedUrl) {
     const q = parsedUrl.searchParams.get('q') || parsedUrl.searchParams.get('search_terms') || '';
     const page = parseInt(parsedUrl.searchParams.get('page') || '1', 10);
     const pageSize = parseInt(parsedUrl.searchParams.get('page_size') || '20', 10);
-    const result = await searchByName(q, { page, pageSize });
+    // The client sends the user's OFF languages as `langs=uk,ru,en`; the
+    // mirror names each hit in that order, like remote results.
+    const langs = (parsedUrl.searchParams.get('langs') || parsedUrl.searchParams.get('lc') || 'en')
+      .split(',').map(l => l.trim().toLowerCase()).filter(l => /^[a-z]{2}$/.test(l));
+    const result = await searchByName(q, { page, pageSize, langs: langs.length ? langs : ['en'] });
     if (result == null) {
       logger.debug(`[off-local] search "${q}" → mirror error, falling through to remote OFF`);
       return undefined;

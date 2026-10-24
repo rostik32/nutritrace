@@ -163,6 +163,8 @@
         "enable": "Enable Open Food Facts",
         "enable_desc": "Search the global crowd-sourced food database when adding foods. No account needed for searches; one is only required to upload edits.",
         "search_language": "Search Language",
+        "search_language_extra": "Also Search In",
+        "search_language_extra_desc": "Find products named in these languages too. Names show in your language order.",
         "search_country": "Search Country",
         "upload_country": "Upload Country",
         "upload_country_auto": "Auto",

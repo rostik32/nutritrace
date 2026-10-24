@@ -33,6 +33,17 @@ diaitika/seed-dev.sh          # in a second terminal, once
 
 Open http://localhost:5173 and log in as `dev` with the password from `.dev-data/dev-credentials`.
 
+> **Known issue (2026-10-24):** the Vite dev server currently renders a blank page (also on unmodified
+> upstream code; the API on :3001 works). Until that is fixed, check UI changes with a production build:
+>
+> ```bash
+> npx vite build && rm -rf server/dist && cp -r dist server/dist
+> cd server && DB_PATH=../.dev-data/db/nutritrace.db UPLOADS_PATH=../.dev-data/uploads \
+>   JWT_SECRET=local-dev-only-not-a-secret INSECURE_COOKIES=1 node index.js   # → http://localhost:3001
+> ```
+>
+> Remove `dist/` and `server/dist/` afterwards (both are git-ignored).
+
 Data lives in `.dev-data/` (git-ignored, throwaway). Delete the folder to start from scratch.
 Both options share it. Never point local dev at production data.
 
