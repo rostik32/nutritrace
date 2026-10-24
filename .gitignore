@@ -45,3 +45,6 @@ android/.idea/
 *.aab
 *.keystore
 android/keystore.properties
+
+# diaitika: local dev data (throwaway DB)
+.dev-data/

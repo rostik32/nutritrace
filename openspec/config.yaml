@@ -1,0 +1,46 @@
+schema: spec-driven
+
+context: |
+  This is the diaitika fork of TraceApps/nutritrace (AGPL-3.0). Upstream stays authoritative:
+  keep changes small and isolated so `upstream/main` merges stay easy, and mark in the proposal
+  whether a change is generic (offer upstream as a PR against upstream `dev`) or diaitika-only.
+  Every user-facing string goes through src/i18n/en.json (npm run i18n:check must pass).
+  Server and client copies of shared helpers must stay identical (see src/lib/search-text.js note).
+  Tests: node --test (npm test) on Node 20; add tests next to similar ones in scripts/*.test.js.
+  Production runs the Docker image on linux/arm64; nothing may depend on host-specific binaries.
+
+rules:
+  proposal:
+    - State "Upstream: yes/no" with a one-line reason
+    - State what is out of scope
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+# Example:
+#   context: |
+#     Designs and tasks must cover Windows, macOS, and Linux
+#     Write all artifacts in Spanish
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing

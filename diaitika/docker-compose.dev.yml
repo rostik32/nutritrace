@@ -1,0 +1,24 @@
+# Local development in Docker — no Node install needed on the host.
+#   docker compose -f diaitika/docker-compose.dev.yml up
+#   → http://localhost:5173  (then, in another terminal: docker compose -f diaitika/docker-compose.dev.yml exec dev diaitika/seed-dev.sh)
+# Source is bind-mounted, so edits hot-reload. node_modules live in named volumes because the
+# native modules (better-sqlite3, duckdb) must be built for Linux, not for the host OS.
+services:
+  dev:
+    image: node:20-bookworm
+    working_dir: /app
+    command: diaitika/dev.sh
+    environment:
+      VITE_HOST: 0.0.0.0
+      DEV_DATA: /app/.dev-data
+    ports:
+      - "127.0.0.1:5173:5173"
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - ..:/app
+      - node_modules:/app/node_modules
+      - server_node_modules:/app/server/node_modules
+
+volumes:
+  node_modules:
+  server_node_modules:

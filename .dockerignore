@@ -8,3 +8,9 @@ android
 *.apk
 *.aab
 *.keystore
+
+# diaitika fork: local dev data and fork tooling never go into the image
+.dev-data
+openspec
+.claude
+diaitika

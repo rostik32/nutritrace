@@ -13,6 +13,8 @@ on:
 
 jobs:
   build:
+    # Publishing needs the upstream registry secrets; skip it in forks.
+    if: github.repository == 'TraceApps/nutritrace'
     runs-on: ubuntu-latest
     permissions:
       contents: read
