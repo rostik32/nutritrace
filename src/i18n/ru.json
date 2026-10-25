@@ -2351,5 +2351,27 @@
       "username_required": "Укажите имя пользователя",
       "failed": "Не удалось создать аккаунт"
     }
+  },
+  "diary_export": {
+    "button": "Экспорт",
+    "title": "Экспорт дневника",
+    "period": "Период",
+    "preset_today": "Сегодня",
+    "preset_yesterday": "Вчера",
+    "preset_week": "Неделя",
+    "preset_month": "Месяц",
+    "preset_custom": "Выбрать период",
+    "from": "С",
+    "to": "По",
+    "invalid_range": "Дата начала должна быть не позже даты окончания",
+    "export_csv": "Экспорт в CSV",
+    "exporting": "Экспорт…",
+    "csv_hint": "Таблица CSV: открывается в Excel, Google Таблицах и Numbers",
+    "toast": {
+      "empty": "За этот период в дневнике нет записей",
+      "exported": "Выгружено записей: {n}",
+      "saved_downloads": "Сохранено в Downloads/{file}",
+      "failed": "Не удалось выгрузить: {error}"
+    }
   }
 }

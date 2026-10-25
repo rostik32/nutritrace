@@ -12,7 +12,7 @@
 import {
   dbGetFoods, dbGetFood, dbCreateFood, dbUpdateFood, dbDeleteFood, dbCopyFood, dbBumpFoodUsage,
   dbGetMeals, dbGetMeal, dbCreateMeal, dbUpdateMeal, dbDeleteMeal, dbCopyMeal, dbBumpMealUsage,
-  dbGetDiaryDate, dbSaveDiaryDate, dbGetAllDiary, dbSetDiaryCompletion, dbSetMealCompletion,
+  dbGetDiaryDate, dbSaveDiaryDate, dbGetAllDiary, dbGetDiaryRange, dbSetDiaryCompletion, dbSetMealCompletion,
   dbQueueCompletionOp,
 } from './db-native.js';
 import {
@@ -281,6 +281,10 @@ export const NtApiCached = {
 
   async getAllDiary() {
     return await dbGetAllDiary().catch(() => []);
+  },
+
+  async getDiaryRange(start, end) {
+    return await dbGetDiaryRange(start, end).catch(() => []);
   },
 
   // #207: local-first mark/unmark a day complete. The mark is queued and

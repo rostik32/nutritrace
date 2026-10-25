@@ -26,6 +26,8 @@ import { requireScope } from '../../../middleware/bearer-auth.js';
 import { wrap } from '../../../logger.js';
 import { listDiaryCore } from '../../../lib/mcp/tools/list-diary.js';
 import { dailyTotalsCore } from '../../../lib/mcp/tools/daily-totals.js';
+import { listDiaryRangeCore } from '../../../lib/mcp/tools/list-diary-range.js';
+import { dailyTotalsRangeCore } from '../../../lib/mcp/tools/daily-totals-range.js';
 import { logFoodCore } from '../../../lib/mcp/tools/log-food.js';
 import { logWaterCore } from '../../../lib/mcp/tools/log-water.js';
 import { logMealCore } from '../../../lib/mcp/tools/log-meal.js';
@@ -61,6 +63,22 @@ function core(fn) {
     }
   });
 }
+
+// ?start=&end= as inclusive YYYY-MM-DD, same rules as the MCP range
+// tools. An empty value (?start=) counts as omitted. Registered before
+// /:date so 'totals' is not read as a date.
+function rangeQuery(req) {
+  const { start, end } = req.query;
+  return { start: start === '' ? undefined : start, end: end === '' ? undefined : end };
+}
+
+router.get('/', requireScope('mcp:read'), core(req =>
+  listDiaryRangeCore(req.apiUser.id, rangeQuery(req))
+));
+
+router.get('/totals', requireScope('mcp:read'), core(req =>
+  dailyTotalsRangeCore(req.apiUser.id, rangeQuery(req))
+));
 
 router.get('/:date', requireScope('mcp:read'), core(req =>
   listDiaryCore(req.apiUser.id, { date: req.params.date })

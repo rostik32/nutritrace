@@ -27,7 +27,7 @@ test('the web API is the HTTP one wrapped for offline, and native is untouched',
 });
 
 test('reads that must answer offline are mirrored', () => {
-  for (const method of ['getDiaryDate', 'getAllDiary', 'getFoods', 'getFood', 'getMeals', 'getRecipes']) {
+  for (const method of ['getDiaryDate', 'getAllDiary', 'getDiaryRange', 'getFoods', 'getFood', 'getMeals', 'getRecipes']) {
     assert.ok(offline.includes(`'${method}'`) || offline.includes(`async ${method}(`), `${method} should be mirrored`);
   }
 });
@@ -223,4 +223,14 @@ test('nothing the offline path needs is fetched at the moment it is needed', () 
   // install as "Failed to fetch dynamically imported module".
   assert.match(offline, /^import \{ embeddableDataUrl \} from '\.\/image-embed\.js';$/m);
   assert.ok(!/await import\('\.\/image-embed\.js'\)/.test(offline), 'the helper is bundled, not fetched');
+});
+
+test('the diary period read exists in every mode and the export uses it', () => {
+  assert.match(api, /getDiaryRange\(start, end\)\s*\{ return this\.get\(`\/api\/diary\?start=/);
+  for (const file of ['../src/lib/api-native.js', '../src/lib/api-cached.js']) {
+    assert.match(read(file), /async getDiaryRange\(start, end\) \{\s*return (await )?dbGetDiaryRange\(start, end\)/, file);
+  }
+  // Offline it answers from the mirror for that period only.
+  assert.match(offline, /async getDiaryRange\(start, end\)[\s\S]{0,900}?\(await _all\('diary'\)\)\.filter\(inRange\)/);
+  assert.match(read('../src/components/diary/DiaryExportSheet.svelte'), /NtApi\.getDiaryRange\(range\.start, range\.end\)/);
 });

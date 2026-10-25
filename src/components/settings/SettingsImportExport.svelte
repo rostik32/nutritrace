@@ -206,6 +206,11 @@
   }
 
   // ── Diary CSV Export ────────────────────────────────────────────────────────
+  // Amount as the diary shows it: portion × quantity (nutrition columns
+  // already include quantity, so the bare portion understated it).
+  function _itemAmount(item) {
+    return Math.round((item.portion || item.amount || 100) * (item.quantity || 1) * 10) / 10;
+  }
   async function exportCSV() {
     try {
       const diary = await NtApi.getAllDiary();
@@ -213,7 +218,7 @@
       diary.forEach(day => {
         (day.items || []).forEach(item => {
           const n = Nutrition.calculate(item);
-          csv += `${day.date},${item.meal||0},"${item.name||''}",${item.portion||100},${item.unit||'g'},${Math.round(n.calories||0)},${(n.fat||0).toFixed(1)},${(n.carbohydrates||0).toFixed(1)},${(n.proteins||0).toFixed(1)}\n`;
+          csv += `${day.date},${item.meal||0},${_csvEscape(item.name||'')},${_itemAmount(item)},${item.unit||'g'},${Math.round(n.calories||0)},${(n.fat||0).toFixed(1)},${(n.carbohydrates||0).toFixed(1)},${(n.proteins||0).toFixed(1)}\n`;
         });
       });
       const blob = new Blob([csv], { type: 'text/csv' });
@@ -260,7 +265,7 @@
             _csvEscape(mealName),
             _csvEscape(item.name || ''),
             _csvEscape(item.brand || ''),
-            item.portion ?? 100,
+            _itemAmount(item),
             _csvEscape(item.unit || 'g'),
             ...nutCols.map(c => {
               const v = n[c.id];

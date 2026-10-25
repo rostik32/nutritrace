@@ -14,11 +14,52 @@ import {
   toolError,
   validateDateRange,
 } from '../_util.js';
+import { getMealNames, withItemDetails } from '../_diary-items.js';
 
 // Full item lists are large, and an open range can span a whole diary.
 // Past this many logged days the call asks for a narrower range instead of
 // returning everything (or silently cutting it short).
 export const MAX_RANGE_DAYS = 366;
+
+/**
+ * Core lookup, shared by the MCP tool below and the public REST API at
+ * GET /api/v1/diary?start=&end=. Throws a plain Error on bad input or a
+ * range over MAX_RANGE_DAYS logged days.
+ */
+export function listDiaryRangeCore(userId, { start, end } = {}) {
+  const { start: rangeStart, end: rangeEnd } = resolveDateRange(start, end);
+  const rangeError = validateDateRange(rangeStart, rangeEnd);
+  if (rangeError) throw new Error(rangeError);
+
+  const conditions = ['deleted_at IS NULL'];
+  const params = [userId];
+  if (rangeStart != null) {
+    conditions.push('date >= ?');
+    params.push(rangeStart);
+  }
+  if (rangeEnd != null) {
+    conditions.push('date <= ?');
+    params.push(rangeEnd);
+  }
+  const where = `WHERE user_id = ? AND ${conditions.join(' AND ')}`;
+  const { days } = db.prepare(`SELECT COUNT(*) AS days FROM diary ${where}`).get(...params);
+  if (days > MAX_RANGE_DAYS) {
+    throw new Error(
+      `That range has ${days} logged days; the limit is ${MAX_RANGE_DAYS} per call. ` +
+      'Narrow start/end, or use get_daily_totals_range for totals over longer spans.'
+    );
+  }
+  const rows = db.prepare(
+    `SELECT date, items FROM diary ${where}
+      ORDER BY date ASC`
+  ).all(...params);
+  const mealNames = getMealNames(userId);
+  const entries = rows.map(row => {
+    const items = safeJson(row.items, []);
+    return { date: row.date, items: withItemDetails(items, mealNames), count: items.length };
+  });
+  return { start: rangeStart, end: rangeEnd, entries, count: entries.length };
+}
 
 export function registerListDiaryRange(server, { userId }) {
   server.registerTool(
@@ -37,37 +78,11 @@ export function registerListDiaryRange(server, { userId }) {
       },
     },
     async ({ start, end }) => {
-      const { start: rangeStart, end: rangeEnd } = resolveDateRange(start, end);
-      const rangeError = validateDateRange(rangeStart, rangeEnd);
-      if (rangeError) return toolError(rangeError);
-
-      const conditions = ['deleted_at IS NULL'];
-      const params = [userId];
-      if (rangeStart != null) {
-        conditions.push('date >= ?');
-        params.push(rangeStart);
+      try {
+        return toolResult(listDiaryRangeCore(userId, { start, end }));
+      } catch (e) {
+        return toolError(e.message);
       }
-      if (rangeEnd != null) {
-        conditions.push('date <= ?');
-        params.push(rangeEnd);
-      }
-      const where = `WHERE user_id = ? AND ${conditions.join(' AND ')}`;
-      const { days } = db.prepare(`SELECT COUNT(*) AS days FROM diary ${where}`).get(...params);
-      if (days > MAX_RANGE_DAYS) {
-        return toolError(
-          `That range has ${days} logged days; the limit is ${MAX_RANGE_DAYS} per call. ` +
-          'Narrow start/end, or use get_daily_totals_range for totals over longer spans.'
-        );
-      }
-      const rows = db.prepare(
-        `SELECT date, items FROM diary ${where}
-          ORDER BY date ASC`
-      ).all(...params);
-      const entries = rows.map(row => {
-        const items = safeJson(row.items, []);
-        return { date: row.date, items, count: items.length };
-      });
-      return toolResult({ start: rangeStart, end: rangeEnd, entries, count: entries.length });
     }
   );
 }

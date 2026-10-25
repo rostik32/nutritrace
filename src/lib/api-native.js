@@ -11,7 +11,7 @@
 import {
   dbGetFoods, dbGetFood, dbCreateFood, dbUpdateFood, dbDeleteFood, dbCopyFood, dbBumpFoodUsage,
   dbGetMeals, dbGetMeal, dbCreateMeal, dbUpdateMeal, dbDeleteMeal, dbCopyMeal, dbBumpMealUsage,
-  dbGetDiaryDate, dbSaveDiaryDate, dbGetAllDiary, dbSetDiaryCompletion, dbSetMealCompletion,
+  dbGetDiaryDate, dbSaveDiaryDate, dbGetAllDiary, dbGetDiaryRange, dbSetDiaryCompletion, dbSetMealCompletion,
   dbGetActivity, dbGetActivityRange, dbSumActivity, dbWearableActiveCalories,
   dbCreateActivity, dbUpdateActivity, dbDeleteActivity,
   LOCAL_USER_ID,
@@ -169,6 +169,10 @@ export const NtApiNative = {
 
   async getAllDiary() {
     return dbGetAllDiary();
+  },
+
+  async getDiaryRange(start, end) {
+    return dbGetDiaryRange(start, end);
   },
 
   // #207: local-only completion mark for standalone-native mode.

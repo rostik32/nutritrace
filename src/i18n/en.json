@@ -2363,5 +2363,27 @@
       "username_required": "Username is required",
       "failed": "Failed to create account"
     }
+  },
+  "diary_export": {
+    "button": "Export",
+    "title": "Export Diary",
+    "period": "Period",
+    "preset_today": "Today",
+    "preset_yesterday": "Yesterday",
+    "preset_week": "Week",
+    "preset_month": "Month",
+    "preset_custom": "Select Period",
+    "from": "From",
+    "to": "To",
+    "invalid_range": "The start date must be on or before the end date",
+    "export_csv": "Export CSV",
+    "exporting": "Exporting…",
+    "csv_hint": "CSV table: opens in Excel, Google Sheets and Numbers",
+    "toast": {
+      "empty": "No diary entries for this period",
+      "exported": "Exported {n} entries",
+      "saved_downloads": "Saved to Downloads/{file}",
+      "failed": "Export failed: {error}"
+    }
   }
 }

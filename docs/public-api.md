@@ -59,6 +59,8 @@ token lacking the required scope returns `403`.
 
 | Method | Path | Notes |
 |---|---|---|
+| GET | `/api/v1/diary?start=&end=` | Logged food items per day for a date range: `{start, end, entries: [{date, items, count}], count}`, oldest day first. Inclusive `YYYY-MM-DD` bounds; a supplied bound leaves the other side open, both omitted means the last 90 days. At most 366 logged days per call (400 beyond that; use the totals route for longer spans). |
+| GET | `/api/v1/diary/totals?start=&end=` | Per-day totals for a date range: `{start, end, totals: [{date, totals, water_ml, item_count}], count}`. Same bounds as above, no day limit. |
 | GET | `/api/v1/diary/:date` | One day's logged food items. `date` defaults to today. |
 | GET | `/api/v1/diary/:date/totals` | Summed nutrition (calories, macros, any micronutrients present) plus total water for that day. |
 | GET | `/api/v1/goals` | The user's current macro/micronutrient/water goal targets. |
@@ -68,6 +70,28 @@ token lacking the required scope returns `403`.
 | GET | `/api/v1/steps?start=&end=&source=` | Persisted daily step observations from wellness data, one row per source. Inclusive `YYYY-MM-DD` bounds; a supplied bound leaves the other side open, both omitted means the last 90 days. `source` filters to one provider. Sources are never merged and missing days are not zeros. |
 | GET | `/api/v1/body-composition?start=&end=&source=` | Persisted body-composition observations from `wellness_data`. Inclusive `YYYY-MM-DD` bounds; a supplied bound leaves the other side open, both omitted means the last 90 days. `source` is an optional exact filter. Metrics are grouped by `date` + `source`; observations from different sources remain separate, and missing observations are omitted rather than synthesized. |
 | GET | `/api/v1/profile` | The user's gender and date of birth as set on the Profile page or during onboarding. Either field is `null` when unset. |
+
+Each diary item keeps the fields the app stores (`name`, `brand`, `meal`,
+`quantity`, `portion`, `unit`, `nutrition`, `addedAt`, ...) and adds two
+read-only ones:
+
+- `meal_name`: the user's name for the item's meal (`meal` is its 0-based
+  index), falling back to `Meal N` for a slot without a name.
+- `totals`: the item's nutrition with `quantity` applied and split recipes
+  summed, i.e. what the diary counts. `nutrition` stays per serving.
+
+```json
+{
+  "name": "Chicken breast",
+  "meal": 1,
+  "meal_name": "Lunch",
+  "quantity": 1.5,
+  "portion": 100,
+  "unit": "g",
+  "nutrition": { "calories": 165, "proteins": 31, "fat": 3.6 },
+  "totals": { "calories": 247.5, "proteins": 46.5, "fat": 5.4 }
+}
+```
 
 ### Write (require `mcp:write` and `PUBLIC_API_WRITE_ENABLED=1`)
 
@@ -96,6 +120,12 @@ use that endpoint instead of a second, overlapping route.
 # Today's logged food
 curl -H "Authorization: Bearer nt_pat_..." \
   https://your-nutritrace.example.com/api/v1/diary/2026-09-12
+
+# A week of logged food, and per-day totals for a month
+curl -H "Authorization: Bearer nt_pat_..." \
+  "https://your-nutritrace.example.com/api/v1/diary?start=2026-09-06&end=2026-09-12"
+curl -H "Authorization: Bearer nt_pat_..." \
+  "https://your-nutritrace.example.com/api/v1/diary/totals?start=2026-09-01&end=2026-09-30"
 
 # Log a food
 curl -X POST -H "Authorization: Bearer nt_pat_..." -H "Content-Type: application/json" \

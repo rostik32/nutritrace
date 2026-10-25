@@ -16,6 +16,8 @@ const TOOLS_DIR = new URL('../server/lib/mcp/tools/', import.meta.url);
 const EXPECTED_CORE_EXPORTS = {
   'list-diary.js':        'listDiaryCore',
   'daily-totals.js':      'dailyTotalsCore',
+  'list-diary-range.js':  'listDiaryRangeCore',
+  'daily-totals-range.js': 'dailyTotalsRangeCore',
   'goals.js':             'getGoalsCore',
   'search-meals.js':      'searchMealsCore',
   'recent-meals.js':      'recentMealsCore',

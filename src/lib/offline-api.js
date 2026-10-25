@@ -669,6 +669,23 @@ export function createOfflineApi(http) {
       }
     },
 
+    // Same as getAllDiary for one period: only that period's mirror rows are
+    // replaced, and queued edits outside it are left out of the answer.
+    async getDiaryRange(start, end) {
+      const inRange = d => d.date >= start && d.date <= end;
+      try {
+        const days = (await http.getDiaryRange(start, end)).filter(inRange);
+        const ops = await _loadOps();
+        await _replace('diary', days, old => !inRange(old) || ops.some(o => o.date === old.date));
+        return [...applyDiaryOps(days, ops.filter(inRange)).values()];
+      } catch (err) {
+        if (!isOfflineError(err)) throw err;
+        _publish({ online: false });
+        const ops = (await _loadOps()).filter(inRange);
+        return [...applyDiaryOps((await _all('diary')).filter(inRange), ops).values()];
+      }
+    },
+
     async saveDiaryDate(date, data) {
       _changedSomething = true;
       const ops = await _loadOps();
