@@ -47,5 +47,6 @@
     "draft_restored": "Przywrócono niezapisane wcześniej zmiany.",
     "draft_discard": "Odrzuć",
     "card_categories": "Kategorie"
-  }
+  },
+  "settings_foods_picker": {}
 }

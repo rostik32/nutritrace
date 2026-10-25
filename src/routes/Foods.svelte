@@ -30,10 +30,12 @@
   import { resolveAssetUrl, isNative } from '../lib/platform.js';
   import { itemSourceRef } from '../lib/item-source.js';
   import { offCountryTagToFlag, offCountryTagToName } from '../lib/off-country-flag.js';
-  import { foodsShowThumbnails, foodsShowCategories, foodsShowLabels, foodsShowNotes, foodsSort, mealsSort, recipesSort, foodCategories, foodsShowYesterdayMeals, foodsYesterdayCollapsed, foodsSavedCollapsed, mealNames, usdaEnabled, usdaApiKey, offEnabled, offSearchCountry, offSearchLanguage, foodsDefaultSource, diaryDefaultField, catName as _catName, catDisplay as _catDisplay, pageBanners, bannerStyle, energyUnit } from '../stores/settings.js';
+  import { foodsShowThumbnails, foodsShowCategories, foodsShowLabels, foodsShowNotes, foodsSort, mealsSort, recipesSort, foodCategories, foodsShowYesterdayMeals, foodsYesterdayCollapsed, foodsSavedCollapsed, mealNames, usdaEnabled, usdaApiKey, offEnabled, offSearchCountry, offSearchLanguage, foodsSearchExcluded, envLocks, diaryDefaultField, catName as _catName, catDisplay as _catDisplay, pageBanners, bannerStyle, energyUnit } from '../stores/settings.js';
   import { mealIcon } from '../lib/mealIcon.js';
   import { focusDefaultField } from '../lib/default-field.js';
   import { pageScrollTop, restorePageScroll } from '../lib/scroll-anchor.js';
+  import { createFoodSearch, rankFoods } from '../lib/food-search.js';
+  import FoodSearchFilter from '../components/foods/FoodSearchFilter.svelte';
 
   // Query string params
   function qs() {
@@ -90,12 +92,9 @@
   $: _hideSavedMealsList = _savedMealsHeaderVisible && $foodsSavedCollapsed;
 
   let search = '';
-  // Initial source chip. Reads the user's saved default (Settings → Foods →
-  // Default search source). Requested via #128 — power users who add new
-  // foods frequently prefer 'all' so it fans out to OFF/USDA/Mealie on
-  // every visit rather than starting on My Foods. Existing users default
-  // to 'local' (unchanged behaviour).
-  let searchSource = foodsDefaultSource.get() || 'local';
+  // Source chip for the Meals / Recipes tabs. The Foods tab has no chips:
+  // it searches every source at once (see "Foods tab search" below).
+  let searchSource = 'local';
   const _mealieEnabled = DB.getSetting('mealieEnabled',  false);
   // CookTrace serves recipes, so its chip only makes sense on the Recipes
   // tab (activeTab === 2). Mirrors Mealie's Foods-tab-only gate: an
@@ -125,16 +124,8 @@
   $: _sourceLabel = availableSources.find(s => s.value === searchSource)?.label || '';
 
   // ── Per-source quality-tier filters ──────────────────────────────────────
-  // Backdrop-pattern dropdown attached to the OFF + USDA source chips (via
-  // caret). Multi-select checkboxes, default all-active (no filter).
-  // Filters apply client-side after fetch, only when the specific source
-  // is active — not in 'all' mode.
-  //
-  // Implementation follows ActionSheet.svelte's proven pattern:
-  //   1. Backdrop covers full viewport, portalled to body
-  //   2. Panel is INSIDE the backdrop, uses on:click|stopPropagation
-  //   3. Backdrop's on:click closes (target === currentTarget check)
-  //   4. Regular on:click (NOT pointerdown) — reliable across Android WebView
+  // Set in the Foods search filter panel (FoodSearchFilter). Multi-select,
+  // default all-active (no filter), applied client-side after fetch.
   //
   // OFF tiers = the same buckets our completeness dot uses (green ≥70%,
   // yellow 40-70%, grey <40%; "unknown" for entries OFF didn't populate).
@@ -144,12 +135,6 @@
   const _USDA_TIERS = ['Foundation', 'SR Legacy', 'Survey (FNDDS)', 'Branded', 'Experimental', 'unknown'];
   let offTiersActive  = new Set(_OFF_TIERS);
   let usdaTiersActive = new Set(_USDA_TIERS);
-  let offDropdownOpen  = false;
-  let usdaDropdownOpen = false;
-  let offCaretEl = null;
-  let usdaCaretEl = null;
-  let offDropdownPos  = { top: 0, right: 0 };
-  let usdaDropdownPos = { top: 0, right: 0 };
 
   // ── Multi-select source chips (long-press to add) ─────────────────────
   // pinnedSources holds sources the user has explicitly pinned via long-
@@ -298,48 +283,6 @@
     }
     return apiResults;
   })();
-
-  function openOffDropdown() {
-    usdaDropdownOpen = false;
-    const r = offCaretEl?.getBoundingClientRect();
-    if (r) offDropdownPos = { top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) };
-    offDropdownOpen = true;
-  }
-  function openUsdaDropdown() {
-    offDropdownOpen = false;
-    const r = usdaCaretEl?.getBoundingClientRect();
-    if (r) usdaDropdownPos = { top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) };
-    usdaDropdownOpen = true;
-  }
-
-  // Dismiss the tier dropdowns via window-level events. Backdrop is
-  // pointer-events:none so touches pass through — dismiss instead relies
-  // on click / touchmove / scroll bubbling up to window. Panel clicks
-  // are stopped inline with on:click|stopPropagation so they don't reach
-  // here. Caret clicks are checked by .contains() so tapping the same
-  // caret again correctly toggles (open handler runs after our close).
-  let offDropdownPanelEl = null;
-  let usdaDropdownPanelEl = null;
-  function _closeTierDropdowns() {
-    offDropdownOpen = false;
-    usdaDropdownOpen = false;
-  }
-  function _onWindowClick(e) {
-    if (!offDropdownOpen && !usdaDropdownOpen) return;
-    const t = e.target;
-    if (offCaretEl && offCaretEl.contains(t)) return;
-    if (usdaCaretEl && usdaCaretEl.contains(t)) return;
-    if (offDropdownPanelEl  && offDropdownPanelEl.contains(t))  return;
-    if (usdaDropdownPanelEl && usdaDropdownPanelEl.contains(t)) return;
-    _closeTierDropdowns();
-  }
-  function _onWindowTouchMove() {
-    // Any touch drag anywhere = user is scrolling; close dropdown.
-    // Since backdrop is pointer-events:none the touch actually landed
-    // on the underlying element, so the scroll happens natively while
-    // we dismiss.
-    if (offDropdownOpen || usdaDropdownOpen) _closeTierDropdowns();
-  }
 
   // Sharing — "From Others" source filter (per-category)
   let sharingEnabled = false;
@@ -640,6 +583,115 @@
     ...(_isSourceActive('usda')   ? (usdaResults   || []).filter(f => !usdaTiersFiltered || usdaTiersActive.has(f.dataType || 'unknown')).map(item => ({ source: 'usda',   item })) : []),
   ];
 
+  // ── Foods tab search ─────────────────────────────────────────────────────
+  // The Foods tab searches every source at once through
+  // src/lib/food-search.js: own + shared foods and Open Food Facts (the
+  // server answers from its mirror first) on every search, online databases
+  // only when that finds nothing or the user asks. One list, no chips; the
+  // filter panel picks sources, sort and quality filters. Meals / Recipes
+  // keep the chip-driven code above and below.
+  const FOOD_SEARCH_PAGE_SIZE = 30;
+  let fsState = { query: '', rows: [], loading: false, loadingMore: false, onlineLoading: false,
+    onlineAvailable: false, onlineDone: false, settled: true, hasMore: false };
+  const _foodSearch = createFoodSearch({ onChange: (st) => { fsState = st; } });
+  onDestroy(() => _foodSearch.destroy());
+  let fsFilterOpen = false;
+  $: _fsExcluded = new Set($foodsSearchExcluded || []);
+  $: _fsSort = $foodsSort || 'relevance';
+  // Live OFF past the mirror is only a separate step when there is a mirror
+  // and the server allows going out (no OFF_LOCAL_ONLY).
+  $: _liveOffAvailable = !!($envLocks?.off_local && !$envLocks?.off_local_only);
+  // Sources the filter panel can switch, in list order.
+  $: _fsSourceOptions = [
+    { id: 'own', label: $_('foods.search.source_own') },
+    ...(_tabHasShared ? [{ id: 'shared', label: $_('foods.search.source_shared') }] : []),
+    ...($offEnabled ? [{ id: 'off', label: 'Open Food Facts' }] : []),
+    ...($usdaEnabled ? [{ id: 'usda', label: 'USDA' }] : []),
+    ...(_mealieEnabled ? [{ id: 'mealie', label: 'Mealie' }] : []),
+    ...(_cooktraceEnabled ? [{ id: 'ctpantry', label: 'CookTrace' }] : []),
+  ];
+  function _fsSources() {
+    const on = (id) => !_fsExcluded.has(id) && _fsSourceOptions.some(o => o.id === id);
+    const pageOf = (r) => ({ items: r?.items || [], hasMore: !!r?.hasMore });
+    const list = [];
+    if (on('own'))    list.push({ id: 'own',    tier: 1, match: (q) => rankFoods(localFoods, q, _fsSort) });
+    if (on('shared')) list.push({ id: 'shared', tier: 1, match: (q) => rankFoods(groupFoods, q, _fsSort) });
+    if (_sourcesOffline) return list;
+    if (on('off')) {
+      list.push({ id: 'off', tier: 1,
+        fetchPage: (q, p) => API.searchByNameWithMeta(q, p, FOOD_SEARCH_PAGE_SIZE).then(pageOf) });
+      if (_liveOffAvailable) list.push({ id: 'off-live', tier: 2,
+        fetchPage: (q, p) => API.searchByNameWithMeta(q, p, FOOD_SEARCH_PAGE_SIZE, { live: true }).then(pageOf) });
+    }
+    if (on('usda')) list.push({ id: 'usda', tier: 2,
+      fetchPage: (q, p) => USDA.searchByNameWithMeta(q, p, usdaApiKey.get(), FOOD_SEARCH_PAGE_SIZE).then(pageOf) });
+    if (on('mealie')) list.push({ id: 'mealie', tier: 2,
+      fetchPage: (q, p) => Mealie.searchWithMeta(q, p, FOOD_SEARCH_PAGE_SIZE).then(pageOf) });
+    if (on('ctpantry')) list.push({ id: 'ctpantry', tier: 2,
+      fetchPage: (q, p) => CookTrace.searchPantryWithMeta(q, p, FOOD_SEARCH_PAGE_SIZE).then(pageOf) });
+    return list;
+  }
+  // Restart on anything that changes what is searched (the pipeline waits
+  // 400 ms before its first request); re-rank in place when only the own
+  // catalog or the sort changed.
+  $: _fsKey = activeTab !== 0 ? null : [search.trim(), [..._fsExcluded].join(','),
+    _fsSourceOptions.map(o => o.id).join(','), _sourcesOffline, _liveOffAvailable,
+    $offSearchCountry, $offSearchLanguage].join('|');
+  $: if (_fsKey !== null) _foodSearch.start(search, _fsSources());
+  $: if (activeTab === 0) { localFoods; groupFoods; _fsSort; _foodSearch.refreshMemory(); }
+  $: { if (activeTab === 0 && _tabHasShared && !groupFoods.length && !groupMeals.length && !groupRecipes.length) loadGroupCatalogue(); }
+
+  function _fsVisible(row) {
+    const f = row.item;
+    if (row.source === 'off' || row.source === 'off-live') return !offTiersFiltered || offTiersActive.has(_bucketOff(f.completeness));
+    if (row.source === 'usda') return !usdaTiersFiltered || usdaTiersActive.has(f.dataType || 'unknown');
+    if (row.source === 'own' && activeCategoryFilter) return (f.categories || []).includes(activeCategoryFilter);
+    return true;
+  }
+  $: fsRows = (offTiersActive, usdaTiersActive, activeCategoryFilter, fsState.rows.filter(_fsVisible));
+  $: _fsHiddenByFilter = fsState.settled && fsState.rows.length > 0 && fsRows.length === 0;
+  $: _fsFilterActive = _fsExcluded.size > 0 || _fsSort !== 'relevance' || offTiersFiltered
+    || usdaTiersFiltered || !!activeCategoryFilter;
+  $: _fsShowOnlineBtn = fsState.onlineAvailable && !fsState.onlineDone && !fsState.loading
+    && fsState.rows.length > 0 && !_sourcesOffline;
+  $: _fsCategories = ($foodsShowCategories && $foodCategories?.length)
+    ? $foodCategories.map(c => ({ value: _catName(c), label: $foodsShowLabels ? _catDisplay(c) : _catName(c) }))
+    : [];
+  $: fsFilterProps = {
+    sources: _fsSourceOptions,
+    excluded: [..._fsExcluded],
+    sort: _fsSort,
+    showOffTiers: $offEnabled && !_fsExcluded.has('off'),
+    offTiers: offTiersActive,
+    showUsdaTiers: $usdaEnabled && !_fsExcluded.has('usda'),
+    usdaTiers: usdaTiersActive,
+    categories: _fsCategories,
+    category: activeCategoryFilter,
+    canReset: _fsFilterActive,
+  };
+  const _fsSelectable = (source) => source === 'own' || source === 'shared' || source === 'off'
+    || source === 'off-live' || source === 'usda';
+
+  function _fsToggleSource({ detail }) {
+    const s = new Set(_fsExcluded);
+    if (s.has(detail.id)) s.delete(detail.id); else s.add(detail.id);
+    foodsSearchExcluded.set([...s]);
+  }
+  function _fsResetFilters() {
+    foodsSearchExcluded.set([]);
+    foodsSort.set('relevance');
+    offTiersActive = new Set(_OFF_TIERS);
+    usdaTiersActive = new Set(_USDA_TIERS);
+    activeCategoryFilter = '';
+  }
+  function _fsPick(row) {
+    const { source, item } = row;
+    if (source === 'mealie') return pickMealieRecipe(item);
+    if (source === 'ctpantry') return pickCtPantryItem(item);
+    if (manageMode) return source === 'own' ? toggleManageSelect(item) : undefined;
+    return pickFood(item, source === 'off-live' ? 'off' : source);
+  }
+
   function _pickBySource(source, item) {
     if (source === 'mealie') return pickMealieRecipe(item);
     if (source === 'cooktrace') return pickCooktraceRecipe(item);
@@ -679,12 +731,13 @@
   }
 
   // Svelte action: fires onIntersect once each time the observed node
-  // enters the viewport (with 240px rootMargin so we start loading before
-  // the user reaches the very bottom — smoother than "load exactly at end").
+  // enters the viewport, with a one-screen rootMargin so the next page is
+  // on its way about a screen before the user reaches the end.
   function _infiniteScroll(node, { onIntersect }) {
+    const margin = Math.max(240, Math.round(window.innerHeight || 0));
     const observer = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting) onIntersect();
-    }, { rootMargin: '240px' });
+    }, { rootMargin: `${margin}px 0px` });
     observer.observe(node);
     return { destroy() { observer.disconnect(); } };
   }
@@ -854,6 +907,7 @@
     // Local + shared don't need remote calls; 'all' mode always needs the
     // debounce because it fans out to external APIs alongside local filter.
     if (!search.trim() || searchSource === 'local' || searchSource === 'shared') return;
+    if (activeTab === 0) return;   // Foods tab: the food-search pipeline
     const src = searchSource;
     searchTimeout = setTimeout(async () => {
       if (activeTab !== 0 && src !== 'cooktrace' && src !== 'all') return;
@@ -1024,6 +1078,7 @@
   function _saveScrollState() {
     editorState.foodsScrollY   = pageScrollTop(_foodsBodyEl);
     editorState.foodsActiveTab = activeTab;
+    editorState.foodsSearch    = search;
   }
 
   function openEditor(item, store) {
@@ -1165,7 +1220,7 @@
     }
 
     // If item is from another user's catalogue, copy it into ours first
-    if (searchSource === 'shared' && food._shared_by != null) {
+    if ((searchSource === 'shared' || activeTab === 0) && food._shared_by != null) {
       const mine = await copyAndUse(food);
       if (!mine) return;
       food = mine;
@@ -1413,10 +1468,13 @@
   // search filters, giving a scoped bulk-clean rather than a database
   // nuke. Select None does NOT drop out of manage mode (the exit-on-empty
   // auto-exit only fires from the per-item toggle path).
+  $: _manageableList = activeTab === 0
+    ? fsRows.filter(r => r.source === 'own').map(r => r.item)
+    : filteredList;
   function selectAllVisible() {
     if (!manageMode) return;
     const next = new Set(manageSelected);
-    for (const f of (filteredList || [])) {
+    for (const f of (_manageableList || [])) {
       if (f?.id != null) next.add(f.id);
     }
     manageSelected = next;
@@ -1426,7 +1484,7 @@
     manageSelected = new Set();
   }
   // Reactive helpers for enabling / labelling the buttons.
-  $: _visibleManageableIds = (filteredList || [])
+  $: _visibleManageableIds = (_manageableList || [])
     .filter(f => f?.id != null)
     .map(f => f.id);
   $: _allVisibleSelected = _visibleManageableIds.length > 0
@@ -1848,6 +1906,10 @@
       activeTab = editorState.foodsActiveTab;
       editorState.foodsActiveTab = null;
     }
+    if (editorState.foodsSearch) {
+      search = editorState.foodsSearch;
+      editorState.foodsSearch = null;
+    }
     // Load local data FIRST — don't block on server calls
     await load();
     await loadYesterdayMeals();
@@ -1867,94 +1929,23 @@
   });
 </script>
 
-<!-- Dismiss triggers for the OFF/USDA tier dropdowns. Since the backdrop
-     is pointer-events:none (so scrolls pass through to underlying page),
-     we detect dismiss via window-level events that bubble from wherever
-     the touch actually landed. -->
-<svelte:window
-  on:click={_onWindowClick}
-  on:touchmove={_onWindowTouchMove}
-  on:scroll={_closeTierDropdowns}
-  on:resize={_closeTierDropdowns}
-/>
-
-<!-- Source + category chip snippets. Rendered inline in the mobile
-     sticky bar (horizontal scroll) AND inside the desktop
-     .foods-filter-rail (vertical list). Same event handlers +
-     state either way — snippet-driven so behavior stays in one
-     place while the layout adapts. -->
+<!-- Source chip snippet for the Meals / Recipes tabs. Rendered inline in
+     the mobile sticky bar (horizontal scroll) AND inside the desktop
+     .foods-filter-rail (vertical list). The Foods tab uses the filter
+     panel (FoodSearchFilter) instead. -->
 {#snippet sourceChips()}
   {#if availableSources.length > 1}
     {#each availableSources as src}
-      {#if src.value === 'off'}
-        <div class="source-chip-wrap">
-          <button class="source-chip source-chip-split"
-                  class:active={activeChips.off}
-                  on:click={() => _onChipTap('off')}
-                  on:contextmenu|preventDefault={() => _toggleChipInMulti('off')}
-                  on:touchstart|passive={(e) => _startChipLongPress('off', e)}
-                  on:touchmove|passive={_maybeCancelChipLongPress}
-                  on:touchend={_cancelChipLongPress}
-                  on:touchcancel={_cancelChipLongPress}>
-            {src.label}
-            {#if offTiersFiltered}<span class="tier-active-dot" title="OFF tier filter active"></span>{/if}
-          </button>
-          <button class="source-chip-caret"
-                  class:active={activeChips.off}
-                  class:open={offDropdownOpen}
-                  bind:this={offCaretEl}
-                  on:click={openOffDropdown}
-                  aria-label="Filter OFF results by quality tier"
-                  aria-expanded={offDropdownOpen}>
-            <span class="material-symbols-rounded">expand_more</span>
-          </button>
-        </div>
-      {:else if src.value === 'usda'}
-        <div class="source-chip-wrap">
-          <button class="source-chip source-chip-split"
-                  class:active={activeChips.usda}
-                  on:click={() => _onChipTap('usda')}
-                  on:contextmenu|preventDefault={() => _toggleChipInMulti('usda')}
-                  on:touchstart|passive={(e) => _startChipLongPress('usda', e)}
-                  on:touchmove|passive={_maybeCancelChipLongPress}
-                  on:touchend={_cancelChipLongPress}
-                  on:touchcancel={_cancelChipLongPress}>
-            {src.label}
-            {#if usdaTiersFiltered}<span class="tier-active-dot" title="USDA tier filter active"></span>{/if}
-          </button>
-          <button class="source-chip-caret"
-                  class:active={activeChips.usda}
-                  class:open={usdaDropdownOpen}
-                  bind:this={usdaCaretEl}
-                  on:click={openUsdaDropdown}
-                  aria-label="Filter USDA results by data type"
-                  aria-expanded={usdaDropdownOpen}>
-            <span class="material-symbols-rounded">expand_more</span>
-          </button>
-        </div>
-      {:else}
-        <button class="source-chip"
-                class:active={activeChips[src.value]}
-                on:click={() => _onChipTap(src.value)}
-                on:contextmenu|preventDefault={() => _toggleChipInMulti(src.value)}
-                on:touchstart|passive={(e) => _startChipLongPress(src.value, e)}
-                on:touchmove|passive={_maybeCancelChipLongPress}
-                on:touchend={_cancelChipLongPress}
-                on:touchcancel={_cancelChipLongPress}>
-          {src.label}
-        </button>
-      {/if}
-    {/each}
-  {/if}
-{/snippet}
-
-{#snippet catChips()}
-  {#if activeTab === 0 && searchSource === 'local' && $foodsShowCategories && $foodCategories && $foodCategories.length > 0}
-    <button class="cat-chip" class:active={!activeCategoryFilter}
-      on:click={() => activeCategoryFilter = ''}>{$_('foods.category_all')}</button>
-    {#each $foodCategories as cat}
-      <button class="cat-chip" class:active={activeCategoryFilter === _catName(cat)}
-        on:click={() => activeCategoryFilter = activeCategoryFilter === _catName(cat) ? '' : _catName(cat)}>{$foodsShowLabels ? _catDisplay(cat) : _catName(cat)}</button>
+      <button class="source-chip"
+              class:active={activeChips[src.value]}
+              on:click={() => _onChipTap(src.value)}
+              on:contextmenu|preventDefault={() => _toggleChipInMulti(src.value)}
+              on:touchstart|passive={(e) => _startChipLongPress(src.value, e)}
+              on:touchmove|passive={_maybeCancelChipLongPress}
+              on:touchend={_cancelChipLongPress}
+              on:touchcancel={_cancelChipLongPress}>
+        {src.label}
+      </button>
     {/each}
   {/if}
 {/snippet}
@@ -2035,23 +2026,35 @@
         <span class="material-symbols-rounded">barcode_scanner</span>
       </button>
     </div>
+    {#if activeTab === 0 && !_foodsRailMode}
+      <button class="btn-icon foods-filter-btn" class:active={_fsFilterActive}
+        on:click={() => fsFilterOpen = true}
+        aria-label={$_('foods.search.filter_title')} title={$_('foods.search.filter_title')}>
+        <span class="material-symbols-rounded">tune</span>
+        {#if _fsFilterActive}<span class="foods-filter-dot"></span>{/if}
+      </button>
+    {/if}
   </div>
 
-  <!-- Mobile chip rows — horizontal scroll inside the sticky bar
-       (sources) + below the sticky bar (categories). Both are
-       CSS-hidden on desktop (≥1280px) since the .foods-filter-rail
-       shows the same chips vertically. -->
-  <div class="foods-mobile-chips">
-    <div class="source-chip-row">
-      {@render sourceChips()}
+  {#if activeTab === 0}
+    {#if _fsShowOnlineBtn}
+      <div class="foods-online-row">
+        <button class="foods-online-btn" on:click={() => _foodSearch.searchOnline()}>
+          <span class="material-symbols-rounded">travel_explore</span>
+          {$_('foods.search.search_online')}
+        </button>
+      </div>
+    {/if}
+  {:else}
+    <!-- Mobile source chips (Meals / Recipes) — horizontal scroll inside
+         the sticky bar; CSS-hidden on desktop (≥1280px) where the
+         .foods-filter-rail shows them vertically. -->
+    <div class="foods-mobile-chips">
+      <div class="source-chip-row">
+        {@render sourceChips()}
+      </div>
     </div>
-  </div>
-  </div>
-
-  <div class="foods-mobile-chips">
-    <div class="cat-filter-row">
-      {@render catChips()}
-    </div>
+  {/if}
   </div>
 
   <!-- Foods body: two-pane split at ≥1280px. Left rail holds the
@@ -2066,7 +2069,15 @@
       class="foods-filter-rail"
       style="--foods-rail-top:{_railTopPx}px; --foods-rail-left:{_railLeftPx}px; --foods-rail-width:{_railWidthPx}px"
     >
-      {#if availableSources.length > 1}
+      {#if activeTab === 0}
+        <FoodSearchFilter {...fsFilterProps}
+          on:source={_fsToggleSource}
+          on:sort={({ detail }) => foodsSort.set(detail.value)}
+          on:offtier={({ detail }) => toggleOffTier(detail.tier)}
+          on:usdatier={({ detail }) => toggleUsdaTier(detail.tier)}
+          on:category={({ detail }) => activeCategoryFilter = detail.value}
+          on:reset={_fsResetFilters} />
+      {:else if availableSources.length > 1}
         <!-- Sources heading + chips only make sense when there's
              more than one source to pick from. Meals/Recipes with
              just Local (no shared users) hide the section entirely
@@ -2076,13 +2087,7 @@
           {@render sourceChips()}
         </div>
       {/if}
-      {#if activeTab === 0 && searchSource === 'local' && $foodsShowCategories && $foodCategories && $foodCategories.length > 0}
-        <p class="foods-filter-heading">Categories</p>
-        <div class="foods-rail-chips foods-rail-cats">
-          {@render catChips()}
-        </div>
-      {/if}
-      {#if availableSources.length <= 1 && !(activeTab === 0 && searchSource === 'local' && $foodsShowCategories && $foodCategories && $foodCategories.length > 0)}
+      {#if activeTab !== 0 && availableSources.length <= 1}
         <!-- Rail would be empty otherwise — leave a low-key hint so
              the column doesn't render as a mysteriously-empty box. -->
         <p class="foods-filter-empty">No filters available for this tab.</p>
@@ -2149,7 +2154,151 @@
   {/if}
 
   <div class="page-content">
-    {#if searchSource === 'all'}
+    {#if activeTab === 0}
+      <!-- ── Foods: one list over every source (food-search.js) ───────────── -->
+      {#if !fsState.query}
+        <div class="empty-state">
+          <span class="material-symbols-rounded empty-icon">search</span>
+          <p>{$_('foods.search.hint')}</p>
+        </div>
+      {:else if fsRows.length === 0 && !fsState.settled}
+        <div class="loading-row">
+          <span class="material-symbols-rounded spin">refresh</span>
+          <span class="text-2 text-sm">{$_('foods.search.searching')}</span>
+        </div>
+      {:else if _fsHiddenByFilter}
+        <div class="empty-state">
+          <span class="material-symbols-rounded empty-icon">filter_alt_off</span>
+          <p>{$_('foods.search.hidden_by_filters', { values: { n: fsState.rows.length } })}</p>
+          <button class="btn btn-secondary" on:click={_fsResetFilters}>{$_('foods.search.filter_reset')}</button>
+        </div>
+      {:else if fsRows.length === 0}
+        <div class="empty-state">
+          <span class="material-symbols-rounded empty-icon">search_off</span>
+          <p>{$_('foods.search.no_matches', { values: { q: fsState.query } })}</p>
+          {#if _sourcesOffline}
+            <p class="empty-state-hint">{$_('foods.offline.search_hint')}</p>
+          {:else if fsState.onlineAvailable && !fsState.onlineDone}
+            <button class="btn btn-secondary" on:click={() => _foodSearch.searchOnline()}>{$_('foods.search.search_online')}</button>
+          {/if}
+        </div>
+      {:else}
+        <ul class="food-list">
+          <!-- Index-suffixed key: two own foods may share a barcode (#191). -->
+          {#each fsRows as row, i (row.key + ':' + i)}
+            {@const source = row.source}
+            {@const item = row.item}
+            {@const isDb = source === 'off' || source === 'off-live' || source === 'usda'}
+            {@const isMine = source === 'own' || source === 'shared'}
+            {@const _sel = pickMode && selectedFoods.has(item)}
+            {@const _mSel = manageMode && source === 'own' && manageSelected.has(item.id)}
+            {@const _energy = source === 'mealie' ? null : Nutrition.displayEnergy(item.nutrition?.calories || item.calories || 0, $energyUnit)}
+            <li class="food-item card"
+                class:food-selected={_sel || _mSel}
+                class:food-pane-active={source === 'own' && item.id != null && _paneFood?.id === item.id}>
+              {#if pickMode && _fsSelectable(source)}
+                <button class="food-select-btn" on:click={() => toggleSelect(item)} aria-label="Select">
+                  <span class="food-check material-symbols-rounded" class:food-check-on={_sel}>
+                    {_sel ? 'check_circle' : 'radio_button_unchecked'}
+                  </span>
+                </button>
+              {:else if manageMode && source === 'own'}
+                <button class="food-select-btn" on:click={() => toggleManageSelect(item)} aria-label="Select">
+                  <span class="food-check material-symbols-rounded" class:food-check-on={_mSel}>
+                    {_mSel ? 'check_circle' : 'radio_button_unchecked'}
+                  </span>
+                </button>
+              {/if}
+              <button class="food-item-btn"
+                on:click={() => _fsPick(row)}
+                on:contextmenu|preventDefault={() => isMine && !manageMode && longPress(item)}
+                on:touchstart|passive={() => _startLongPress(() => isMine && !manageMode && longPress(item))}
+                on:touchmove|passive={_cancelLongPress}
+                on:touchend={_cancelLongPress}>
+                {#if source === 'mealie' && item.id}
+                  <img class="food-thumb" src={Mealie.imageUrl(item.id)} alt=""
+                    loading="lazy" on:error={e => e.target.style.display='none'} />
+                {:else if source === 'ctpantry' && item.img_url}
+                  <img class="food-thumb" src={item.img_url} alt=""
+                    loading="lazy" referrerpolicy="no-referrer" on:error={e => e.target.style.display='none'} />
+                {:else if item.imgUrl && (!isMine || $foodsShowThumbnails)}
+                  <img class="food-thumb" src={item.imgUrl} alt="" loading="lazy" referrerpolicy="no-referrer" on:error={e => e.target.style.display='none'} />
+                {:else}
+                  <div class="food-thumb-placeholder">
+                    <span class="material-symbols-rounded">
+                      {#if source === 'mealie'}menu_book{:else if source === 'usda'}science{:else if isDb}public{:else}restaurant{/if}
+                    </span>
+                  </div>
+                {/if}
+                <div class="food-info">
+                  <span class="food-name">
+                    {#if isMine && item.favorite}<span class="material-symbols-rounded fav-mark" title="Favorite">favorite</span>{/if}
+                    {item.name}
+                    {#if (source === 'off' || source === 'off-live') && item.originTag}
+                      {@const _flag = offCountryTagToFlag(item.originTag)}
+                      {#if _flag}
+                        <span class="off-origin-flag" title={`Made in ${offCountryTagToName(item.originTag)}`} aria-label={`Origin: ${offCountryTagToName(item.originTag)}`}>{_flag}</span>
+                      {/if}
+                    {/if}
+                  </span>
+                  {#if source === 'mealie'}
+                    {#if item.recipeCategory?.length}
+                      <span class="food-brand text-3 text-sm">{item.recipeCategory.map(c => c.name).join(', ')}</span>
+                    {/if}
+                  {:else}
+                    {#if item.brand}<span class="food-brand text-3 text-sm">{item.brand}</span>{/if}
+                    <span class="food-kcal text-sm">
+                      {#if (source === 'off' || source === 'off-live') && _offNoValues(item)}{$_('foods.off_no_values_listed')}{:else}{_energy.value.toLocaleString()} {_energy.unit}{/if}
+                      {#if isMine} · {amountAndUnit(item.portion || 100, item.unit)}{/if}
+                      {#if isMine && item._shared_by} · <span style="color:var(--accent)">by {item._shared_by}</span>{/if}
+                      {#if (source === 'off' || source === 'off-live') && typeof item.completeness === 'number'}
+                        <span class="off-quality-dot"
+                              class:off-q-hi={item.completeness >= 0.7}
+                              class:off-q-mid={item.completeness >= 0.4 && item.completeness < 0.7}
+                              class:off-q-lo={item.completeness < 0.4}
+                              title={`OFF data completeness: ${Math.round(item.completeness * 100)}%`}
+                              aria-label={`Data completeness ${Math.round(item.completeness * 100)}%`}></span>
+                      {/if}
+                      {#if source === 'usda' && item.dataType}
+                        {@const _t = item.dataType}
+                        {@const _abbr = _t === 'Foundation' ? 'F' : _t === 'SR Legacy' ? 'L' : _t === 'Survey (FNDDS)' ? 'S' : _t === 'Branded' ? 'B' : _t === 'Experimental' ? 'X' : '?'}
+                        <span class="usda-type-badge"
+                              class:usda-t-hi={_t === 'Foundation' || _t === 'SR Legacy'}
+                              class:usda-t-mid={_t === 'Survey (FNDDS)'}
+                              class:usda-t-lo={_t === 'Branded' || _t === 'Experimental'}
+                              title={`USDA ${_t}`}
+                              aria-label={`USDA data type ${_t}`}>{_abbr}</span>
+                      {/if}
+                    </span>
+                  {/if}
+                </div>
+                <span class="source-badge source-badge-{source === 'off-live' ? 'off' : source === 'ctpantry' ? 'cooktrace' : source === 'own' ? 'local' : source}">
+                  {#if source === 'own'}{$_('foods.sources.local')}
+                  {:else if source === 'shared'}{$_('foods.sources.shared')}
+                  {:else if source === 'mealie'}{$_('foods.sources.mealie')}
+                  {:else if source === 'ctpantry'}CookTrace
+                  {:else if source === 'usda'}USDA
+                  {:else}OFF{/if}
+                </span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+        {#if fsState.loading || fsState.onlineLoading || fsState.loadingMore}
+          <div class="loading-row" style="margin-top:8px">
+            <span class="material-symbols-rounded spin">refresh</span>
+            <span class="text-2 text-sm">{fsState.onlineLoading ? $_('foods.search.searching_online') : $_('foods.pagination.loading_more')}</span>
+          </div>
+        {/if}
+        {#if _sourcesOffline}
+          <p class="empty-state-hint" style="text-align:center;margin-top:8px">{$_('foods.offline.search_hint')}</p>
+        {/if}
+        {#if fsState.hasMore && fsState.settled}
+          <div class="scroll-sentinel" use:_infiniteScroll={{ onIntersect: () => _foodSearch.loadMore() }}></div>
+        {/if}
+      {/if}
+
+    {:else if searchSource === 'all'}
       <!-- ── All: merged results from every enabled source ─────────────────── -->
       {#if !search.trim()}
         <div class="empty-state">
@@ -2665,6 +2814,16 @@
 </div>
 
 <!-- Multi-item portion sheet -->
+<Sheet bind:open={fsFilterOpen} title={$_('foods.search.filter_title')}>
+  <FoodSearchFilter {...fsFilterProps}
+    on:source={_fsToggleSource}
+    on:sort={({ detail }) => foodsSort.set(detail.value)}
+    on:offtier={({ detail }) => toggleOffTier(detail.tier)}
+    on:usdatier={({ detail }) => toggleUsdaTier(detail.tier)}
+    on:category={({ detail }) => activeCategoryFilter = detail.value}
+    on:reset={_fsResetFilters} />
+</Sheet>
+
 <Sheet bind:open={showMultiPortionSheet} title={$_('foods.multi_portion_sheet', { values: { count: multiPortionItems.length } })}>
   <div bind:this={_multiPortionSheetEl} style="display:flex;flex-direction:column;gap:0;padding-top:4px" on:keydown={_onMultiPortionKey}>
     {#each multiPortionItems as item, i}
@@ -2961,90 +3120,6 @@
      exact pattern of ActionSheet.svelte: backdrop's on:click closes,
      inner panel uses on:click|stopPropagation so clicks on checkboxes
      don't propagate to the backdrop. -->
-{#if offDropdownOpen}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:portal class="tier-dropdown-backdrop" use:closeOnBack={_closeTierDropdowns}
-    in:fade={{ duration: 120 }} out:fade={{ duration: 100 }}>
-    <div class="tier-dropdown-panel"
-      bind:this={offDropdownPanelEl}
-      style="top:{offDropdownPos.top}px; right:{offDropdownPos.right}px;"
-      on:click|stopPropagation
-      in:slide={{ duration: 140 }}>
-      <div class="tier-dropdown-header">
-        <span>{$_('foods.tier.off_data_quality')}</span>
-        {#if offTiersFiltered}
-          <button class="tier-reset" on:click={resetOffTiers}>{$_('foods.tier.reset')}</button>
-        {/if}
-      </div>
-      <label class="tier-option">
-        <input type="checkbox" checked={offTiersActive.has('hi')} on:change={() => toggleOffTier('hi')} />
-        <span class="tier-swatch tier-swatch-hi"></span>
-        <span class="tier-label">{$_('foods.tier.off_high')} <span class="tier-hint">{$_('foods.tier.off_high_hint')}</span></span>
-      </label>
-      <label class="tier-option">
-        <input type="checkbox" checked={offTiersActive.has('mid')} on:change={() => toggleOffTier('mid')} />
-        <span class="tier-swatch tier-swatch-mid"></span>
-        <span class="tier-label">{$_('foods.tier.off_medium')} <span class="tier-hint">{$_('foods.tier.off_medium_hint')}</span></span>
-      </label>
-      <label class="tier-option">
-        <input type="checkbox" checked={offTiersActive.has('lo')} on:change={() => toggleOffTier('lo')} />
-        <span class="tier-swatch tier-swatch-lo"></span>
-        <span class="tier-label">{$_('foods.tier.off_low')} <span class="tier-hint">{$_('foods.tier.off_low_hint')}</span></span>
-      </label>
-      <label class="tier-option">
-        <input type="checkbox" checked={offTiersActive.has('unknown')} on:change={() => toggleOffTier('unknown')} />
-        <span class="tier-swatch"></span>
-        <span class="tier-label">{$_('foods.tier.off_unknown')} <span class="tier-hint">{$_('foods.tier.off_unknown_hint')}</span></span>
-      </label>
-    </div>
-  </div>
-{/if}
-
-{#if usdaDropdownOpen}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:portal class="tier-dropdown-backdrop" use:closeOnBack={_closeTierDropdowns}
-    in:fade={{ duration: 120 }} out:fade={{ duration: 100 }}>
-    <div class="tier-dropdown-panel"
-      bind:this={usdaDropdownPanelEl}
-      style="top:{usdaDropdownPos.top}px; right:{usdaDropdownPos.right}px;"
-      on:click|stopPropagation
-      in:slide={{ duration: 140 }}>
-      <div class="tier-dropdown-header">
-        <span>{$_('foods.tier.usda_data_type')}</span>
-        {#if usdaTiersFiltered}
-          <button class="tier-reset" on:click={resetUsdaTiers}>{$_('foods.tier.reset')}</button>
-        {/if}
-      </div>
-      <label class="tier-option">
-        <input type="checkbox" checked={usdaTiersActive.has('Foundation')} on:change={() => toggleUsdaTier('Foundation')} />
-        <span class="tier-swatch tier-swatch-hi"></span>
-        <span class="tier-label">{$_('foods.tier.usda_foundation')} <span class="tier-hint">{$_('foods.tier.usda_foundation_hint')}</span></span>
-      </label>
-      <label class="tier-option">
-        <input type="checkbox" checked={usdaTiersActive.has('SR Legacy')} on:change={() => toggleUsdaTier('SR Legacy')} />
-        <span class="tier-swatch tier-swatch-hi"></span>
-        <span class="tier-label">{$_('foods.tier.usda_sr_legacy')} <span class="tier-hint">{$_('foods.tier.usda_sr_legacy_hint')}</span></span>
-      </label>
-      <label class="tier-option">
-        <input type="checkbox" checked={usdaTiersActive.has('Survey (FNDDS)')} on:change={() => toggleUsdaTier('Survey (FNDDS)')} />
-        <span class="tier-swatch tier-swatch-mid"></span>
-        <span class="tier-label">{$_('foods.tier.usda_survey')} <span class="tier-hint">{$_('foods.tier.usda_survey_hint')}</span></span>
-      </label>
-      <label class="tier-option">
-        <input type="checkbox" checked={usdaTiersActive.has('Branded')} on:change={() => toggleUsdaTier('Branded')} />
-        <span class="tier-swatch tier-swatch-lo"></span>
-        <span class="tier-label">{$_('foods.tier.usda_branded')} <span class="tier-hint">{$_('foods.tier.usda_branded_hint')}</span></span>
-      </label>
-      <label class="tier-option">
-        <input type="checkbox" checked={usdaTiersActive.has('Experimental')} on:change={() => toggleUsdaTier('Experimental')} />
-        <span class="tier-swatch tier-swatch-lo"></span>
-        <span class="tier-label">{$_('foods.tier.usda_experimental')} <span class="tier-hint">{$_('foods.tier.usda_experimental_hint')}</span></span>
-      </label>
-    </div>
-  </div>
-{/if}
 
 <style>
   /* Live-preview macro pills inside the qty-prompt sheet (#30).
@@ -3191,6 +3266,36 @@
     padding: 0 var(--page-px) 6px;
   }
   .foods-search-icon { font-size: 20px; color: var(--text-3); flex-shrink: 0; }
+  /* Foods tab: filter button right of the search box (phones; the wide
+     layout shows the filter panel in the left rail instead). */
+  .foods-filter-btn { position: relative; flex-shrink: 0; }
+  .foods-filter-btn.active { color: var(--accent); }
+  .foods-filter-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  /* "Search online databases" — under the search row while the first
+     search step has results and online sources were not asked yet. */
+  .foods-online-row { padding: 0 var(--page-px) 8px; }
+  .foods-online-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    border: 1.5px solid var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .foods-online-btn .material-symbols-rounded { font-size: 18px; }
   .foods-search-input-wrap {
     flex: 1;
     position: relative;
@@ -3429,29 +3534,6 @@
     justify-content: center;
   }
 
-  .cat-filter-row {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 6px;
-    padding: 0 var(--page-px) 10px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .cat-filter-row::-webkit-scrollbar { display: none; }
-  .cat-chip {
-    flex-shrink: 0;
-    padding: 5px 12px;
-    border-radius: var(--radius-full);
-    border: 1.5px solid var(--border);
-    background: none;
-    font-size: 13px;
-    cursor: pointer;
-    color: var(--text-2);
-    transition: all var(--dur-fast);
-    white-space: nowrap;
-  }
-  .cat-chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
   .source-chip-row {
     display: flex;
@@ -3516,116 +3598,8 @@
     font-weight: 600;
   }
 
-  /* Split source chip — left half selects source, right half opens a
-     tier filter dropdown. Wrapper is a plain flex container (no
-     positioning needed — the dropdown is portalled + fixed-positioned). */
-  .source-chip-wrap {
-    display: inline-flex;
-    align-items: stretch;
-    flex-shrink: 0;
-  }
-  .source-chip-split {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    border-right: none;
-    padding-right: 10px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .source-chip-caret {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 6px;
-    border: 1.5px solid var(--border);
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-top-right-radius: var(--radius-full);
-    border-bottom-right-radius: var(--radius-full);
-    background: var(--surface-1);
-    color: var(--text-3);
-    cursor: pointer;
-    transition: all var(--dur-fast);
-  }
-  .source-chip-caret:hover { background: var(--surface-2); color: var(--text-2); }
-  .source-chip-caret.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--surface-1);
-  }
-  .source-chip-caret .material-symbols-rounded {
-    font-size: 16px;
-    transition: transform var(--dur-fast);
-  }
-  .source-chip-caret.open .material-symbols-rounded {
-    transform: rotate(180deg);
-  }
-  /* Small dot on the source label when the tier filter is narrowing */
-  .tier-active-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: 0.7;
-    margin-left: 2px;
-  }
-
-  /* Tier filter dropdown — matches ActionSheet.svelte's proven pattern:
-     backdrop covers full viewport (transparent — no dim, dropdown
-     shouldn't feel like a modal), inner panel is fixed-positioned near
-     the caret. Backdrop click closes; panel click|stopPropagation
-     prevents accidental close when interacting with checkboxes.
-     Globalized because :global(.tier-dropdown-backdrop) etc. lands
-     inside document.body via use:portal. */
-  :global(.tier-dropdown-backdrop) {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    background: transparent;
-    /* CRITICAL: backdrop is non-blocking so touches pass through to the
-       underlying page. First swipe both dismisses the dropdown (via the
-       svelte:window handlers below) AND scrolls the page natively in
-       the same gesture. Panel below re-enables pointer-events so its
-       checkboxes remain interactive. */
-    pointer-events: none;
-  }
-  :global(.tier-dropdown-panel) {
-    position: fixed;
-    min-width: 220px;
-    max-width: min(calc(100vw - 24px), 260px);
-    background: var(--surface-1);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg, 12px);
-    box-shadow: var(--shadow-md, 0 8px 24px rgba(0,0,0,0.15));
-    padding: 6px;
-    /* Re-enable — backdrop is pointer-events:none for scroll-passthrough. */
-    pointer-events: auto;
-  }
-  :global(.tier-dropdown-header) {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 8px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-3);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  :global(.tier-reset) {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--accent);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 2px 6px;
-    text-transform: none;
-    letter-spacing: 0;
-  }
-  :global(.tier-reset:hover) { text-decoration: underline; }
+  /* Tier filter options — global because FoodSearchFilter renders them
+     (inside a portalled Sheet on phones, in the rail on wide screens). */
   :global(.tier-option) {
     display: flex;
     align-items: center;
@@ -3843,9 +3817,7 @@
        chip markup lives inside the snippet (rendered inside the
        rail via {@render sourceChips()}), so Diary's scoping hash
        won't be on them without opting out. */
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip),
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip-split),
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.cat-chip) {
+    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip) {
       width: 100%;
       justify-content: flex-start;
       text-align: left;
@@ -3854,17 +3826,14 @@
       border-width: 1px;
       font-weight: 500;
     }
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip.active),
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.cat-chip.active) {
+    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip.active) {
       background: var(--accent-dim);
       color: var(--accent);
       border-color: color-mix(in srgb, var(--accent) 50%, transparent);
     }
     /* Focus-visible ring for keyboard nav — matches the Settings
        rail so tab-through has a consistent look across surfaces. */
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip:focus-visible),
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip-caret:focus-visible),
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.cat-chip:focus-visible) {
+    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip:focus-visible) {
       outline: 2px solid var(--accent);
       outline-offset: -2px;
     }
@@ -3875,21 +3844,6 @@
       border-color: var(--accent);
       background: color-mix(in srgb, var(--accent) 6%, var(--surface-1));
       box-shadow: 0 0 0 1px var(--accent);
-    }
-    /* Split source chips (OFF, USDA) — keep the caret snug on the
-       right of the pill. */
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip-wrap) {
-      display: flex;
-      width: 100%;
-    }
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip-wrap .source-chip) {
-      flex: 1 1 auto;
-      border-top-right-radius: 0;
-      border-bottom-right-radius: 0;
-    }
-    :global(html:not(.force-mobile-layout)) .foods-rail-chips :global(.source-chip-caret) {
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
     }
     /* Hide mobile chip scrollers on desktop — same chips now live
        in the rail. */

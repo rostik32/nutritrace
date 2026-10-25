@@ -798,7 +798,6 @@
     "multi_portion_sheet": "Set Portions ({count} items)",
     "add_to_diary": "Add to Diary",
     "tier": {
-      "reset": "Reset",
       "off_data_quality": "OFF data quality",
       "usda_data_type": "USDA data type",
       "off_high": "High",
@@ -880,6 +879,22 @@
       "meal_partly_added": "Some ingredients could not be added: {names}",
       "meal_none_added": "Could not add this meal. Check your connection and try again.",
       "meal_stale_ingredients": "Added to diary. These ingredients are no longer in your foods: {names}. Edit the meal to fix them."
+    },
+    "search": {
+      "hint": "Type a food name or scan a barcode",
+      "searching": "Searching…",
+      "searching_online": "Searching online databases…",
+      "no_matches": "No matches for \"{q}\"",
+      "hidden_by_filters": "{n, plural, one {# result is hidden by your filters} other {# results are hidden by your filters}}",
+      "search_online": "Search online databases",
+      "filter_title": "Search filters",
+      "filter_sources": "Sources",
+      "filter_sort": "Sort",
+      "filter_sort_note": "Sorts your own and shared foods. Database results keep the database's order.",
+      "filter_category": "Category",
+      "filter_reset": "Reset filters",
+      "source_own": "My foods",
+      "source_shared": "Shared with me"
     }
   },
   "trace": {
@@ -1338,18 +1353,20 @@
     "show_thumbnails": "Show Thumbnails",
     "show_thumbnails_desc": "Food/meal photos in the picker list",
     "show_categories": "Show Categories",
-    "show_categories_desc": "Filter chips at the top of the Foods picker",
+    "show_categories_filter_desc": "Category filter in the Foods search filters",
     "show_category_labels": "Show Category Labels",
     "show_category_labels_desc": "Display the category name + emoji on each food row",
     "show_notes": "Show Notes",
     "show_notes_desc": "Show saved food notes (e.g. \"1 serving = 150g cooked\") in the quick-add card",
-    "default_source": "Default Search Source",
-    "default_source_desc": "Which source chip the Foods page opens with. All fans out to every enabled database; My Foods starts in your local library.",
     "foods_sort": "Foods Sort",
+    "foods_sort_desc": "How results are ordered in the Foods search. Relevance puts the closest matches first.",
     "meals_sort": "Meals Sort",
     "opt_recent": "Recently Used",
     "opt_most": "Most Used",
-    "opt_alpha": "Alphabetical"
+    "opt_alpha": "Alphabetical",
+    "opt_relevance": "Relevance",
+    "sort_heading": "Sort",
+    "sort_heading_sub": "Ordering on each list."
   },
   "barcode_scanner": {
     "toast": {

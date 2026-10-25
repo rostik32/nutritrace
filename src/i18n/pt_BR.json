@@ -366,5 +366,6 @@
       "mark_day_complete": "Marque o Dia como Completo",
       "unmark_day_complete": "Desmarque o Dia como Completo"
     }
-  }
+  },
+  "settings_foods_picker": {}
 }

@@ -353,11 +353,13 @@ const API = {
   // hasMore" and "showing N of totalHits"). Kept separate from
   // searchByName so the simpler array-returning API stays intact for
   // quick-log, Trace, and MealEditor which don't need paging. #96.
-  async searchByNameWithMeta(query, page, pageSize = 50) {
+  // `live: true` asks the server to skip its local mirror and query live OFF
+  // (the Foods search's "Search online databases"); ignored under air-gap.
+  async searchByNameWithMeta(query, page, pageSize = 50, { live = false } = {}) {
     page = page || 1;
     try {
       const offUrl = _offSearchUrl(query, page, pageSize);
-      const res = await _extFetch(offUrl);
+      const res = await _extFetch(offUrl, { live });
       if (!res.ok) return { items: [], totalHits: 0, page, hasMore: false };
       const data = await res.json();
       // Read whichever envelope is present. The proxy at server/routes/proxy.js
