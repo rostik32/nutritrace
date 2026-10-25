@@ -7,6 +7,7 @@
   import { offNutritionStatus, needsFullLookup } from '../lib/off-nutrition.js';
   import { Mealie } from '../lib/mealieApi.js';
   import BarcodeScanner from '../components/foods/BarcodeScanner.svelte';
+  import { foodWithBarcode } from '../lib/food-search.js';
   import { DB } from '../lib/db.js';
   import { takePhoto } from '../lib/camera.js';
   import { isNative, resolveAssetUrl } from '../lib/platform.js';
@@ -645,8 +646,10 @@
   async function _onPickerBarcode(code) {
     _pickerScannerOpen = false;
     if (!code) return;
-    // Local match first
-    const existingLocal = pickerFoods.find(f => f.barcode === code);
+    // UPC-A scans as OFF stores them (EAN-13), as on the Foods tab.
+    if (/^\d{12}$/.test(code)) code = '0' + code;
+    // Local match first, leading zeros aside
+    const existingLocal = foodWithBarcode(pickerFoods, code);
     if (existingLocal) {
       _pickerSource = 'local';
       await pickIngredient(existingLocal);

@@ -115,6 +115,35 @@ export function rowKey(source, item) {
   return source + ':' + id;
 }
 
+// ── Barcode scan ─────────────────────────────────────────────────────────
+
+/** First food in `list` with this barcode, leading zeros aside. */
+export function foodWithBarcode(list, code) {
+  const n = _normBarcode(code);
+  if (!n) return null;
+  return (list || []).find(f => _normBarcode(f?.barcode) === n) || null;
+}
+
+/**
+ * Look a scanned barcode up the way the search looks up a name: the steps
+ * are given in the search's source order (own foods, shared foods, Open
+ * Food Facts as the server answers it, then the online databases) and the
+ * first one that knows the code wins, so nothing online is asked while
+ * something nearer has the product. A step that fails counts as a miss.
+ *
+ * @param {string} code
+ * @param {{ id: string, find: (code: string) => any }[]} steps
+ * @returns {Promise<{ source: string, item: object } | null>}
+ */
+export async function findBarcode(code, steps) {
+  for (const s of steps || []) {
+    let item = null;
+    try { item = await s.find(code); } catch { item = null; }
+    if (item) return { source: s.id, item };
+  }
+  return null;
+}
+
 // ── Row actions ──────────────────────────────────────────────────────────
 
 /**
@@ -183,10 +212,13 @@ export function createFoodSearch({ onChange = () => {}, debounceMs = 400 } = {})
   }
 
   // In-memory matches. Two own foods may share a barcode and both stay; a
-  // shared food with the barcode of an own food does not.
+  // shared food with the barcode of an own food does not. Row keys stay
+  // unique (the second of two such foods gets a suffix), so the list can be
+  // keyed by them and keep a row's DOM while the user types.
   function _memory() {
     memoryRows = [];
     const keys = new Map();
+    const repeats = new Map();
     for (const s of sources) {
       if (!s.match) continue;
       for (const item of s.match(query) || []) {
@@ -194,7 +226,9 @@ export function createFoodSearch({ onChange = () => {}, debounceMs = 400 } = {})
         const owner = keys.get(key);
         if (owner !== undefined && owner !== s.id) continue;
         keys.set(key, s.id);
-        memoryRows.push({ source: s.id, item, key });
+        const n = repeats.get(key) || 0;
+        repeats.set(key, n + 1);
+        memoryRows.push({ source: s.id, item, key: n ? key + '#' + n : key });
       }
     }
     return keys;

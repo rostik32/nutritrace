@@ -177,7 +177,11 @@ router.post('/', wrap(async (req, res) => {
   const _shouldLocalizeNew = img_url && (cleanSourceApp
     ? (img_url.startsWith('http') || img_url.startsWith('data:'))
     : isExternalUrl(img_url));
-  const localImg = _shouldLocalizeNew ? await localizeImage(img_url, { trustedOrigins: trustedNew, allowPrivate: ownerOrOptIn(req, 'ALLOW_PRIVATE_IMAGE_URLS') }) : (img_url || null);
+  const localizeOpts = { trustedOrigins: trustedNew, allowPrivate: ownerOrOptIn(req, 'ALLOW_PRIVATE_IMAGE_URLS') };
+  // A plain web photo (an Open Food Facts product) is fetched after the
+  // answer, not before: see _localizeLater.
+  const later = _shouldLocalizeNew && !cleanSourceApp && /^https?:/i.test(img_url);
+  const localImg = _shouldLocalizeNew && !later ? await localizeImage(img_url, localizeOpts) : (img_url || null);
   const result = db.prepare(
     `INSERT INTO foods (user_id, name, brand, nutrition, portion, unit, img_url, notes, category, barcode, visibility, source_id, nutrition_basis, alt_units, density_g_ml, source_app, source_external_id, source_url, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -189,7 +193,23 @@ router.post('/', wrap(async (req, res) => {
     cleanSourceApp, cleanSourceExtId, source_url || null);
   setCreateKey('foods', result.lastInsertRowid, createKey);
   res.status(201).json(parse(db.prepare('SELECT * FROM foods WHERE id = ?').get(result.lastInsertRowid)));
+  if (later) _localizeLater(result.lastInsertRowid, img_url, localizeOpts);
 }));
+
+/**
+ * Copy a new food's web photo into /uploads/ once the food is saved.
+ * Waiting for it before answering made every Open Food Facts product take
+ * as long as OFF's image server (seconds, up to the 15 s download limit) to
+ * reach the diary. Until the copy lands the row keeps the remote URL, which
+ * shows the same picture. An image changed in the meantime is left alone;
+ * the changed_at trigger lets phones pull the new path.
+ */
+function _localizeLater(id, img_url, opts) {
+  localizeImage(img_url, opts).then(local => {
+    if (!local || local === img_url) return;
+    db.prepare('UPDATE foods SET img_url = ? WHERE id = ? AND img_url = ?').run(local, id, img_url);
+  }).catch(e => logger.warn(`[foods] image for food ${id} not stored: ${e.message}`));
+}
 
 // ── PUT /:id ──────────────────────────────────────────────────────────────
 router.put('/:id', wrap(async (req, res) => {

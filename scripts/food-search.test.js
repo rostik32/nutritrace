@@ -9,7 +9,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { matchRank, rankFoods, rowKey, createFoodSearch, foodItemActions, isDatabaseFood } from '../src/lib/food-search.js';
+import { matchRank, rankFoods, rowKey, createFoodSearch, foodItemActions, isDatabaseFood, foodWithBarcode, findBarcode } from '../src/lib/food-search.js';
 
 const tick = (ms = 5) => new Promise(r => setTimeout(r, ms));
 
@@ -67,6 +67,43 @@ test('alpha, recent and most orders', () => {
 test('row key: barcode without leading zeros, else source and id', () => {
   assert.equal(rowKey('off', { barcode: '0036000291452' }), rowKey('usda', { barcode: '36000291452' }));
   assert.equal(rowKey('own', { id: 7, name: 'x' }), 'own:7');
+});
+
+test('row keys are unique, also for two own foods with one barcode', () => {
+  const { fs, last } = harness();
+  fs.start('milk', [memory('own', [
+    { id: 1, name: 'Milk', barcode: '123' },
+    { id: 2, name: 'Milk (2nd pack)', barcode: '0123' },
+    { id: 3, name: 'Milk (3rd pack)', barcode: '123' },
+  ])]);
+  const keys = last().rows.map(r => r.key);
+  assert.equal(keys.length, 3);
+  assert.equal(new Set(keys).size, 3);
+});
+
+// ── Barcode scan ─────────────────────────────────────────────────────────
+
+test('barcode: own food found leading zeros aside', () => {
+  const foods = [{ id: 1, name: 'A', barcode: '0036000291452' }, { id: 2, name: 'B' }];
+  assert.equal(foodWithBarcode(foods, '36000291452')?.id, 1);
+  assert.equal(foodWithBarcode(foods, '999'), null);
+  assert.equal(foodWithBarcode(foods, ''), null);
+});
+
+test('barcode: steps are asked in order and the first hit wins', async () => {
+  const calls = [];
+  const step = (id, hit) => ({ id, find: async (c) => { calls.push(id); return hit ? { name: id + ':' + c } : null; } });
+  const found = await findBarcode('42', [step('shared', false), step('off', true), step('usda', true)]);
+  assert.deepEqual(found, { source: 'off', item: { name: 'off:42' } });
+  assert.deepEqual(calls, ['shared', 'off']);
+});
+
+test('barcode: a failing step is a miss, nothing found is null', async () => {
+  const boom = { id: 'off', find: () => { throw new Error('offline'); } };
+  const usda = { id: 'usda', find: async () => ({ name: 'Milk' }) };
+  assert.deepEqual(await findBarcode('1', [boom, usda]), { source: 'usda', item: { name: 'Milk' } });
+  assert.equal(await findBarcode('1', [boom]), null);
+  assert.equal(await findBarcode('1', []), null);
 });
 
 // ── Tiers ────────────────────────────────────────────────────────────────
