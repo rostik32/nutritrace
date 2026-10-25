@@ -106,6 +106,24 @@ test('the search database answers exactly like the mirror file, then follows ref
   const status = off.getStatus().search_index;
   assert.equal(status.state, 'ready');
   assert.ok(status.size_bytes > 0 && status.built_at > 0);
+  {
+    const inst = await DuckDBInstance.create(indexFile, { access_mode: 'READ_ONLY' });
+    const conn = await inst.connect();
+    const meta = (await conn.runAndReadAll('SELECT * FROM meta')).getRowObjects()[0];
+    assert.equal(Number(meta.row_count), PRODUCTS.length);
+    assert.ok(!String(meta.columns).includes('ingredients_text'), 'only displayed columns are kept');
+    const row = (code) => conn.runAndReadAll(
+      `SELECT m_names, m_names_f, m_brands, m_brands_f FROM search_products WHERE code = $1`, [code]
+    ).then(r => r.getRowObjects()[0]);
+    assert.deepEqual(await row('3017620422003'),
+      { m_names: '\x1fnutella\x1fnutella\x1fnutella', m_names_f: null, m_brands: 'ferrero', m_brands_f: null });
+    const accented = await row('0000000000017');
+    assert.equal(accented.m_names_f, '\x1fcreme fraiche epaisse\x1fcreme fraiche epaisse');
+    assert.equal(accented.m_brands_f, 'president');
+    assert.equal((await row('3333333333333')).m_names, '\x1fmilk 3.2%', 'a missing name is skipped');
+    conn.closeSync();
+    inst.closeSync();
+  }
 
   // Identical responses, field for field, page for page.
   for (let i = 0; i < QUERIES.length; i++) {
