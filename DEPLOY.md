@@ -217,6 +217,8 @@ Self-hosters on air-gapped networks, in strict-egress environments, or just want
    # OFF_LOCAL_URL=https://huggingface.co/datasets/openfoodfacts/product-database/resolve/main/food.parquet?download=true
    # Optional — full air-gap mode (never call api.openfoodfacts.org)
    # OFF_LOCAL_ONLY=1
+   # Optional — skip the search database (see "Search database" below)
+   # OFF_LOCAL_INDEX=off
    ```
 
    Note on file formats: since rc.39, NutriTrace defaults to the OFF Parquet dump on Hugging Face (~7-8 GB) because OFF retired their pre-built native DuckDB snapshot. The lookup code transparently opens the Parquet via DuckDB's `read_parquet()` so per-barcode queries are still fast (DuckDB row-group prunes). If you still have a legacy `.duckdb` file at `OFF_LOCAL_DB`, that path is auto-detected by file extension and continues to work unchanged.
@@ -241,6 +243,16 @@ mv /path/on/host/off-mirror/off.parquet.new /path/on/host/off-mirror/off.parquet
 # Optional — trigger reopen without waiting for the next lookup:
 docker compose restart
 ```
+
+### Search database
+
+Searching the Parquet snapshot directly is slow: every name search unpacks the localized names of all ~4.7 M products (13–15 s on a 4-core ARM VM), and a barcode lookup decodes the file's large nested columns (~5 s). So for a Parquet mirror the server also builds a compact search database next to it, `<OFF_LOCAL_DB>.search.duckdb`: one DuckDB table with only the ~14 columns NutriTrace displays plus lower-cased names and brands for matching. On the stock snapshot it is ~1.5 GB, builds in about a minute, and answers a name search or barcode lookup in well under a second. Results are the same as without it: same matching, accent-folded retry, ranking, paging and naming.
+
+- **When it is built:** in the background at startup when the file is missing or was built from a different mirror file (compared by size and modification time), and after every successful refresh. Searches use the Parquet file (or the previous, now stale, search database) until the new one is ready; nothing blocks startup.
+- **Atomic:** builds write `<path>.search.duckdb.new` and replace the old file only once complete. A failed or interrupted build leaves the previous database answering; the partial file is removed on the next build.
+- **Disk:** plan for ~1.5 GB next to the mirror, plus the same again while a rebuild runs (the mirror bind mount must be writable, as for refresh).
+- **Status:** `GET /api/off-local/status` reports `search_index.state` (`ready`, `stale`, `building`, `failed`, `disabled`, `absent`), `built_at`, `size_bytes` and `last_error`. The log shows `[off-local] search index ready`.
+- **Opt out:** set `OFF_LOCAL_INDEX=off` and restart; searches go to the Parquet file as before, and the file can be deleted. Legacy native `.duckdb` mirrors never get a search database.
 
 ### Fallback behavior
 

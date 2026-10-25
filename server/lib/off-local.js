@@ -25,6 +25,13 @@
  *     read-only connection, mv over the old file, reopen. A failed mid-flight
  *     download never corrupts the running mirror.
  *
+ * Search database (Parquet mirrors): `<OFF_LOCAL_DB>.search.duckdb`, built in
+ *   the background at startup when missing or stale and after every refresh,
+ *   answers name searches and barcode lookups in well under a second instead
+ *   of ~13 s / ~5 s on the Parquet file. Same results; the Parquet path stays
+ *   the fallback. OFF_LOCAL_INDEX=off disables it. See "Search database"
+ *   below and DEPLOY.md.
+ *
  * Schema assumed: the official OFF DuckDB build exposes a `products` table
  * with columns code, product_name, brands, categories_tags, image_url,
  * image_small_url, serving_size, serving_quantity, quantity, plus a nested
@@ -39,6 +46,7 @@
  * know whether the data came from local or remote.
  */
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { pipeline } from 'stream/promises';
 import { logger } from '../logger.js';
@@ -65,10 +73,13 @@ let _dbPath = null;          // resolved path for log messages
 // its count or two people searching together, fail now and then with "Failed
 // to execute prepared statement", so every request-time query waits its turn.
 let _queue = Promise.resolve();
-function _query(conn, sql, params) {
-  const run = _queue.then(() => conn.runAndReadAll(sql, params));
+function _exclusive(fn) {
+  const run = _queue.then(fn);
   _queue = run.catch(() => {});
   return run;
+}
+function _query(conn, sql, params) {
+  return _exclusive(() => conn.runAndReadAll(sql, params));
 }
 let _isParquet = false;      // true when the mirror is the HF Parquet shape;
                              // controls which SQL + which JS adapter run
@@ -88,6 +99,92 @@ let _refreshStartedAt = 0;
 let _refreshLastOkAt = 0;    // ms epoch of last successful refresh (in-process)
 let _refreshLastError = '';
 let _refreshPromise = null;
+
+// Search database (openspec change off-mirror-fast-search). A name search on
+// the stock Parquet snapshot unpacks every localized name of 4.7 M products
+// twice per request (~13 s); a barcode lookup decodes the file's large nested
+// columns (~5 s). The search database is a native DuckDB file next to the
+// mirror, `<OFF_LOCAL_DB>.search.duckdb`, with one table holding per product
+// the Parquet row number (`rid`), only the columns _toOffProduct reads, and
+// pre-lowered match columns: `m_names` is chr(31) + every localized name
+// joined by chr(31) (a token never contains chr(31), so it cannot match across
+// two names, and "a name starts with the phrase" is LIKE '%' || chr(31) ||
+// phrase || '%'), `m_brands`, and their strip_accents forms, NULL when equal.
+// It is attached READ_ONLY to the same connection, so the FIFO queue above
+// keeps serializing every query. Parquet mirrors only; OFF_LOCAL_INDEX=off
+// turns it off.
+const INDEX_SCHEMA_VERSION = 1;
+const INDEX_COLUMNS = [
+  'code', 'product_name', 'generic_name', 'brands', 'brands_tags', 'categories',
+  'categories_tags', 'completeness', 'lang', 'quantity', 'serving_quantity',
+  'serving_size', 'nutriments', 'images',
+];
+let _idxAttached = false;    // `idx.search_products` is usable on _conn
+let _idxSelect = '';         // quoted display column list of the attached index
+let _idxState = 'absent';    // 'ready' | 'stale' | 'building' | 'failed' | 'disabled' | 'absent'
+let _idxBuiltAt = 0;
+let _idxStartedAt = 0;
+let _idxLastError = '';
+let _idxPromise = null;      // single-flight build
+let _idxAgain = false;       // a build was requested while one was running
+
+export function getIndexPath() {
+  const p = getDbPath();
+  return p ? `${p}.search.duckdb` : null;
+}
+
+function _indexDisabled() {
+  return String(process.env.OFF_LOCAL_INDEX || '').trim().toLowerCase() === 'off';
+}
+
+function _quoteIdent(c) {
+  return `"${String(c).replace(/"/g, '""')}"`;
+}
+
+function _removeDuckFile(p) {
+  for (const f of [p, `${p}.wal`]) {
+    try { fs.rmSync(f, { force: true }); } catch {}
+  }
+}
+
+/** Attach the search database to `conn` when it exists, opens and has this
+ *  code's layout. Fresh = built from the current mirror file (same size and
+ *  mtime); stale = built from an earlier one, still self-consistent, so it
+ *  keeps answering until the rebuild replaces it. Callers hold the queue or
+ *  run before the connection is handed out. */
+async function _attachIndex(conn) {
+  if (_idxAttached) {
+    try { await conn.run('DETACH idx'); } catch {}
+    _idxAttached = false;
+    _idxSelect = '';
+  }
+  if (_indexDisabled() || !_isParquet) { _idxState = 'disabled'; return; }
+  const p = getIndexPath();
+  if (!p || !fs.existsSync(p)) { if (_idxState !== 'building') _idxState = 'absent'; return; }
+  try {
+    const safe = p.replace(/'/g, "''");
+    await conn.run(`ATTACH '${safe}' AS idx (READ_ONLY)`);
+    const meta = (await conn.runAndReadAll('SELECT * FROM idx.meta LIMIT 1')).getRowObjects()[0];
+    if (!meta || Number(meta.schema_version) !== INDEX_SCHEMA_VERSION) {
+      throw new Error(`layout ${meta ? meta.schema_version : '?'} is not ${INDEX_SCHEMA_VERSION}`);
+    }
+    const st = fs.statSync(_dbPath);
+    const fresh = Number(meta.source_size) === st.size
+      && Number(meta.source_mtime_ms) === Math.round(st.mtimeMs);
+    _idxSelect = String(meta.columns).split(',').filter(Boolean).map(_quoteIdent).join(', ');
+    _idxBuiltAt = Number(meta.built_at) || 0;
+    _idxAttached = true;
+    if (_idxState !== 'building') _idxState = fresh ? 'ready' : 'stale';
+    logger.info(`[off-local] search index attached (${fresh ? 'fresh' : 'stale, built from an earlier mirror file'})`);
+  } catch (e) {
+    try { await conn.run('DETACH idx'); } catch {}
+    _idxAttached = false;
+    _idxSelect = '';
+    if (_idxState !== 'building') _idxState = 'absent';
+    _idxLastError = `cannot use ${p}: ${e.message}`;
+    logger.warn(`[off-local] search index not used: ${e.message}`);
+  }
+}
 
 export function isLocalOffEnabled() {
   return !!process.env.OFF_LOCAL_DB && !_disabled;
@@ -141,6 +238,24 @@ export function getStatus() {
       last_ok_at: _refreshLastOkAt || null,
       last_error: _refreshLastError || '',
     },
+    search_index: getIndexStatus(),
+  };
+}
+
+/** Search database health, part of getStatus(). */
+export function getIndexStatus() {
+  const p = getIndexPath();
+  let size_bytes = null;
+  if (p) {
+    try { size_bytes = fs.statSync(p).size; } catch {}
+  }
+  return {
+    state: _indexDisabled() ? 'disabled' : _idxState,
+    path: p,
+    size_bytes,
+    built_at: _idxBuiltAt || null,
+    started_at: _idxState === 'building' ? _idxStartedAt : null,
+    last_error: _idxLastError || '',
   };
 }
 
@@ -195,6 +310,7 @@ async function _init() {
         );
         _hasPopularityKey = probe.getRowObjects().length > 0;
       } catch { _hasPopularityKey = false; }
+      await _attachIndex(_conn);
       logger.info(`[off-local] ready — mirror at ${_dbPath} (${_isParquet ? 'parquet via in-memory view' : 'native duckdb'})${_hasPopularityKey ? ', popularity_key present' : ''}${process.env.OFF_LOCAL_ONLY ? ' (air-gap mode, remote disabled)' : ''}`);
       return _conn;
     } catch (e) {
@@ -223,6 +339,8 @@ async function _closeConnection() {
   _conn = null;
   _instance = null;
   _initPromise = null;
+  _idxAttached = false;          // closing the instance detaches the index too
+  _idxSelect = '';
   _disabled = false;             // clear the kill switch — fresh file may work
 }
 
@@ -240,9 +358,12 @@ export async function lookupByBarcode(code) {
   if (!conn) return null;
   const safeCode = String(code || '').trim();
   if (!safeCode) return null;
+  // The search database holds the same columns _toOffProduct reads, without
+  // decoding the snapshot's nested columns (~5 s per lookup on the Parquet).
+  const from = _idxAttached ? `${_idxSelect} FROM idx.search_products` : '* FROM products';
   try {
     let rows = (await _query(conn,
-      `SELECT * FROM products WHERE code = $1 LIMIT 1`,
+      `SELECT ${from} WHERE code = $1 LIMIT 1`,
       [safeCode]
     )).getRowObjects();
 
@@ -257,7 +378,7 @@ export async function lookupByBarcode(code) {
     // we don't accidentally widen the search for other formats.
     if (!rows.length && /^\d{12}$/.test(safeCode)) {
       rows = (await _query(conn,
-        `SELECT * FROM products WHERE code = $1 LIMIT 1`,
+        `SELECT ${from} WHERE code = $1 LIMIT 1`,
         ['0' + safeCode]
       )).getRowObjects();
     }
@@ -328,6 +449,13 @@ export async function searchByName(query, { page = 1, pageSize = 20, langs = ['e
   const startPatternFolded = `${_escLikeFolded(q)}%`;
   const offset = Math.max(0, (page - 1) * pageSize);
   try {
+    if (_idxAttached) {
+      return await _searchIndexed(conn, {
+        toks, toksFolded, page, pageSize, offset, langs,
+        start: `%\x1f${_escLike(q)}%`,
+        startFolded: `%\x1f${_escLikeFolded(q)}%`,
+      });
+    }
     // Two SQL shapes — Parquet's product_name is LIST<{lang,text}> so we
     // need list_filter to LIKE-match any localized entry; legacy DuckDB's
     // product_name is a single string so the simple LIKE works directly.
@@ -443,6 +571,167 @@ export async function searchByName(query, { page = 1, pageSize = 20, langs = ['e
   }
 }
 
+/** searchByName on the search database: same predicates, rank, tiebreaks,
+ *  count and accent-folded retry as the Parquet query, over pre-lowered
+ *  columns. Step 1 ranks row ids; step 2 reads each hit with its own
+ *  `rid = $1` query, which DuckDB answers from one block via zone maps
+ *  (rid is stored in order). An `rid IN (…)` list is not pruned that way:
+ *  3.4 s against 0.16 s for 20 rows on the stock snapshot. */
+async function _searchIndexed(conn, { toks, toksFolded, start, startFolded, page, pageSize, offset, langs }) {
+  const col = (c, folded) => folded ? `COALESCE(${c}_f, ${c})` : c;
+  // An ESCAPE clause makes DuckDB skip its fast substring LIKE (0.54 s vs
+  // 0.21 s per scan on the stock snapshot). Patterns only carry a backslash
+  // when the query had a literal % or _, so the clause is added just then;
+  // without one, both forms match the same rows.
+  const where = (folded, esc) => toks.map((_, i) =>
+    `(${col('m_names', folded)} LIKE $${i+1}${esc}
+           OR ${col('m_brands', folded)} LIKE $${i+1}${esc}
+           OR code LIKE $${i+1}${esc})`
+  ).join('\n         AND ');
+  const startIdx = toks.length + 1;
+  const pageIdx  = toks.length + 2;
+  const offIdx   = toks.length + 3;
+  const read = (folded) => {
+    const pats = folded ? toksFolded : toks;
+    const startPat = folded ? startFolded : start;
+    const esc = [...pats, startPat].some(p => p.includes('\\')) ? ` ESCAPE '\\'` : '';
+    return Promise.all([
+      _query(conn,
+        `SELECT rid FROM idx.search_products
+          WHERE ${where(folded, esc)}
+          ORDER BY CASE WHEN ${col('m_names', folded)} LIKE $${startIdx}${esc} THEN 0 ELSE 1 END ASC,
+                   popularity_key DESC NULLS LAST, code ASC
+          LIMIT $${pageIdx} OFFSET $${offIdx}`,
+        [...pats, startPat, pageSize, offset]),
+      _query(conn, `SELECT COUNT(*) AS n FROM idx.search_products WHERE ${where(folded, esc)}`, [...pats]),
+    ]);
+  };
+  let [ranked, counted] = await read(false);
+  let total = Number(counted.getRowObjects()[0]?.n ?? 0);
+  if (total === 0) {
+    [ranked, counted] = await read(true);
+    total = Number(counted.getRowObjects()[0]?.n ?? 0);
+  }
+  const rids = ranked.getRows().map(r => r[0]);
+  const rows = await Promise.all(rids.map(rid => _query(conn,
+    `SELECT ${_idxSelect} FROM idx.search_products WHERE rid = $1 LIMIT 1`, [rid]
+  ).then(r => r.getRowObjects()[0])));
+  return {
+    hits: rows.filter(Boolean).map(row => _toOffProduct(row, langs)),
+    count: total,
+    page,
+    page_size: pageSize,
+  };
+}
+
+// ── Search database build ──────────────────────────────────────────────────
+
+/** Build (or rebuild) the search database from the current mirror file in
+ *  the background. Single flight: a request during a build waits for it and
+ *  then builds again, so a refresh that lands mid-build is not missed.
+ *  Resolves to { ok, skipped?, rows?, ms? }; rejects when the build fails
+ *  (the previous database, if any, keeps answering). */
+export function buildSearchIndex({ source = 'manual' } = {}) {
+  if (_idxPromise) { _idxAgain = true; return _idxPromise; }
+  _idxPromise = (async () => {
+    let result;
+    do {
+      _idxAgain = false;
+      result = await _runIndexBuild(source);
+    } while (_idxAgain);
+    return result;
+  })().finally(() => { _idxPromise = null; _idxAgain = false; });
+  return _idxPromise;
+}
+
+async function _runIndexBuild(source) {
+  const src = getDbPath();
+  const dst = getIndexPath();
+  if (_indexDisabled()) { _idxState = 'disabled'; return { ok: false, skipped: 'disabled' }; }
+  if (!src || !fs.existsSync(src)) return { ok: false, skipped: 'no mirror file' };
+  if (!_sniffParquet(src)) { _idxState = 'disabled'; return { ok: false, skipped: 'not a Parquet mirror' }; }
+  const tmp = `${dst}.new`;
+  _idxState = 'building';
+  _idxStartedAt = Date.now();
+  logger.info(`[off-local] search index build started (${source}) → ${dst}`);
+  let inst = null;
+  let conn = null;
+  try {
+    const st = fs.statSync(src);
+    _removeDuckFile(tmp);
+    const { DuckDBInstance } = await import('@duckdb/node-api');
+    // Leave a core for the app while the build runs.
+    const threads = String(Math.max(1, (os.availableParallelism?.() ?? os.cpus().length) - 1));
+    inst = await DuckDBInstance.create(tmp, { threads });
+    conn = await inst.connect();
+    const safe = src.replace(/'/g, "''");
+    const described = (await conn.runAndReadAll(
+      `SELECT column_name, column_type FROM (DESCRIBE SELECT * FROM read_parquet('${safe}'))`
+    )).getRowObjects();
+    const types = Object.fromEntries(described.map(r => [String(r.column_name), String(r.column_type)]));
+    if (!types.code || !/^STRUCT\(.*\)\[\]$/.test(types.product_name || '')) {
+      throw new Error('mirror has no code column or product_name is not a list of {lang, text}');
+    }
+    const cols = INDEX_COLUMNS.filter(c => types[c]);
+    const pop = types.popularity_key ? 'popularity_key' : 'NULL::BIGINT AS popularity_key';
+    // The source's own row order is kept (DuckDB preserves insertion order),
+    // so rid ascends through the file and zone maps can find a single rid.
+    await conn.run(`CREATE TABLE search_products AS
+      SELECT * EXCLUDE (n, b),
+             n AS m_names, CASE WHEN strip_accents(n) <> n THEN strip_accents(n) END AS m_names_f,
+             b AS m_brands, CASE WHEN strip_accents(b) <> b THEN strip_accents(b) END AS m_brands_f
+        FROM (
+          SELECT file_row_number AS rid, ${cols.map(_quoteIdent).join(', ')}, ${pop},
+                 chr(31) || COALESCE(array_to_string(list_transform(product_name, x -> LOWER(x.text)), chr(31)), '') AS n,
+                 LOWER(COALESCE(brands, '')) AS b
+            FROM read_parquet('${safe}', file_row_number = true)
+        )`);
+    const rows = Number((await conn.runAndReadAll('SELECT COUNT(*) AS n FROM search_products')).getRowObjects()[0].n);
+    if (!rows) throw new Error('mirror produced no rows');
+    const builtAt = Date.now();
+    await conn.run(`CREATE TABLE meta AS SELECT
+        ${INDEX_SCHEMA_VERSION} AS schema_version,
+        ${st.size}::BIGINT AS source_size,
+        ${Math.round(st.mtimeMs)}::BIGINT AS source_mtime_ms,
+        ${rows}::BIGINT AS row_count,
+        ${builtAt}::BIGINT AS built_at,
+        '${cols.join(',')}' AS columns`);
+    await conn.run('CHECKPOINT');
+    try { conn.closeSync?.(); } catch {}
+    try { conn.disconnectSync?.(); } catch {}
+    try { inst.closeSync?.(); } catch {}
+    conn = null;
+    inst = null;
+    // Swap through the queue: an in-flight search finishes on the old file,
+    // the next one sees the new file.
+    await _exclusive(async () => {
+      if (_conn && _idxAttached) {
+        try { await _conn.run('DETACH idx'); } catch {}
+        _idxAttached = false;
+      }
+      _removeDuckFile(`${dst}.wal`);
+      fs.renameSync(tmp, dst);
+      _idxState = 'ready';
+      _idxBuiltAt = builtAt;
+      _idxLastError = '';
+      if (_conn) await _attachIndex(_conn);
+    });
+    const ms = Date.now() - _idxStartedAt;
+    logger.info(`[off-local] search index ready (${source}) — ${rows} products, ${(fs.statSync(dst).size / 1e9).toFixed(2)} GB, took ${(ms / 1000).toFixed(0)}s`);
+    return { ok: true, rows, ms };
+  } catch (e) {
+    try { conn?.closeSync?.(); } catch {}
+    try { conn?.disconnectSync?.(); } catch {}
+    try { inst?.closeSync?.(); } catch {}
+    _removeDuckFile(tmp);
+    try { fs.rmSync(`${tmp}.tmp`, { recursive: true, force: true }); } catch {}
+    _idxState = 'failed';
+    _idxLastError = e.message || String(e);
+    logger.warn(`[off-local] search index build failed (${source}): ${_idxLastError}${_idxAttached ? ' — the previous index keeps answering' : ''}`);
+    throw e;
+  }
+}
+
 // ── Download / refresh ─────────────────────────────────────────────────────
 
 /** Kick a refresh in the background. Returns the in-flight promise so callers
@@ -550,6 +839,11 @@ async function _runRefresh(source) {
     _refreshState = 'idle';
     _refreshProgress = 1;
     logger.info(`[off-local] refresh complete (${source}) — ${(fs.statSync(dbPath).size / 1e9).toFixed(2)} GB, took ${((Date.now() - _refreshStartedAt) / 1000).toFixed(0)}s`);
+    // The previous search database (now stale) keeps answering until this
+    // build replaces it.
+    if (!_indexDisabled()) {
+      buildSearchIndex({ source: 'refresh' }).catch(() => { /* logged in _runIndexBuild */ });
+    }
     return { ok: true, bytes: _refreshBytesDone };
   } catch (e) {
     _refreshState = 'failed';
@@ -578,7 +872,15 @@ export function primeFromStartup() {
     refreshNow({ source: 'initial' }).catch(e => {
       logger.warn(`[off-local] initial download failed: ${e.message}`);
     });
+    return;                      // the refresh builds the search database
   }
+  // Mirror present: build the search database when it is missing, stale or
+  // unusable. Searches use the mirror (or the stale database) meanwhile.
+  if (_indexDisabled()) return;
+  _init().then(conn => {
+    if (!conn || _idxState === 'ready' || _idxState === 'disabled') return;
+    return buildSearchIndex({ source: 'startup' });
+  }).catch(() => { /* logged in _runIndexBuild */ });
 }
 
 /** Read the first 4 bytes of a file and check the Parquet magic header
