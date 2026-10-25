@@ -472,7 +472,8 @@
   }
   // Pull the per-tab sort mode from the same settings the Foods page reads,
   // so the recipe ingredient picker honors whatever sort the user picked
-  // for browsing their library (default alpha).
+  // for browsing their library (default alpha; the Foods search's
+  // 'relevance' has no query here and falls through to alpha below).
   $: _pickerSortMode = pickerTab === 0 ? $foodsSort : pickerTab === 1 ? $mealsSort : $recipesSort;
   function _applyPickerSort(arr, mode) {
     const sorted = [...arr];

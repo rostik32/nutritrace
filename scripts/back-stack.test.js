@@ -136,7 +136,8 @@ test('every hand-built backdrop and overlay is registered too', () => {
       if (!/use:closeOnBack=/.test(tag)) missing.push(`${rel}: .${layer}`);
     }
   }
-  assert.ok(checked >= 30, `found the overlays (${checked})`);
+  // 28: the Foods tab's OFF/USDA tier dropdowns became a Sheet (foods-unified-search).
+  assert.ok(checked >= 28, `found the overlays (${checked})`);
   assert.deepEqual(missing, []);
 });
 

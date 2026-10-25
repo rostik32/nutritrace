@@ -786,7 +786,6 @@
     "multi_portion_sheet": "Angi porsjoner ({count} oppføringer)",
     "add_to_diary": "Legg til i dagbok",
     "tier": {
-      "reset": "Tilbakestill",
       "off_data_quality": "OFF-datakvalitet",
       "usda_data_type": "USDA-datatype",
       "off_high": "Høy",
@@ -940,5 +939,6 @@
     "all_fields": {
       "intro": "Trykk på et felt for å angi eller redigere målet."
     }
-  }
+  },
+  "settings_foods_picker": {}
 }

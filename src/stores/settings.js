@@ -37,7 +37,7 @@ export const USER_PREFS = new Set([
   'showQuickCalories','quickCaloriesDisplay',
   'foodsShowCategories','foodsShowLabels','foodsShowNotes','foodsShowThumbnails',
   'foodsShowYesterdayMeals','foodsYesterdayCollapsed','foodsSavedCollapsed','foodsSort','mealsSort','recipesSort',
-  'foodsDefaultSource',
+  'foodsSearchExcluded',
   'updateCheckInterval', // hours between checks: 1, 4, 12, 24, or 0 for manual only
   'barcodeBeep','cropPhotos',
   'offEnabled','offSearchLanguage','offSearchCountry','offUploadCountry','offImportPortion',
@@ -634,17 +634,15 @@ export const foodsYesterdayCollapsed= createSettingStore('foodsYesterdayCollapse
 export const foodsSavedCollapsed    = createSettingStore('foodsSavedCollapsed',    false);
 // Sort order is per-tab so users can pick e.g. Recently Used for Foods (where
 // they speed-log) and Alphabetical for Recipes (where they browse a curated
-// library). Each defaults to 'alpha' to preserve the original behaviour.
-export const foodsSort              = createSettingStore('foodsSort',              'alpha');
+// library). Foods also offers 'relevance' (how well a food matches what was
+// typed), the Foods search default; the Meal editor picker reads it as alpha.
+export const foodsSort              = createSettingStore('foodsSort',              'relevance');
 export const mealsSort              = createSettingStore('mealsSort',              'alpha');
 export const recipesSort            = createSettingStore('recipesSort',            'alpha');
-// Default source chip on the Foods page. 'local' preserves the historical
-// implicit behaviour (My Foods first — optimises for "log a food I've
-// eaten before"); users who spend more time discovering new foods can
-// switch to 'all' to fan out across OFF/USDA/Mealie every visit
-// (requested via #128). Foods.svelte reads this on mount and initialises
-// searchSource from it.
-export const foodsDefaultSource     = createSettingStore('foodsDefaultSource',     'local');
+// Sources left out of the Foods search by the filter panel: ids from
+// src/lib/food-search.js ('own', 'shared', 'off', 'usda', 'mealie',
+// 'ctpantry'). Empty = every enabled source.
+export const foodsSearchExcluded    = createSettingStore('foodsSearchExcluded',    []);
 
 // Hours between automatic update checks. 0 = manual only (Settings →
 // Updates → Check now is the only way). Also gates the visibility-change

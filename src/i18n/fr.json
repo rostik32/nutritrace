@@ -608,5 +608,6 @@
       "username_required": "Le nom d'utilisateur est requis",
       "failed": "Échec de la création du compte"
     }
-  }
+  },
+  "settings_foods_picker": {}
 }
