@@ -115,6 +115,35 @@ export function rowKey(source, item) {
   return source + ':' + id;
 }
 
+// ── Row actions ──────────────────────────────────────────────────────────
+
+/**
+ * A product found in an online database (OFF, USDA) rather than one of the
+ * user's or a shared food or an import from Mealie / CookTrace. Editing it
+ * saves a copy to My Foods.
+ */
+export function isDatabaseFood(item) {
+  if (!item || typeof item.id === 'number' || item._shared_by != null || item.source_app) return false;
+  return item._source === 'usda' || !!String(item.barcode ?? '').trim();
+}
+
+/**
+ * What the long-press menu offers for a food row, as action values:
+ *   'copy'      shared food → save it to the user's catalog
+ *   'edit'      open the editor (own food: in place; database product:
+ *               saves an edited copy; in pick mode also adds to the meal)
+ *   'save'      database product → save to My Foods as is
+ *   'clone', 'select', 'delete'   own food management
+ * A database product is anything without a numeric id (OFF, USDA).
+ */
+export function foodItemActions(item, { pickMode = false, foodsTab = true } = {}) {
+  if (!item) return [];
+  if (item._shared_by != null) return ['copy'];
+  if (typeof item.id !== 'number') return foodsTab ? ['edit', 'save'] : ['save'];
+  // Pick mode owns multi-select, so "Select Multiple" would do nothing there.
+  return ['edit', ...(foodsTab ? [] : ['clone']), ...(pickMode ? [] : ['select']), 'delete'];
+}
+
 // ── The pipeline ─────────────────────────────────────────────────────────
 
 /**
