@@ -7,6 +7,7 @@ import { mergeEntries } from '../lib/diary-merge.js';
 import { dispatchWebhookEvent } from '../lib/webhooks.js';
 import { getGoalsCore } from '../lib/mcp/tools/goals.js';
 import { dailyTotalsCore } from '../lib/mcp/tools/daily-totals.js';
+import { isCalendarDate } from '../lib/mcp/_util.js';
 import { checkNutritionGoalCrossing, checkWaterGoalCrossing } from '../lib/goal-webhook.js';
 import { Nutrition } from '../../src/lib/nutrition.js';
 import { clientClock, parseUtc, pushWins, editStamp, resolveNote, sqlTime } from '../lib/sync-clock.js';
@@ -36,12 +37,21 @@ function _loadTombstoneUuids(u, date, kind) {
   return rows.map(r => r.uuid);
 }
 
-// Get all diary dates (for statistics)
+// Get all diary dates (for statistics). Optional ?start=&end= (inclusive
+// YYYY-MM-DD, either may be left out) narrows it to a period, e.g. the
+// Diary → Export sheet; without them every day comes back as before.
 router.get('/', wrap((req, res) => {
   const u = uid(req);
-  const rows = u == null
-    ? db.prepare('SELECT * FROM diary WHERE deleted_at IS NULL ORDER BY date ASC').all()
-    : db.prepare('SELECT * FROM diary WHERE user_id = ? AND deleted_at IS NULL ORDER BY date ASC').all(u);
+  const { start, end } = req.query;
+  if ((start != null && start !== '' && !isCalendarDate(start)) || (end != null && end !== '' && !isCalendarDate(end))) {
+    return res.status(400).json({ error: 'Invalid start/end date; expected YYYY-MM-DD.' });
+  }
+  const where = ['deleted_at IS NULL'];
+  const params = [];
+  if (u != null) { where.push('user_id = ?'); params.push(u); }
+  if (start) { where.push('date >= ?'); params.push(start); }
+  if (end)   { where.push('date <= ?'); params.push(end); }
+  const rows = db.prepare(`SELECT * FROM diary WHERE ${where.join(' AND ')} ORDER BY date ASC`).all(...params);
   res.json(rows.map(parse));
 }));
 

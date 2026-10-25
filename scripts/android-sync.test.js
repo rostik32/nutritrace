@@ -1300,3 +1300,33 @@ test("after another account signs in, the phone's database holds nothing of the 
   assert.equal(r.note, '');
   assert.deepEqual(r.diaryRows, []);
 });
+
+// ── Diary → Export reads one period, not the whole diary ───────────────
+
+test('the diary period read: the server route filters by start/end, and the phone answers from its own copy in both native modes', async (t) => {
+  if (skip(t)) return;
+  const zoe = await account('zoe', A);
+  const Z = (await http(zoe, 'GET', '/api/auth/me')).user;
+  for (const [date, name] of [['2026-04-29', 'Before'], ['2026-05-02', 'Inside A'], ['2026-05-04', 'Inside B'], ['2026-05-08', 'After']]) {
+    await http(zoe, 'PUT', `/api/diary/${date}`, { items: [{ name, meal: 0, nutrition: { calories: 10 } }], body_stats: {}, water: [] });
+  }
+  const dates = rows => rows.map(d => d.date);
+  assert.deepEqual(dates(await http(zoe, 'GET', '/api/diary?start=2026-05-01&end=2026-05-07')), ['2026-05-02', '2026-05-04']);
+  assert.deepEqual(dates(await http(zoe, 'GET', '/api/diary?start=2026-05-04')), ['2026-05-04', '2026-05-08'], 'one bound leaves the other side open');
+  assert.equal((await http(zoe, 'GET', '/api/diary')).length, 4, 'no period still means every day');
+  await assert.rejects(http(zoe, 'GET', '/api/diary?start=2026-02-31'), /400/);
+
+  const r = phone('period', zoe, `
+    const la = await import(p.src + 'lib/local-account.js');
+    await la.prepareLocalAccount(${JSON.stringify(Z)}, { confirm: async () => true });
+    await p.sync();
+    const { NtApiNative } = await import(p.src + 'lib/api-native.js');
+    const names = days => days.map(d => d.date + ':' + d.items.map(i => i.name).join('+'));
+    const cached = names(await p.api.getDiaryRange('2026-05-01', '2026-05-07'));
+    const offline = await p.offline(async () => names(await p.api.getDiaryRange('2026-05-01', '2026-05-07')));
+    p.done({ cached, offline, standalone: names(await NtApiNative.getDiaryRange('2026-05-01', '2026-05-07')) });`);
+  const want = ['2026-05-02:Inside A', '2026-05-04:Inside B'];
+  assert.deepEqual(r.cached, want, 'phone with a server: from its local copy, oldest first');
+  assert.deepEqual(r.offline, want, 'the same with the server out of reach');
+  assert.deepEqual(r.standalone, want, 'phone without a server');
+});

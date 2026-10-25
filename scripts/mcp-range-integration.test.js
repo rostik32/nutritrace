@@ -182,3 +182,43 @@ test('list_diary_entries_range refuses more logged days than the cap, totals sti
   const totals = json(await big.call('get_daily_totals_range', { start: '2021-01-01' }));
   assert.equal(totals.count, MAX_RANGE_DAYS + 1);
 });
+
+test('diary items carry meal_name and quantity-applied totals, single day and range alike', async () => {
+  const mealUser = db.prepare(
+    "INSERT INTO users (username, password_hash, role) VALUES ('mcp-range-meals', 'x', 'user')"
+  ).run().lastInsertRowid;
+  db.prepare(
+    `INSERT INTO diary (user_id, date, items, body_stats, water) VALUES (?, '2022-03-04', ?, '{}', '[]')`
+  ).run(mealUser, JSON.stringify([
+    { name: 'Chicken', meal: 1, quantity: 1.5, portion: 100, unit: 'g', nutrition: { calories: 165, proteins: 31 } },
+    { name: 'Tangerine', meal: 3, nutrition: { calories: 30 } },
+    { name: 'Late snack', meal: 5, nutrition: { calories: 10 } },
+  ]));
+  const s = new MockServer();
+  registerReadTools(s, { userId: mealUser });
+
+  const day = json(await s.call('list_diary_entries', { date: '2022-03-04' }));
+  const [chicken, tangerine, late] = day.items;
+  assert.equal(chicken.meal, 1, 'the meal index stays');
+  assert.equal(chicken.meal_name, 'Lunch', 'default meal names when the user has none');
+  assert.equal(chicken.nutrition.calories, 165, 'nutrition stays per serving');
+  assert.equal(chicken.totals.calories, 247.5);
+  assert.equal(chicken.totals.proteins, 46.5);
+  assert.equal(tangerine.meal_name, 'Snacks');
+  assert.equal(late.meal_name, 'Meal 6', 'a slot without a name falls back to its number');
+
+  db.prepare(
+    "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'mealNames', ?)"
+  ).run(mealUser, JSON.stringify(['Завтрак', 'Обед', 'Ужин', 'Перекус']));
+  const range = json(await s.call('list_diary_entries_range', { start: '2022-03-01', end: '2022-03-31' }));
+  assert.deepEqual(range.entries[0].items.map(i => i.meal_name), ['Обед', 'Перекус', 'Meal 6']);
+  assert.equal(range.entries[0].items[0].totals.calories, 247.5);
+});
+
+test('range cores throw on bad input for the REST routes to turn into 400s', async () => {
+  const { listDiaryRangeCore } = await import('../server/lib/mcp/tools/list-diary-range.js');
+  const { dailyTotalsRangeCore } = await import('../server/lib/mcp/tools/daily-totals-range.js');
+  assert.throws(() => listDiaryRangeCore(userId, { start: '2020-01-03', end: '2020-01-01' }), /start must be on or before end/);
+  assert.throws(() => dailyTotalsRangeCore(userId, { start: ['2020-01-01', '2020-01-02'] }), /YYYY-MM-DD/);
+  assert.equal(dailyTotalsRangeCore(userId, { start: '2020-01-01', end: '2020-01-03' }).count, 1);
+});

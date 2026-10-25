@@ -1366,7 +1366,20 @@ export async function dbGetAllDiary() {
     `SELECT * FROM diary WHERE user_id = ? ORDER BY date DESC`,
     [LOCAL_USER_ID]
   );
-  const rawRows = _rows(r);
+  return _diaryRowsOut(_rows(r));
+}
+
+/** Diary days in an inclusive YYYY-MM-DD period, oldest first. */
+export async function dbGetDiaryRange(start, end) {
+  const db = await getDb();
+  const r = await db.query(
+    `SELECT * FROM diary WHERE user_id = ? AND date >= ? AND date <= ? ORDER BY date ASC`,
+    [LOCAL_USER_ID, start, end]
+  );
+  return _diaryRowsOut(_rows(r));
+}
+
+function _diaryRowsOut(rawRows) {
   // Freshen item images per-row in parallel. Each call is a single SELECT
   // against the local foods table; in practice the rows for a typical user
   // (≤90 days) finish in a few ms.

@@ -954,6 +954,9 @@ const _NtApiHttp = {
   getDiaryDate(date)        { return this.get(`/api/diary/${date}`); },
   saveDiaryDate(date, data) { return this.put(`/api/diary/${date}`, data); },
   getAllDiary()              { return this.get('/api/diary'); },
+  // Inclusive YYYY-MM-DD period. A server older than this filter ignores
+  // the query and returns every day, so callers still check the dates.
+  getDiaryRange(start, end)  { return this.get(`/api/diary?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`); },
   // #207: mark or unmark a day as fully logged. Purely a visual affordance
   // (week strip + date picker badges); no diary math depends on it.
   setDiaryCompletion(date, completed) { return this.put(`/api/diary/${date}/completion`, { completed: !!completed }); },

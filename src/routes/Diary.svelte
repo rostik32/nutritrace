@@ -5,6 +5,7 @@
   import { push } from 'svelte-spa-router';
   import { _ } from 'svelte-i18n';
   import DatePicker from '../components/ui/DatePicker.svelte';
+  import DiaryExportSheet from '../components/diary/DiaryExportSheet.svelte';
   import DateInput  from '../components/ui/DateInput.svelte';
   import { resolveAssetUrl, isNative, getServerUrl } from '../lib/platform.js';
   import { resolveGoalFor } from '../lib/goal-resolver.js';
@@ -965,6 +966,9 @@
     if (!_lastLoadedNotes) notesExpanded = false;
   }
   function toggleNotes() { notesExpanded = !notesExpanded; }
+
+  // Diary → Export (CSV for a chosen period)
+  let showExport = false;
   async function commitNotes() {
     if ((_notesText || '') === (entry?.notes || '')) return;
     _notesSaving = true;
@@ -2488,6 +2492,12 @@
         {/if}
       </section>
     {/if}
+
+    <!-- Outside the notes block so it stays when day notes are hidden. -->
+    <button type="button" class="btn btn-secondary diary-export-btn" on:click={() => (showExport = true)}>
+      <span class="material-symbols-rounded">download</span>
+      {$_('diary_export.button')}
+    </button>
     </div><!-- /.diary-main -->
 
     <!-- Right rail (Phase 2+ desktop redesign).
@@ -3100,6 +3110,8 @@
     </div>
   </div>
 {/if}
+
+<DiaryExportSheet bind:open={showExport} />
 
 <!-- Date Picker Calendar Sheet -->
 {#if showDatePicker}
@@ -4159,6 +4171,12 @@
   .wc-log-info { flex:1; display:flex; flex-direction:column; gap:2px; }
   .wc-divider  { height:1px; background:var(--border); margin:0 16px; }
 
+
+  .diary-export-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; margin-top: var(--space-3);
+  }
+  .diary-export-btn .material-symbols-rounded { font-size: 20px; }
 
   /* Daily notes card */
   .diary-notes {

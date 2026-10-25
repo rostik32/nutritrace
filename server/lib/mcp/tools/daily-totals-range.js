@@ -15,6 +15,34 @@ import {
   validateDateRange,
 } from '../_util.js';
 
+/**
+ * Core lookup, shared by the MCP tool below and the public REST API at
+ * GET /api/v1/diary/totals?start=&end=. Throws a plain Error on bad input.
+ */
+export function dailyTotalsRangeCore(userId, { start, end } = {}) {
+  const { start: rangeStart, end: rangeEnd } = resolveDateRange(start, end);
+  const rangeError = validateDateRange(rangeStart, rangeEnd);
+  if (rangeError) throw new Error(rangeError);
+
+  const conditions = ['deleted_at IS NULL'];
+  const params = [userId];
+  if (rangeStart != null) {
+    conditions.push('date >= ?');
+    params.push(rangeStart);
+  }
+  if (rangeEnd != null) {
+    conditions.push('date <= ?');
+    params.push(rangeEnd);
+  }
+  const rows = db.prepare(
+    `SELECT date, items, water FROM diary
+      WHERE user_id = ? AND ${conditions.join(' AND ')}
+      ORDER BY date ASC`
+  ).all(...params);
+  const totals = rows.map(row => diaryRowTotals(row.date, row));
+  return { start: rangeStart, end: rangeEnd, totals, count: totals.length };
+}
+
 export function registerDailyTotalsRange(server, { userId }) {
   server.registerTool(
     'get_daily_totals_range',
@@ -31,27 +59,11 @@ export function registerDailyTotalsRange(server, { userId }) {
       },
     },
     async ({ start, end }) => {
-      const { start: rangeStart, end: rangeEnd } = resolveDateRange(start, end);
-      const rangeError = validateDateRange(rangeStart, rangeEnd);
-      if (rangeError) return toolError(rangeError);
-
-      const conditions = ['deleted_at IS NULL'];
-      const params = [userId];
-      if (rangeStart != null) {
-        conditions.push('date >= ?');
-        params.push(rangeStart);
+      try {
+        return toolResult(dailyTotalsRangeCore(userId, { start, end }));
+      } catch (e) {
+        return toolError(e.message);
       }
-      if (rangeEnd != null) {
-        conditions.push('date <= ?');
-        params.push(rangeEnd);
-      }
-      const rows = db.prepare(
-        `SELECT date, items, water FROM diary
-          WHERE user_id = ? AND ${conditions.join(' AND ')}
-          ORDER BY date ASC`
-      ).all(...params);
-      const totals = rows.map(row => diaryRowTotals(row.date, row));
-      return toolResult({ start: rangeStart, end: rangeEnd, totals, count: totals.length });
     }
   );
 }

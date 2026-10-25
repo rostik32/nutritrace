@@ -15,6 +15,7 @@
 import { z } from 'zod';
 import db from '../../../db.js';
 import { DATE_RE, safeJson, todayLocal, toolResult, toolError, isCalendarDate } from '../_util.js';
+import { getMealNames, withItemDetails } from '../_diary-items.js';
 
 /**
  * Core lookup, shared by the MCP tool below and the public REST API at
@@ -30,7 +31,7 @@ export function listDiaryCore(userId, { date } = {}) {
       WHERE user_id = ? AND date = ? AND deleted_at IS NULL`
   ).get(userId, day);
   const items = row?.items ? safeJson(row.items, []) : [];
-  return { date: day, items, count: items.length };
+  return { date: day, items: withItemDetails(items, getMealNames(userId)), count: items.length };
 }
 
 export function registerListDiary(server, { userId }) {
@@ -40,8 +41,9 @@ export function registerListDiary(server, { userId }) {
       title: 'List Diary Entries',
       description:
         'Return the food items logged on a given date (YYYY-MM-DD, defaults to today in the SERVER\'s timezone). ' +
-        'Each item includes name, meal slot, portion, unit, quantity, nutrition, and the ' +
-        'timestamp it was added. Pass an explicit date for agents that need calendar accuracy in a different TZ.',
+        'Each item includes name, meal slot (index and the user\'s meal_name), portion, unit, quantity, ' +
+        'nutrition per serving, totals (quantity applied), and the timestamp it was added. ' +
+        'Pass an explicit date for agents that need calendar accuracy in a different TZ.',
       inputSchema: {
         date: z.string().regex(DATE_RE, 'YYYY-MM-DD').optional(),
       },

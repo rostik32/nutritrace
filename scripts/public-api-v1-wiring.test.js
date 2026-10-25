@@ -69,7 +69,7 @@ test('each route calls a shared xCore function rather than a fresh db.prepare', 
   for (const [name, src] of [['diary.js', diaryJs], ['goals.js', goalsJs], ['meals.js', mealsJs]]) {
     assert.doesNotMatch(src, /db\.prepare/, `${name} should not query the DB directly, only via xCore imports`);
   }
-  for (const coreFn of ['listDiaryCore', 'dailyTotalsCore', 'logFoodCore', 'logWaterCore', 'logMealCore', 'logBodyStatCore']) {
+  for (const coreFn of ['listDiaryCore', 'dailyTotalsCore', 'listDiaryRangeCore', 'dailyTotalsRangeCore', 'logFoodCore', 'logWaterCore', 'logMealCore', 'logBodyStatCore']) {
     assert.match(diaryJs, new RegExp(coreFn), `diary.js should import and call ${coreFn}`);
   }
   assert.match(goalsJs, /getGoalsCore/);
@@ -81,4 +81,11 @@ test('each route calls a shared xCore function rather than a fresh db.prepare', 
 test('SCOPE_DESCRIPTIONS mentions the /api/v1 routes alongside MCP for mcp:read and mcp:write', () => {
   const desc = apiTokensJs.match(/SCOPE_DESCRIPTIONS = \{([\s\S]*?)\n\};/)[1];
   assert.match(desc, /\/api\/v1/);
+});
+
+test('diary range routes are registered before /:date so "totals" is not read as a date', () => {
+  const order = [...diaryJs.matchAll(/router\.get\('([^']+)'/g)].map(m => m[1]);
+  assert.ok(order.indexOf('/') !== -1 && order.indexOf('/totals') !== -1, 'range routes exist');
+  assert.ok(order.indexOf('/totals') < order.indexOf('/:date'), '/totals before /:date');
+  assert.ok(order.indexOf('/') < order.indexOf('/:date'), '/ before /:date');
 });
