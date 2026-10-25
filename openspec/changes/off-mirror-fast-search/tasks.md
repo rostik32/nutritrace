@@ -36,12 +36,12 @@
 
 ## 4. Verify on the real mirror
 
-- [ ] 4.1 On the diaitika server, run the branch's `off-local.js` inside the running container against the
+- [x] 4.1 On the diaitika server, run the branch's `off-local.js` inside the running container against the
       real mirror with the index written to a temporary directory (no production files touched): record build
       time and size, and time "картопля", "сир кисломолочний", "tvaroh", "milk", "nutella", "creme fraiche"
       and three barcode lookups; verify each is under 1 s and hit counts match the unindexed search; remove the
       temporary files.
-- [ ] 4.2 Tune build threads/memory if the build disturbs the running app (design open question) and record
+- [x] 4.2 Tune build threads/memory if the build disturbs the running app (design open question) and record
       the numbers in the PR description.
 
 ## Workflow follow-up
