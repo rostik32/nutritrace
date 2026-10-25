@@ -34,7 +34,7 @@
   import { mealIcon } from '../lib/mealIcon.js';
   import { focusDefaultField } from '../lib/default-field.js';
   import { pageScrollTop, restorePageScroll } from '../lib/scroll-anchor.js';
-  import { createFoodSearch, rankFoods } from '../lib/food-search.js';
+  import { createFoodSearch, rankFoods, foodItemActions } from '../lib/food-search.js';
   import FoodSearchFilter from '../components/foods/FoodSearchFilter.svelte';
 
   // Query string params
@@ -353,21 +353,25 @@
     if (Array.isArray(f._offPresent) && !f._offPresent.length && !(kcal > 0)) return true;
     return offNutritionStatus(f, API.offNutritionInfo(f.barcode)) !== 'ok';
   };
+  // A database result with no values is looked up in full (and takes its
+  // values if it has them). `ok` is false when it still has none.
+  async function _completeOffValues(food) {
+    if (typeof food.id === 'number' || !food.barcode) return { food, ok: true };
+    let info = API.offNutritionInfo(food.barcode);
+    if (needsFullLookup(info) && offNutritionStatus(food, info) !== 'ok') {
+      const full = await API.fetchProductByCode(food.barcode).catch(() => null);
+      info = API.offNutritionInfo(food.barcode);
+      if (full && offNutritionStatus(full, info) === 'ok') food = { ...food, ...full };
+    }
+    return { food, ok: offNutritionStatus(food, info) === 'ok' };
+  }
   // Ticked results added together skip pickFood, so they are checked here: a
-  // result with no values is looked up in full (and takes its values if it
-  // has them); one that still has none is left out and named.
+  // result that still has no values after the full lookup is left out and named.
   async function _resolveOffPicks(foods) {
     const keep = [], skipped = [];
-    for (let food of foods) {
-      if (typeof food.id !== 'number' && food.barcode) {
-        let info = API.offNutritionInfo(food.barcode);
-        if (needsFullLookup(info) && offNutritionStatus(food, info) !== 'ok') {
-          const full = await API.fetchProductByCode(food.barcode).catch(() => null);
-          info = API.offNutritionInfo(food.barcode);
-          if (full && offNutritionStatus(full, info) === 'ok') food = { ...food, ...full };
-        }
-        if (offNutritionStatus(food, info) !== 'ok') { skipped.push(food.name); continue; }
-      }
+    for (const pick of foods) {
+      const { food, ok } = await _completeOffValues(pick);
+      if (!ok) { skipped.push(food.name); continue; }
       keep.push(food);
     }
     if (skipped.length) showError($_('foods.off_skipped', { values: { names: skipped.join(', ') } }));
@@ -1081,11 +1085,16 @@
     editorState.foodsSearch    = search;
   }
 
-  function openEditor(item, store) {
+  // `diary`: also add the saved food to the meal being filled (pick mode by
+  // default). `amount` ({ portion, unit, quantity }) is what to log when the
+  // user already typed it in the quantity sheet. Outside the diary the
+  // context is cleared, so an editor left without saving in pick mode can't
+  // add a later edit to the diary.
+  function openEditor(item, store, { diary = pickMode, amount = null } = {}) {
     _saveScrollState();
     editorState.foodPrefill = item ? { ...item } : null;
     editorState.foodStore   = store || currentStore;
-    if (pickMode) editorState.foodDiaryCtx = { date: pickDate, meal: pickMeal };
+    editorState.foodDiaryCtx = diary ? { date: pickDate, meal: pickMeal, ...(amount || {}) } : null;
     push('/foods/edit');
   }
 
@@ -1414,6 +1423,19 @@
     history.back();
   }
 
+  // "Edit" in the quantity sheet: fix the product's values first, then log it
+  // with the amount typed here (edit-found-food).
+  function editFromQtyPrompt() {
+    if (!promptFood) return;
+    const food = promptFood;
+    showQtyPrompt = false;
+    openEditor(food, 'foodList', { diary: true, amount: {
+      portion: parseDecimal(promptPortion) || parseFloat(food.portion) || 100,
+      unit: promptUnit || food.unit || 'g',
+      quantity: parseDecimal(promptServings) || 1,
+    } });
+  }
+
   async function confirmQtyPrompt() {
     if (!promptFood || _addingToDiary) return;
     const origPortion = parseFloat(promptFood.portion) || 100;
@@ -1522,6 +1544,18 @@
     showSuccess($_('foods.toast.cloned'));
   }
 
+  $: _itemActionList = foodItemActions(selectedItem, { pickMode, foodsTab: activeTab === 0 }).map(value => ({
+    value,
+    ...{
+      copy:   { label: 'Save to My Catalog', icon: 'bookmark_add' },
+      save:   { label: 'Save to My Foods', icon: 'bookmark_add' },
+      edit:   { label: pickMode && activeTab === 0 ? $_('foods.item_actions.edit_and_add') : 'Edit', icon: 'edit' },
+      clone:  { label: 'Clone', icon: 'content_copy' },
+      select: { label: 'Select Multiple', icon: 'checklist' },
+      delete: { label: 'Delete', icon: 'delete', danger: true },
+    }[value],
+  }));
+
   function longPress(item) {
     selectedItem = item;
     showItemActions = true;
@@ -1542,6 +1576,22 @@
     if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
   }
 
+  // "Save to My Foods" on a database result: saved with the full product's
+  // values; one that has none opens the editor instead of saving 0 kcal.
+  async function _saveFoundFood(item) {
+    const { food, ok } = await _completeOffValues(item);
+    const hasValues = Object.values(food.nutrition || {}).some(v => Number(v) > 0);
+    if (!ok || !hasValues) return openEditor(food, 'foodList', { diary: false });
+    const { id: _drop, ...rest } = food;
+    try {
+      await NtApi.createFood({ ...rest, created_at: new Date().toISOString() });
+      showSuccess($_('foods.toast.saved_to_my_foods'));
+      await load();
+    } catch (e) {
+      showError('Could not save: ' + e.message);
+    }
+  }
+
   function handleItemAction({ detail }) {
     if (!selectedItem) return;
     if (detail.value === 'edit') {
@@ -1551,13 +1601,9 @@
     } else if (detail.value === 'clone') {
       cloneItem(selectedItem);
     } else if (detail.value === 'copy') {
-      if (selectedItem.id) {
-        copyAndUse(selectedItem).then(() => { showSuccess('Saved to your catalog'); load(); });
-      } else {
-        // External item (OFF/USDA) — create a new local food from it
-        NtApi.createFood(selectedItem).then(() => { showSuccess('Saved to My Foods'); load(); })
-          .catch(e => showError('Could not save: ' + e.message));
-      }
+      copyAndUse(selectedItem).then(() => { showSuccess('Saved to your catalog'); load(); });
+    } else if (detail.value === 'save') {
+      _saveFoundFood(selectedItem);
     } else if (detail.value === 'delete') {
       showDeleteDialog = true;
     } else if (detail.value === 'select') {
@@ -2211,8 +2257,8 @@
               {/if}
               <button class="food-item-btn"
                 on:click={() => _fsPick(row)}
-                on:contextmenu|preventDefault={() => isMine && !manageMode && longPress(item)}
-                on:touchstart|passive={() => _startLongPress(() => isMine && !manageMode && longPress(item))}
+                on:contextmenu|preventDefault={() => (isMine || isDb) && !manageMode && longPress(item)}
+                on:touchstart|passive={() => _startLongPress(() => (isMine || isDb) && !manageMode && longPress(item))}
                 on:touchmove|passive={_cancelLongPress}
                 on:touchend={_cancelLongPress}>
                 {#if source === 'mealie' && item.id}
@@ -2968,6 +3014,12 @@
       </div>
     </div>
     <button class="btn btn-primary w-full" on:click={confirmQtyPrompt} disabled={_addingToDiary}>{$_('foods.add_to_diary')}</button>
+    {#if pickMode && activeTab === 0}
+      <button class="btn btn-secondary w-full" on:click={editFromQtyPrompt} disabled={_addingToDiary}>
+        <span class="material-symbols-rounded" style="font-size:18px">edit</span>
+        {$_('foods.qty_edit')}
+      </button>
+    {/if}
   </div>
 </Sheet>
 
@@ -3084,16 +3136,7 @@
 <ActionSheet
   bind:open={showItemActions}
   title={selectedItem ? selectedItem.name : ''}
-  actions={selectedItem?._shared_by != null ? [
-    { label: 'Save to My Catalog', icon: 'bookmark_add', value: 'copy' },
-  ] : !selectedItem?.id ? [
-    { label: 'Save to My Foods', icon: 'bookmark_add', value: 'copy' },
-  ] : [
-    { label: 'Edit',   icon: 'edit',        value: 'edit' },
-    ...(activeTab !== 0 ? [{ label: 'Clone', icon: 'content_copy', value: 'clone' }] : []),
-    { label: 'Select Multiple', icon: 'checklist', value: 'select' },
-    { label: 'Delete', icon: 'delete',      value: 'delete', danger: true },
-  ]}
+  actions={_itemActionList}
   on:select={handleItemAction}
 />
 

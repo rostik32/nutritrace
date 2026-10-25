@@ -24,6 +24,8 @@
   import { draftKey as _mkDraftKey, loadDraft, loadDraftImg, clearDraft, makeDebouncedPersist, sweepDrafts } from '../lib/editor-draft.js';
   import { acquireScreenWakeLock } from '../lib/wake-lock.js';
   import { decimalInput, parseDecimal } from '../lib/decimal-input.js';
+  import { scaleFactor } from '../lib/units.js';
+  import { isDatabaseFood } from '../lib/food-search.js';
 
   // ── Photo capture / upload ─────────────────────────────────
   let fileInput;
@@ -161,6 +163,11 @@
   let _myFoods = [];
   let duplicateOf = null;
   $: isNewFood = !(params && params.id);
+  // Opened on an OFF / USDA result: saving stores an edited copy in My Foods
+  // and leaves the database entry as it is (edit-found-food).
+  const _prefillAtOpen = editorState.foodPrefill;
+  $: _dbCopy = !food.id && isDatabaseFood(_prefillAtOpen);
+  $: _dbCopySource = _prefillAtOpen?._source === 'usda' ? 'USDA' : 'Open Food Facts';
 
   // ── Draft persistence (#157) ────────────────────────────────────────────
   // Samsung camera-mode lmkd kills the WebView renderer, Chromium kills
@@ -709,6 +716,19 @@
     saving = false;
   }
 
+  // What to log: the food at its own portion, or the amount the user typed in
+  // the quantity sheet before opening the editor from it.
+  function _diaryAmount(item, ctx) {
+    const portion = parseDecimal(item.portion) || 100;
+    const unit = item.unit || 'g';
+    if (!ctx.portion) return { ...item, portion, unit };
+    const newUnit = ctx.unit || unit;
+    const f = scaleFactor(portion, unit, ctx.portion, newUnit, item);
+    const nutrition = Object.fromEntries(Object.entries(item.nutrition || {})
+      .map(([k, v]) => [k, k === '_derived' ? v : (parseFloat(v) || 0) * f]));
+    return { ...item, portion: ctx.portion, unit: newUnit, quantity: ctx.quantity || 1, nutrition };
+  }
+
   async function save() {
     if (!food.name.trim()) {
       showError($_('food_editor.errors.name_required'));
@@ -746,11 +766,7 @@
       const ctx = editorState.foodDiaryCtx;
       if (ctx) {
         const { addDiaryItem } = await import('../stores/diary.js');
-        await addDiaryItem(
-          { ...item, portion: item.portion || 100, unit: item.unit || 'g' },
-          Number(ctx.meal) || 0,
-          ctx.date
-        );
+        await addDiaryItem(_diaryAmount(item, ctx), Number(ctx.meal) || 0, ctx.date);
       }
       clearFoodEditorState();
       // #157: draft persistence — clear the localStorage draft now that
@@ -843,7 +859,7 @@
     <button class="btn-icon" on:click={pop} aria-label={$_('common.back')} title={$_('common.back')}>
       <span class="material-symbols-rounded">arrow_back</span>
     </button>
-    <h2 class="editor-title">{_readOnly ? `Shared by ${food._shared_by}` : (food.id ? 'Edit Food' : 'Add Food')}</h2>
+    <h2 class="editor-title">{_readOnly ? `Shared by ${food._shared_by}` : (food.id ? 'Edit Food' : _dbCopy ? $_('food_editor.db_copy.title') : 'Add Food')}</h2>
     {#if food.id && !_readOnly}
       <button class="btn-icon fav-btn" class:on={!!food.favorite}
         on:click={() => { food.favorite = food.favorite ? 0 : 1; food = food; }}
@@ -872,6 +888,11 @@
         <div class="readonly-title">Shared by {food._shared_by} — read only</div>
         <div class="readonly-sub">{$_('food_editor.readonly_sub')}</div>
       </div>
+    </div>
+  {:else if _dbCopy}
+    <div class="readonly-banner">
+      <span class="material-symbols-rounded">bookmark_add</span>
+      <div class="readonly-sub">{$_('food_editor.db_copy.note', { values: { source: _dbCopySource } })}</div>
     </div>
   {/if}
 

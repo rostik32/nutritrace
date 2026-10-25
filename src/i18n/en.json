@@ -878,7 +878,8 @@
       "added_to_diary": "Added to diary",
       "meal_partly_added": "Some ingredients could not be added: {names}",
       "meal_none_added": "Could not add this meal. Check your connection and try again.",
-      "meal_stale_ingredients": "Added to diary. These ingredients are no longer in your foods: {names}. Edit the meal to fix them."
+      "meal_stale_ingredients": "Added to diary. These ingredients are no longer in your foods: {names}. Edit the meal to fix them.",
+      "saved_to_my_foods": "Saved to My Foods"
     },
     "search": {
       "hint": "Type a food name or scan a barcode",
@@ -895,7 +896,11 @@
       "filter_reset": "Reset filters",
       "source_own": "My foods",
       "source_shared": "Shared with me"
-    }
+    },
+    "item_actions": {
+      "edit_and_add": "Edit and add"
+    },
+    "qty_edit": "Edit nutrition"
   },
   "trace": {
     "food_card": {
@@ -1444,6 +1449,10 @@
     },
     "errors": {
       "name_required": "Please enter a name"
+    },
+    "db_copy": {
+      "title": "Edit and save to My Foods",
+      "note": "Your changes are saved as your own food. The {source} entry stays as it is."
     }
   },
   "meal_editor": {

@@ -9,7 +9,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { matchRank, rankFoods, rowKey, createFoodSearch } from '../src/lib/food-search.js';
+import { matchRank, rankFoods, rowKey, createFoodSearch, foodItemActions, isDatabaseFood } from '../src/lib/food-search.js';
 
 const tick = (ms = 5) => new Promise(r => setTimeout(r, ms));
 
@@ -204,4 +204,31 @@ test('refresh memory: a newly saved own food replaces the database row', async (
   own.push({ id: 5, name: 'Nutella', barcode: '3017620422003' });
   fs.refreshMemory();
   assert.deepEqual(names(last()), ['own:Nutella']);
+});
+
+// ── Row actions (edit-found-food) ────────────────────────────────────────
+
+test('row actions: database products can be edited and saved, also while adding to a meal', () => {
+  const off = { name: 'Moo milk', barcode: '111' };
+  const usda = { name: 'Milk, whole', barcode: 'fdcId_1' };
+  assert.deepEqual(foodItemActions(off), ['edit', 'save']);
+  assert.deepEqual(foodItemActions(usda, { pickMode: true }), ['edit', 'save']);
+  assert.deepEqual(foodItemActions(off, { foodsTab: false }), ['save']);
+});
+
+test('row actions: own foods are managed, shared foods are copied first', () => {
+  const own = { id: 7, name: 'Milk 2.5%' };
+  assert.deepEqual(foodItemActions(own), ['edit', 'select', 'delete']);
+  assert.deepEqual(foodItemActions(own, { foodsTab: false }), ['edit', 'clone', 'select', 'delete']);
+  assert.deepEqual(foodItemActions(own, { pickMode: true }), ['edit', 'delete']);
+  assert.deepEqual(foodItemActions({ id: 9, name: 'x', _shared_by: 'ann' }), ['copy']);
+});
+
+test('database food: OFF and USDA results, not own, shared, imported or blank foods', () => {
+  assert.equal(isDatabaseFood({ name: 'Moo milk', barcode: '111' }), true);
+  assert.equal(isDatabaseFood({ name: 'Milk, whole', barcode: '', _source: 'usda' }), true);
+  assert.equal(isDatabaseFood({ id: 7, name: 'Milk', barcode: '111' }), false);
+  assert.equal(isDatabaseFood({ id: 9, name: 'x', barcode: '1', _shared_by: 'ann' }), false);
+  assert.equal(isDatabaseFood({ name: 'Rice', barcode: '2', source_app: 'cooktrace' }), false);
+  assert.equal(isDatabaseFood({ name: 'Homemade soup' }), false);
 });
