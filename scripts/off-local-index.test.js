@@ -63,6 +63,8 @@ const QUERIES = [
   ['сирники'], ['tvaroh'], ['mekky'], ['dunkin croissant'], ['croissant dunkin'], ['président'],
   ['3017620422003'], ['48200'], ['milk'], ['milk', { pageSize: 3, page: 2 }],
   ['farm'], ['nothing-matches-this'], ['+countries_tags:"en:ukraine" сирники'],
+  // A literal % or _ is escaped, not a wildcard ("skimmed_milk" must not match "Skimmed milk").
+  ['3.2%'], ['skimmed_milk'], ['back\\slash'],
 ];
 
 test('the search database answers exactly like the mirror file, then follows refreshes', async (t) => {
@@ -94,6 +96,8 @@ test('the search database answers exactly like the mirror file, then follows ref
   assert.equal(existsSync(indexFile), false);
   assert.ok(plain.some(r => r.count > 0), 'fixture sanity: queries match something');
   assert.equal(plain[QUERIES.findIndex(([q]) => q === 'fraiche epaisse')].count, 1, 'fixture sanity: accent retry');
+  assert.equal(plain[QUERIES.findIndex(([q]) => q === '3.2%')].count, 1, 'fixture sanity: literal %');
+  assert.equal(plain[QUERIES.findIndex(([q]) => q === 'skimmed_milk')].count, 0, 'fixture sanity: literal _');
 
   // A leftover partial file from an interrupted build is cleared, never used.
   writeFileSync(`${indexFile}.new`, 'partial');

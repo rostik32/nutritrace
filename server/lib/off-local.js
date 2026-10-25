@@ -579,25 +579,31 @@ export async function searchByName(query, { page = 1, pageSize = 20, langs = ['e
  *  3.4 s against 0.16 s for 20 rows on the stock snapshot. */
 async function _searchIndexed(conn, { toks, toksFolded, start, startFolded, page, pageSize, offset, langs }) {
   const col = (c, folded) => folded ? `COALESCE(${c}_f, ${c})` : c;
-  const where = (folded) => toks.map((_, i) =>
-    `(${col('m_names', folded)} LIKE $${i+1} ESCAPE '\\'
-           OR ${col('m_brands', folded)} LIKE $${i+1} ESCAPE '\\'
-           OR code LIKE $${i+1} ESCAPE '\\')`
+  // An ESCAPE clause makes DuckDB skip its fast substring LIKE (0.54 s vs
+  // 0.21 s per scan on the stock snapshot). Patterns only carry a backslash
+  // when the query had a literal % or _, so the clause is added just then;
+  // without one, both forms match the same rows.
+  const where = (folded, esc) => toks.map((_, i) =>
+    `(${col('m_names', folded)} LIKE $${i+1}${esc}
+           OR ${col('m_brands', folded)} LIKE $${i+1}${esc}
+           OR code LIKE $${i+1}${esc})`
   ).join('\n         AND ');
   const startIdx = toks.length + 1;
   const pageIdx  = toks.length + 2;
   const offIdx   = toks.length + 3;
   const read = (folded) => {
     const pats = folded ? toksFolded : toks;
+    const startPat = folded ? startFolded : start;
+    const esc = [...pats, startPat].some(p => p.includes('\\')) ? ` ESCAPE '\\'` : '';
     return Promise.all([
       _query(conn,
         `SELECT rid FROM idx.search_products
-          WHERE ${where(folded)}
-          ORDER BY CASE WHEN ${col('m_names', folded)} LIKE $${startIdx} ESCAPE '\\' THEN 0 ELSE 1 END ASC,
+          WHERE ${where(folded, esc)}
+          ORDER BY CASE WHEN ${col('m_names', folded)} LIKE $${startIdx}${esc} THEN 0 ELSE 1 END ASC,
                    popularity_key DESC NULLS LAST, code ASC
           LIMIT $${pageIdx} OFFSET $${offIdx}`,
-        [...pats, folded ? startFolded : start, pageSize, offset]),
-      _query(conn, `SELECT COUNT(*) AS n FROM idx.search_products WHERE ${where(folded)}`, [...pats]),
+        [...pats, startPat, pageSize, offset]),
+      _query(conn, `SELECT COUNT(*) AS n FROM idx.search_products WHERE ${where(folded, esc)}`, [...pats]),
     ]);
   };
   let [ranked, counted] = await read(false);
