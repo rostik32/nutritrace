@@ -34,7 +34,7 @@
   import { mealIcon } from '../lib/mealIcon.js';
   import { focusDefaultField } from '../lib/default-field.js';
   import { pageScrollTop, restorePageScroll } from '../lib/scroll-anchor.js';
-  import { createFoodSearch, rankFoods, foodItemActions } from '../lib/food-search.js';
+  import { createFoodSearch, rankFoods, foodItemActions, foodWithBarcode, findBarcode } from '../lib/food-search.js';
   import FoodSearchFilter from '../components/foods/FoodSearchFilter.svelte';
 
   // Query string params
@@ -653,6 +653,15 @@
     return true;
   }
   $: fsRows = (offTiersActive, usdaTiersActive, activeCategoryFilter, fsState.rows.filter(_fsVisible));
+  // Rows are put in the page a screenful at a time. A one-letter query can
+  // match thousands of own foods, and building all of them on every
+  // keystroke held the typed letter back for most of a second.
+  const FOOD_SEARCH_RENDER_STEP = 40;
+  let fsRenderLimit = FOOD_SEARCH_RENDER_STEP;
+  let _fsRenderQuery = '';
+  // Back to one screenful for a new query only, not when a page arrives.
+  $: if (fsState.query !== _fsRenderQuery) { _fsRenderQuery = fsState.query; fsRenderLimit = FOOD_SEARCH_RENDER_STEP; }
+  $: fsShownRows = fsRows.length > fsRenderLimit ? fsRows.slice(0, fsRenderLimit) : fsRows;
   $: _fsHiddenByFilter = fsState.settled && fsState.rows.length > 0 && fsRows.length === 0;
   $: _fsFilterActive = _fsExcluded.size > 0 || _fsSort !== 'relevance' || offTiersFiltered
     || usdaTiersFiltered || !!activeCategoryFilter;
@@ -838,7 +847,9 @@
     );
   }
 
-  $: filteredBySearch = search
+  // The Foods tab matches through food-search.js; filtering here too would
+  // only add a second pass over the whole catalog to every keystroke.
+  $: filteredBySearch = search && activeTab !== 0
     ? displayList.filter(f => _fuzzyMatch(f, search))
     : displayList;
   $: filteredList = activeCategoryFilter
@@ -1611,14 +1622,6 @@
     }
   }
 
-  // Barcode normalizer — strips whitespace + leading zeros so a UPC-A saved
-  // as "0036000291452" matches a scan that returns "36000291452" (and vice
-  // versa). Different scanners (ML Kit on Android, Quagga on web) and
-  // different OFF entries don't agree on whether to keep the leading zero.
-  function _normBarcode(b) {
-    return String(b || '').trim().replace(/^0+/, '');
-  }
-
   // Loading overlay state — shown while a scanned barcode is being looked
   // up against Open Food Facts. Without it the user could be left staring
   // at the Foods tab between camera close and editor open on slow or
@@ -1658,7 +1661,7 @@
     // all see the same canonical form (no "two codes for one product"
     // downstream). Idempotent for non-12-digit codes (EAN-13, EAN-8,
     // ITF-14, non-numeric QR payloads all pass through unchanged).
-    // _normBarcode handles cross-form library matching for foods saved
+    // foodWithBarcode handles cross-form library matching for foods saved
     // under the old 12-digit form. (Issue #22 followup; duplaja noticed
     // the redundant remote-OFF roundtrip from the double-lookup log.)
     const code = /^\d{12}$/.test(rawCode) ? '0' + rawCode : rawCode;
@@ -1668,22 +1671,34 @@
       //    barcode, the quick-add card (pickMode) or the existing food page
       //    (browse mode) is what they want — no point hitting OFF + showing
       //    a fresh-import editor for something they've already vetted.
-      const codeN = _normBarcode(code);
-      const existing = (localFoods || []).find(f => f.barcode && _normBarcode(f.barcode) === codeN);
+      const existing = foodWithBarcode(localFoods, code);
       if (existing) {
         if (pickMode) await pickFood(existing);
         else          openEditor(existing, 'foodList');
         return;
       }
 
-      // 2. Not in library — fetch from Open Food Facts. If found, open
-      //    FoodEditor with OFF data prefilled (picture, full nutrition,
-      //    brand) so the user can verify before saving. If NOT found in
-      //    OFF, still open the editor with just the barcode prefilled so
-      //    the user can enter the food manually and optionally contribute
-      //    it back to OFF via the editor's Contribute button. Previously
-      //    this just showed a dead-end "Barcode not found" toast.
-      if (_sourcesOffline) {
+      // 2. Not in library — look further in the search's source order
+      //    (food-search.js findBarcode): foods shared with the user, Open
+      //    Food Facts as the server answers it (local mirror first, live OFF
+      //    only when the mirror lacks the code), then USDA, which the search
+      //    also only asks when nothing nearer matched. If found in OFF, the
+      //    detail sheet shows it; if found nowhere, the editor opens with
+      //    just the barcode so the user can enter the food manually and
+      //    optionally contribute it back to OFF via the editor's Contribute
+      //    button.
+      _scanLookupCode   = code;
+      _scanLookupActive = true;
+      _armScanIndicator();
+      const steps = [];
+      if (sharingEnabled && sharedCounts.foods > 0) steps.push({ id: 'shared', find: async (c) => {
+        if (!groupFoods.length) await loadGroupCatalogue();
+        return foodWithBarcode(groupFoods, c);
+      } });
+      if (!_sourcesOffline && $offEnabled) steps.push({ id: 'off', find: (c) => API.lookupBarcode(c) });
+      if (!_sourcesOffline && $usdaEnabled) steps.push({ id: 'usda', find: (c) => USDA.lookupBarcode(c, usdaApiKey.get()) });
+      const found = await findBarcode(code, steps);
+      if (!found && _sourcesOffline) {
         // Only the user's own foods could be checked, so don't let this read
         // as "this barcode doesn't exist".
         scannerOpen = false;
@@ -1692,11 +1707,14 @@
         openEditor({ barcode: code }, 'foodList');
         return;
       }
-      _scanLookupCode   = code;
-      _scanLookupActive = true;
-      _armScanIndicator();
-      const { API } = await import('../lib/api.js');
-      const result = await API.lookupBarcode(code);
+      if (found && found.source !== 'off') {
+        // Shared and USDA hits open the way a tap on that search row does.
+        scannerOpen = false;
+        if (pickMode) await pickFood(found.item, found.source);
+        else { detailSheetFood = found.item; detailSheetOpen = true; }
+        return;
+      }
+      const result = found?.item;
       if (result) {
         // OFF returned data for this barcode — show the nutrition-facts
         // detail sheet first (with Edit + Add to Diary options) instead
@@ -1728,8 +1746,10 @@
           detailSheetOpen = true;
         }
       } else {
-        const { showInfo: si } = await import('../stores/toast.js');
-        si('Not in Open Food Facts — enter the food and contribute it back if you want');
+        if ($offEnabled) {
+          const { showInfo: si } = await import('../stores/toast.js');
+          si('Not in Open Food Facts — enter the food and contribute it back if you want');
+        }
         openEditor({ barcode: code }, 'foodList');
       }
     } catch(e) {
@@ -2230,8 +2250,8 @@
         </div>
       {:else}
         <ul class="food-list">
-          <!-- Index-suffixed key: two own foods may share a barcode (#191). -->
-          {#each fsRows as row, i (row.key + ':' + i)}
+          <!-- row.key is unique, also for two own foods with one barcode (#191). -->
+          {#each fsShownRows as row (row.key)}
             {@const source = row.source}
             {@const item = row.item}
             {@const isDb = source === 'off' || source === 'off-live' || source === 'usda'}
@@ -2339,7 +2359,12 @@
         {#if _sourcesOffline}
           <p class="empty-state-hint" style="text-align:center;margin-top:8px">{$_('foods.offline.search_hint')}</p>
         {/if}
-        {#if fsState.hasMore && fsState.settled}
+        {#if fsShownRows.length < fsRows.length}
+          <!-- Keyed so a sentinel still in view after a step observes again. -->
+          {#key fsRenderLimit}
+            <div class="scroll-sentinel" use:_infiniteScroll={{ onIntersect: () => fsRenderLimit += FOOD_SEARCH_RENDER_STEP }}></div>
+          {/key}
+        {:else if fsState.hasMore && fsState.settled}
           <div class="scroll-sentinel" use:_infiniteScroll={{ onIntersect: () => _foodSearch.loadMore() }}></div>
         {/if}
       {/if}
