@@ -1383,10 +1383,19 @@
     "close_short": "Close",
     "torch": "Toggle Flashlight",
     "title": "Scan Barcode",
-    "library": "Library",
-    "camera": "Camera",
     "manual_ph": "Or type barcode manually…",
-    "lookup": "Look Up"
+    "lookup": "Look Up",
+    "refresh": "Refresh",
+    "flash_on": "Flash On",
+    "flash_off": "Flash Off",
+    "switch_camera": "Switch Camera",
+    "status": {
+      "starting": "Starting camera…",
+      "align": "Point the camera at the barcode",
+      "denied": "Camera access denied",
+      "no_camera": "No camera found",
+      "error": "Camera error — tap Refresh"
+    }
   },
   "food_editor": {
     "off_prepared": {

@@ -1339,8 +1339,6 @@
     "close_short": "Schließen",
     "torch": "Taschenlampe ein-/ausschalten",
     "title": "Barcode scannen",
-    "library": "Bibliothek",
-    "camera": "Kamera",
     "manual_ph": "Oder Barcode manuell eingeben…",
     "lookup": "Nachschlagen"
   },

@@ -24,7 +24,7 @@ const config: CapacitorConfig = {
     // which is safe here because the WebView origin is a local virtual URL
     // served by Capacitor's AssetLoader — no network attacker can inject
     // into it. Keeping the WebView on HTTPS (androidScheme below) preserves
-    // secure-context status, which the html5-qrcode barcode scanner needs
+    // secure-context status, which the web barcode scanner's camera needs
     // for getUserMedia. NOTE: this option lives under `android`, NOT
     // `server` — Capacitor reads it from either `android.allowMixedContent`
     // or the top-level `allowMixedContent`. Putting it under `server` is
