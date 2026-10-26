@@ -1276,6 +1276,10 @@
 <BarcodeScanner bind:open={editorScannerOpen} on:scan={onEditorScan} on:close={() => editorScannerOpen = false} />
 
 <style>
+  /* Space between nutrient rows so each label reads as belonging to
+     the input below it, not the one above (4px label→input vs 16px
+     input→next label). The ≥1024px grid overrides this with row-gap. */
+  .nutrition-fields { display: flex; flex-direction: column; gap: 16px; }
   /* Indented sub-nutrient rows — Saturated Fat under Total Fat, Sugars
      under Carbs, etc. Mirrors the FDA Nutrition Facts label hierarchy
      and matches CookTrace's PantryEditor for cross-app consistency. */

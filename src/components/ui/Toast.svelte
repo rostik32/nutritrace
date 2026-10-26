@@ -24,14 +24,17 @@
   .toast-container {
     position: fixed;
     bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px);
-    left: 50%;
-    transform: translateX(-50%);
+    /* Span the viewport with 16px gutters and centre toasts inside it
+       (instead of left:50% + translate), so a long message can wrap
+       across the full width rather than shrinking to half the screen. */
+    left: 16px;
+    right: 16px;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 8px;
     z-index: 200;
     pointer-events: none;
-    max-width: calc(100vw - 32px);
   }
   .toast {
     display: flex;
@@ -45,7 +48,8 @@
     font-size: 14px;
     font-weight: 500;
     color: var(--text-1);
-    white-space: nowrap;
+    max-width: 560px;
+    overflow-wrap: anywhere;
     backdrop-filter: var(--backdrop-blur);
     -webkit-backdrop-filter: var(--backdrop-blur);
   }
