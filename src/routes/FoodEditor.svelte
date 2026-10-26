@@ -762,6 +762,7 @@
         ? await NtApi.updateFood(food.id, item)
         : await NtApi.createFood(item);
       item.id = saved.id;
+      editorState.foodSaved = item;
       // If called from diary pick mode, also add to diary
       const ctx = editorState.foodDiaryCtx;
       if (ctx) {

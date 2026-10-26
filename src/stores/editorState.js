@@ -13,6 +13,9 @@ export const editorState = {
   foodsScrollY:   null,  // scroll position to restore when returning to Foods
   foodsActiveTab: null,  // tab index to restore when returning to Foods
   foodsSearch:    null,  // Foods search text to restore when returning to Foods
+  foodSaved:      null,  // the food FoodEditor last saved, for the page that opened it
+  qtyReturn:      null,  // Foods quantity sheet to reopen after "Edit nutrition"
+  diaryEditReturn: null, // Diary item sheet to reopen after "Edit nutrition"
 };
 
 export function clearFoodEditorState() {

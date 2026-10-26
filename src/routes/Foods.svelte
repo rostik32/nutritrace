@@ -1543,17 +1543,19 @@
     history.back();
   }
 
-  // "Edit" in the quantity sheet: fix the product's values first, then log it
-  // with the amount typed here (edit-found-food).
+  // "Edit nutrition" in the quantity sheet: fix the product's values, then
+  // come back to this sheet with the amount typed here, recalculated from
+  // the saved values. Nothing is logged until the sheet is confirmed.
   function editFromQtyPrompt() {
     if (!promptFood) return;
     const food = promptFood;
+    editorState.qtyReturn = {
+      food, portion: promptPortion, unit: promptUnit, servings: promptServings,
+      tick: qtyPromptTick, sub: pickSubIndex, date: pickDate, meal: pickMeal,
+    };
+    editorState.foodSaved = null;
     showQtyPrompt = false;
-    openEditor(food, 'foodList', { diary: true, amount: {
-      portion: parseDecimal(promptPortion) || parseFloat(food.portion) || 100,
-      unit: promptUnit || food.unit || 'g',
-      quantity: parseDecimal(promptServings) || 1,
-    } });
+    openEditor(food, 'foodList', { diary: false });
   }
 
   // The food as logged at `newPortion` `newUnit`, with its nutrition scaled
@@ -2132,8 +2134,27 @@
       search = editorState.foodsSearch;
       editorState.foodsSearch = null;
     }
+    // Back from "Edit nutrition": same picker tab, then the quantity sheet
+    // again once the catalog holds the saved food.
+    const qtyBack = editorState.qtyReturn;
+    editorState.qtyReturn = null;
+    const _qtyBackHere = qtyBack && pickMode && qtyBack.date === pickDate && qtyBack.meal === pickMeal;
+    if (_qtyBackHere) {
+      pickSubIndex = qtyBack.sub;
+      pickSubTouched = true;
+    }
     // Load local data FIRST — don't block on server calls
     await load();
+    if (_qtyBackHere) {
+      const saved = editorState.foodSaved;
+      editorState.foodSaved = null;
+      promptFood = saved ? (localFoods.find(f => f.id === saved.id) || saved) : qtyBack.food;
+      promptPortion = qtyBack.portion;
+      promptUnit = qtyBack.unit;
+      promptServings = qtyBack.servings;
+      qtyPromptTick = qtyBack.tick;
+      showQtyPrompt = true;
+    }
     await loadYesterdayMeals();
     // Sharing status from server — non-blocking, updates UI when ready
     refreshSharingStatus();
@@ -3283,8 +3304,6 @@
       </div>
     </div>
     <button class="btn btn-primary w-full" on:click={confirmQtyPrompt} disabled={_addingToDiary}>{qtyPromptTick ? $_('foods.picker.save_card') : $_('foods.add_to_diary')}</button>
-    <!-- Also on history cards (tick mode): there "Edit nutrition" logs the
-         edited product right away, as from search, instead of ticking it. -->
     {#if pickMode && activeTab === 0}
       <button class="btn btn-secondary w-full" on:click={editFromQtyPrompt} disabled={_addingToDiary}>
         <span class="material-symbols-rounded" style="font-size:18px">edit</span>

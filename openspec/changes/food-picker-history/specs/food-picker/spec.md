@@ -144,11 +144,15 @@ The product card SHALL show a heart for the user's own catalog foods and for dat
 - **THEN** the product is saved to My Foods and listed on Saved
 
 ### Requirement: Edit nutrition from the product card
-A product card opened from Recently Eaten, Most Eaten or Saved SHALL offer "Edit nutrition", as the card opened from Search does. Saving the edited product SHALL add it to the current meal with the quantity set in the card, instead of ticking it.
+Every product card in the picker (Search, Recently Eaten, Most Eaten, Saved) and the edit sheet of a diary entry logged from a food SHALL offer "Edit nutrition". Saving in the food editor SHALL return to the same card or sheet with the amount the user typed, and SHALL recalculate its energy and macros from the saved values. Nothing SHALL be logged or changed in the diary until the card or sheet is saved. Leaving the editor without saving SHALL return to the card unchanged.
 
 #### Scenario: Fixing a product from history
-- **WHEN** the user opens "Brumík" from the Breakfast block, taps "Edit nutrition", changes the fat and saves
-- **THEN** the product's values are saved and "Brumík" is added to Breakfast with the card's quantity
+- **WHEN** the user opens "Brumík" from the Breakfast block, sets 15 g, taps "Edit nutrition", changes the fat and saves
+- **THEN** the card shows 15 g again with the new fat, and the diary is unchanged until the card is saved
+
+#### Scenario: Fixing a logged entry
+- **WHEN** the user opens "Vital & Fit" in Breakfast in the diary, taps "Edit nutrition", changes the carbs and saves
+- **THEN** the entry's sheet is shown again with its amount and the new carbs, and saving the sheet updates the entry
 
 ### Requirement: Save a food from the diary
 The long-press menu of a diary item logged from a catalog food SHALL offer "Add to Saved", or "Remove from Saved" when the food is saved already. Recipes and quick calories SHALL NOT get this action.
