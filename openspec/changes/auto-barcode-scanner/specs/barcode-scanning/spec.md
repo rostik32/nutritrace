@@ -58,3 +58,16 @@ be accepted at once; any other code SHALL be accepted only after the same value 
 #### Scenario: QR code next to the barcode
 - **WHEN** a QR code is in view
 - **THEN** it is not reported
+
+### Requirement: Scan from a photo
+The scanner SHALL offer a "From Photo" action that reads a product barcode from a picture the user picks,
+with the same formats and check-digit rule as the live scan, and report it like a live read. When no
+barcode is found it SHALL say so and keep the scanner open.
+
+#### Scenario: Photo with a barcode
+- **WHEN** the user picks a photo of a package whose EAN-13 is readable
+- **THEN** the scanner closes and reports that code
+
+#### Scenario: Photo without a barcode
+- **WHEN** the picked photo has no readable product barcode
+- **THEN** the scanner shows "No barcode found in the photo" and stays open

@@ -25,12 +25,14 @@ them reads is accepted as is, so a misread (Quagga2 is prone to them) goes strai
   same value is read twice within 1.5 s.
 - **Lighter scanner.** html5-qrcode (~370 KB, a second wrapper around the same ZXing decoder) is removed;
   ZXing and Quagga2 are loaded only when the built-in detector is missing or has not found a code yet.
+- **Scan from a photo.** A "From Photo" button in the scanner (web and Android) reads the barcode from a
+  picture from the gallery or the phone's camera app: on the web through the same decoders, best first;
+  on Android through ML Kit. Useful when the live camera can't focus or camera access is denied.
 - Scanner status texts become translatable (en, ru).
 
 Upstream: yes — generic for every web/PWA user, no fork-only files; offer as a PR against upstream `dev`.
 
-Out of scope: the Android app's ML Kit scanner (unchanged); QR codes; reading barcodes from a photo or
-file; changing what happens after a code is read (lookup order is the `food-search` capability).
+Out of scope: the Android app's live ML Kit scanner (unchanged apart from the photo button); QR codes; changing what happens after a code is read (lookup order is the `food-search` capability).
 
 ## Capabilities
 

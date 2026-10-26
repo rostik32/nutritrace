@@ -18,8 +18,8 @@
     };
   }
   import { barcodeBeep, barcodeFlashlight } from '../../stores/settings.js';
-  import { createConfirmer, decodersForTick } from '../../lib/barcode-scan.js';
-  import { createDecoders } from '../../lib/barcode-decoders.js';
+  import { createConfirmer, decodersForTick, checkDigitOk, PRODUCT_FORMATS } from '../../lib/barcode-scan.js';
+  import { createDecoders, decodeImage } from '../../lib/barcode-decoders.js';
 
   export let open = false;
 
@@ -41,6 +41,8 @@
   let scanning = false;
   let _decoders = null;        // Promise of the decoder list, made once per open
   let _run = 0;                // bumped on every camera (re)start; a stale loop stops
+  let photoInput;
+  let readingPhoto = false;
 
   function playBeep() {
     try {
@@ -175,6 +177,22 @@
     startCamera();
   }
 
+  // A photo picked from the gallery (or taken by the phone's own camera app)
+  // instead of the live preview. The preview keeps scanning meanwhile.
+  async function onPhotoPicked(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file || readingPhoto || detected) return;
+    readingPhoto = true;
+    status = 'barcode_scanner.status.reading_photo';
+    let code = null;
+    try { code = await decodeImage(file); } catch { code = null; }
+    readingPhoto = false;
+    if (detected) return;
+    if (code) return onCode(code);
+    status = 'barcode_scanner.photo_none';
+  }
+
   async function doManual() {
     if (detected) return;
     const code = manualCode.trim();
@@ -290,6 +308,43 @@
     } catch {}
   }
 
+  // Android: a photo from the gallery, read by ML Kit. The live scan is
+  // paused while the picker is open and resumed when nothing was found.
+  async function nativeFromPhoto() {
+    if (detected || readingPhoto || !_nativeBarcodeScannerRef) return;
+    readingPhoto = true;
+    let code = null;
+    try {
+      const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
+      try { await _nativeBarcodeScannerRef.stopScan(); } catch {}
+      const photo = await Camera.getPhoto({ source: CameraSource.Photos, resultType: CameraResultType.Uri, quality: 100 });
+      const { barcodes } = await _nativeBarcodeScannerRef.readBarcodesFromImage({
+        path: photo.path,
+        formats: PRODUCT_FORMATS.map(f => f.toUpperCase()),
+      });
+      const hit = (barcodes || []).find(b => b.rawValue && checkDigitOk(b.rawValue, String(b.format || '').toLowerCase()));
+      code = hit ? hit.rawValue : null;
+      if (!code) {
+        const { showError } = await import('../../stores/toast.js');
+        showError($_('barcode_scanner.photo_none'));
+      }
+    } catch (e) {
+      // Closing the picker without a photo lands here; nothing to say.
+      console.warn('[BarcodeScanner] photo:', e?.message || e);
+    } finally {
+      readingPhoto = false;
+    }
+    if (code) {
+      if (detected) return;
+      detected = true;
+      if ($barcodeBeep) playBeep();
+      open = false;
+      dispatch('scan', { code });
+      return;
+    }
+    if (open && !detected) { try { await _nativeBarcodeScannerRef.startScan(); } catch {} }
+  }
+
   function closeNative() {
     // Same ordering rule as the scan listener: open=false first so the
     // reactive cleans up. Avoids the re-open loop.
@@ -352,6 +407,10 @@
     </div>
 
     <div class="ns-bottom">
+      <button class="sc-btn" on:click={nativeFromPhoto} disabled={readingPhoto}>
+        <span class="material-symbols-rounded">photo_library</span>
+        {$_('barcode_scanner.from_photo')}
+      </button>
       <div class="ns-manual">
         <input
           class="input"
@@ -417,6 +476,11 @@
             {$_('barcode_scanner.switch_camera')}
           </button>
         {/if}
+        <button class="sc-btn" on:click={() => photoInput.click()} disabled={readingPhoto}>
+          <span class="material-symbols-rounded">photo_library</span>
+          {$_('barcode_scanner.from_photo')}
+        </button>
+        <input type="file" accept="image/*" hidden bind:this={photoInput} on:change={onPhotoPicked} />
       </div>
 
       <!-- Manual entry -->

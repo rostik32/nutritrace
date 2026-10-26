@@ -20,7 +20,7 @@ What exists (checked 2026-10-26):
 **Goals:** the user only aims the camera; the best decoder available runs first and weaker ones help
 without a camera restart; wrong codes are rare; the pure parts are unit-tested.
 
-**Non-Goals:** Android ML Kit path, QR codes, decoding stills, changing the lookup after `scan`.
+**Non-Goals:** the Android live ML Kit scan, QR codes, changing the lookup after `scan`.
 
 ## Decisions
 
@@ -63,6 +63,17 @@ Remove the controls row (Library + Camera selects). Actions row: Refresh (restar
 (when the track has a torch), Switch camera (when more than one camera). Status pill texts and these
 button labels move to `barcode_scanner.*` i18n keys (en + ru). `barcode_scanner.library` is deleted from
 all locales. The class `scanner-backdrop` stays (back-stack test).
+
+### 6. Scan from a photo (added at the owner's request during review)
+- Web: "From Photo" opens `<input type="file" accept="image/*">` (gallery or the camera app). `decodeImage(file)`
+  loads it into an `<img>` (EXIF orientation applied by the browser) and runs every decoder once, best first,
+  through a fresh `createConfirmer`: native as is, ZXing at 1280 and 2400 px, Quagga2 at 1280/large,
+  1600/large and 1280/medium locator patches (the only settings that found barcodes in 3000×4000 test
+  photos), two Quagga2 passes having to agree. Nothing found → status "No barcode found in the photo"; the
+  live preview keeps scanning meanwhile.
+- Android: the same button pauses the live scan, opens the photo picker (`@capacitor/camera`,
+  `CameraSource.Photos`) and reads the file with ML Kit `readBarcodesFromImage({ path, formats })`; the first
+  barcode passing `checkDigitOk` is reported, otherwise a toast and the live scan resumes.
 
 ## Risks / Trade-offs
 
