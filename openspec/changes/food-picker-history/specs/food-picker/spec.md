@@ -17,6 +17,27 @@ The Foods tab of the add-to-meal picker SHALL show four tabs in this order: Sear
 - **WHEN** the user opens the picker to add to Breakfast and has no logged foods in the last 90 days
 - **THEN** the Search tab is active
 
+### Requirement: Opening while the history loads
+While the diary days are loading, the picker SHALL show Recently Eaten with a loading state and SHALL NOT show the Search tab first. When the load finds no history, the picker SHALL move to Search unless the user has chosen a tab meanwhile.
+
+#### Scenario: Slow load
+- **WHEN** the user opens the picker and the diary takes a second to load
+- **THEN** Recently Eaten shows a loading state, then its lists, with no Search tab in between
+
+### Requirement: Tab bar fits narrow screens
+The picker's tab bar SHALL stay within the screen width. When the tab labels do not fit, the bar SHALL scroll sideways without a visible scrollbar, and the tab the user taps SHALL scroll fully into view.
+
+#### Scenario: Phone width
+- **WHEN** the user opens the picker on a 375 px wide screen
+- **THEN** the page does not scroll sideways, the tab bar scrolls, and tapping Saved brings it fully into view
+
+### Requirement: History rows show amount and energy
+Each row on the history tabs and Saved SHALL show the amount it will be added with and the energy for that amount, in the user's energy unit. A ticked row SHALL show the amount of its tick.
+
+#### Scenario: Energy for the amount
+- **WHEN** "Boiled Egg" (155 kcal per 100 g) was last logged as 2 × 100 g
+- **THEN** its row shows "100g × 2 · 310 kcal"
+
 ### Requirement: Two blocks on history tabs
 Recently Eaten and Most Eaten SHALL each show two blocks: one for the current meal and one for all meals. Each block SHALL show five products at first, and a "Show more" button SHALL add twenty more products per click. A block SHALL NOT list the same product twice. A product MAY appear in both blocks.
 
@@ -62,7 +83,7 @@ The Saved tab SHALL list the user's favorite foods, not meals. The list is the s
 - **THEN** the favorite meal is not listed on Saved
 
 ### Requirement: Ticking products
-On Recently Eaten, Most Eaten and Saved, tapping a product SHALL open its product card, where the quantity is set. Saving the card SHALL mark the product as ticked and SHALL NOT add it to the diary. A bulk action "Add N" SHALL add every ticked product to the current meal with its quantity and clear the ticks.
+On Recently Eaten, Most Eaten and Saved, tapping a product SHALL open its product card, where the quantity is set. Saving the card SHALL mark the product as ticked and SHALL NOT add it to the diary. A bulk action "Add N" SHALL add every ticked product to the current meal with its quantity and clear the ticks, and SHALL NOT ask for the quantities again.
 
 #### Scenario: Ticking a product
 - **WHEN** the user taps "Boiled Egg", sets 2 pieces and saves the card
