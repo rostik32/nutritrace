@@ -25,22 +25,22 @@ function fakeSheet(fields) {
   };
 }
 
-test('Number of Servings is the default', () => {
+test('Serving Size is the default', () => {
   const sheet = fakeSheet(['portion', 'servings']);
-  assert.equal(defaultFieldInput(sheet, undefined).field, 'servings');
-  assert.equal(defaultFieldInput(sheet, 'servings').field, 'servings');
+  assert.equal(defaultFieldInput(sheet, undefined).field, 'portion');
+  assert.equal(defaultFieldInput(sheet, 'portion').field, 'portion');
 });
 
-test('Serving Size when chosen', () => {
+test('Number of Servings when chosen', () => {
   const sheet = fakeSheet(['portion', 'servings']);
-  const el = focusDefaultField(sheet, 'portion');
-  assert.equal(el.field, 'portion');
+  const el = focusDefaultField(sheet, 'servings');
+  assert.equal(el.field, 'servings');
   assert.equal(el.focused, true);
   assert.equal(el.selected, true, 'the value is selected so typing replaces it');
 });
 
-test('an unknown value falls back to Number of Servings', () => {
-  assert.equal(defaultFieldInput(fakeSheet(['portion', 'servings']), 'grams').field, 'servings');
+test('an unknown value falls back to Serving Size', () => {
+  assert.equal(defaultFieldInput(fakeSheet(['portion', 'servings']), 'grams').field, 'portion');
 });
 
 test('a sheet without either box uses its first number box (Quick Calories)', () => {
@@ -52,10 +52,10 @@ test('no sheet, no crash', () => {
   assert.equal(focusDefaultField(null, 'servings'), null);
 });
 
-test('the setting is synced with the account and defaults to Number of Servings', () => {
+test('the setting is synced with the account and defaults to Serving Size', () => {
   const s = read('../src/stores/settings.js');
   assert.match(s, /'diaryDefaultField',/);
-  assert.match(s, /createSettingStore\('diaryDefaultField', 'servings'\)/);
+  assert.match(s, /createSettingStore\('diaryDefaultField', 'portion'\)/);
 });
 
 test('all three sheets mark both boxes and use the setting', () => {

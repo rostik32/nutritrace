@@ -599,7 +599,7 @@ export const diaryShowNotes         = createSettingStore('diaryShowNotes',      
 export const diaryShowCompletion = createSettingStore('diaryShowCompletion', false);
 // #224: which box the add and edit sheets put the cursor in, 'servings'
 // (Number of Servings) or 'portion' (Serving Size).
-export const diaryDefaultField = createSettingStore('diaryDefaultField', 'servings');
+export const diaryDefaultField = createSettingStore('diaryDefaultField', 'portion');
 
 // Desktop diary redesign — right-rail widget visibility. Each widget
 // can be independently hidden by the user. Defaults show everything so
