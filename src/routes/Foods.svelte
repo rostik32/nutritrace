@@ -1491,20 +1491,22 @@
     foods = await _resolveOffPicks(foods);
     if (!foods.length) return;
 
-    // Ticks from the history tabs already carry the amount set in the card,
-    // so the portion sheet only comes up when a pick has none.
-    if ($diaryPromptQuantity && !foods.every(tickOf)) {
-      multiPortionItems = foods.map(food => {
-        const tick = tickOf(food);
-        return {
-          food,
-          portion: tick ? tick.portion : (food.portion || 100),
-          unit: tick ? tick.unit : (food.unit || 'g'),
-          servings: tick ? tick.servings : 1,
-        };
-      });
-      showMultiPortionSheet = true;
-      return;
+    if ($diaryPromptQuantity) {
+      // Ticks from the history tabs already carry the amount set in the card,
+      // so the portion sheet only comes up when a pick has none.
+      if (!foods.every(tickOf)) {
+        multiPortionItems = foods.map(food => {
+          const tick = tickOf(food);
+          return {
+            food,
+            portion: tick ? tick.portion : (food.portion || 100),
+            unit: tick ? tick.unit : (food.unit || 'g'),
+            servings: tick ? tick.servings : 1,
+          };
+        });
+        showMultiPortionSheet = true;
+        return;
+      }
     }
 
     // No prompt — add all with defaults, or with the ticked quantities
