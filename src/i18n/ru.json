@@ -915,7 +915,11 @@
       "api_key_desc": "Добавьте ключ вашего ИИ-провайдера в разделе <strong>Настройки → ИИ-помощник</strong>, чтобы начать общение.",
       "supported_providers": "Поддерживаются Anthropic Claude, OpenAI и Google Gemini.",
       "open_settings": "Открыть настройки"
-    }
+    },
+    "stop": "Остановить",
+    "reply_failed": "Не удалось получить ответ: {error}",
+    "reply_stopped": "Остановлено",
+    "reply_missing": "Ответа нет: запрос прервался (приложение закрыли или пропала связь). Отправьте ещё раз."
   },
   "goals_page": {
     "adaptive": {

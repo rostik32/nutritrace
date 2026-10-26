@@ -947,7 +947,11 @@
       "api_key_desc": "Add your AI provider key in <strong>Settings → AI Assistant</strong> to start chatting.",
       "supported_providers": "Supports Anthropic Claude, OpenAI, and Google Gemini.",
       "open_settings": "Open Settings"
-    }
+    },
+    "stop": "Stop",
+    "reply_failed": "Couldn't get a reply: {error}",
+    "reply_stopped": "Stopped",
+    "reply_missing": "No reply: the request was interrupted (the app was closed or the connection dropped). Send it again."
   },
   "goals_page": {
     "adaptive": {

@@ -241,7 +241,7 @@ export const TOOLS = [
 
 // ── Main entry point ─────────────────────────────────────────────────────────
 
-export async function callAI({ provider, apiKey, model, messages, systemPrompt, tools, onToolCall, baseUrl }) {
+export async function callAI({ provider, apiKey, model, messages, systemPrompt, tools, onToolCall, baseUrl, signal }) {
   // The 'oai-compat' provider points at any /v1/chat/completions endpoint
   // (Ollama, LM Studio, LocalAI, vLLM, DeepSeek, Groq, Together AI, etc.)
   // Local endpoints don't need an API key; cloud ones do. Other providers
@@ -250,13 +250,13 @@ export async function callAI({ provider, apiKey, model, messages, systemPrompt, 
     throw new Error('No API key configured. Add one in Settings → AI Assistant.');
   }
   switch (provider) {
-    case 'claude':     return _callClaudeWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall);
-    case 'openai':     return _callOpenAIWithTools(apiKey, renamedModel(model), messages, systemPrompt, tools, onToolCall, 'https://api.openai.com');
-    case 'gemini':     return _callGeminiWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall);
+    case 'claude':     return _callClaudeWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall, signal);
+    case 'openai':     return _callOpenAIWithTools(apiKey, renamedModel(model), messages, systemPrompt, tools, onToolCall, 'https://api.openai.com', signal);
+    case 'gemini':     return _callGeminiWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall, signal);
     case 'oai-compat': {
       if (!baseUrl) throw new Error('OpenAI Compatible provider needs a Base URL. Set one in Settings → AI Assistant.');
       if (!model)   throw new Error('OpenAI Compatible provider needs a model name. Set one in Settings → AI Assistant.');
-      return _callOpenAIWithTools(apiKey || 'no-key', model, messages, systemPrompt, tools, onToolCall, baseUrl.replace(/\/+$/, ''));
+      return _callOpenAIWithTools(apiKey || 'no-key', model, messages, systemPrompt, tools, onToolCall, baseUrl.replace(/\/+$/, ''), signal);
     }
     default: throw new Error(`Unknown AI provider: ${provider}`);
   }
@@ -280,14 +280,18 @@ export async function callAI({ provider, apiKey, model, messages, systemPrompt, 
  * (cookies don't persist across the Android WebView's reloads). Matches
  * the pattern in api.js#_fetch — without the Bearer header, env-locked
  * AI calls from Android return 401 even though the chat path looks fine.
+ *
+ * `signal` (an AbortSignal, here and in callAI) is the chat's Stop button:
+ * it cancels the open request, and no further tool or round runs after it.
  */
-export async function callAIProxy({ messages, systemPrompt, tools, onToolCall }) {
+export async function callAIProxy({ messages, systemPrompt, tools, onToolCall, signal }) {
   const { apiUrl, isNative, getServerUrl, getAuthToken } = await import('./platform.js');
 
   let currentMessages = [...messages];
   const MAX_ROUNDS = 5;
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
+    signal?.throwIfAborted();
     const headers = { 'Content-Type': 'application/json' };
     if (isNative && getServerUrl()) {
       const token = getAuthToken();
@@ -297,6 +301,7 @@ export async function callAIProxy({ messages, systemPrompt, tools, onToolCall })
       if (csrf) headers['X-CSRF-Token'] = csrf;
     }
     const res = await fetch(apiUrl('/api/ai/chat'), {
+      signal,
       method: 'POST',
       credentials: 'include',
       headers,
@@ -318,6 +323,7 @@ export async function callAIProxy({ messages, systemPrompt, tools, onToolCall })
     currentMessages.push(data.assistantMessage);
     for (const tc of data.toolCalls) {
       if (onToolCall) onToolCall(tc.name);
+      signal?.throwIfAborted();
       const result = await _executeTool(tc.name, tc.args || {});
       currentMessages.push({
         role: 'tool',
@@ -400,7 +406,7 @@ export const renamedModel = (model) => AI_MODEL_RENAMES[model] || model;
 
 // ── Anthropic Claude (with tool use) ─────────────────────────────────────────
 
-async function _callClaudeWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall) {
+async function _callClaudeWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall, signal) {
   const claudeTools = (tools || []).map(t => ({
     name: t.name,
     description: t.description,
@@ -411,6 +417,7 @@ async function _callClaudeWithTools(apiKey, model, messages, systemPrompt, tools
   const MAX_ROUNDS = 5;
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
+    signal?.throwIfAborted();
     const body = {
       model: model || AI_DEFAULT_MODELS.claude,
       max_tokens: 4096,
@@ -420,6 +427,7 @@ async function _callClaudeWithTools(apiKey, model, messages, systemPrompt, tools
     if (claudeTools.length) body.tools = claudeTools;
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
+      signal,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -446,6 +454,7 @@ async function _callClaudeWithTools(apiKey, model, messages, systemPrompt, tools
     const toolResults = [];
     for (const tu of toolUses) {
       if (onToolCall) onToolCall(tu.name);
+      signal?.throwIfAborted();
       const result = await _executeTool(tu.name, tu.input);
       toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
     }
@@ -457,7 +466,7 @@ async function _callClaudeWithTools(apiKey, model, messages, systemPrompt, tools
 
 // ── OpenAI (with function calling) ──────────────────────────────────────────
 
-async function _callOpenAIWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall, baseUrl = 'https://api.openai.com') {
+async function _callOpenAIWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall, baseUrl = 'https://api.openai.com', signal) {
   const openaiTools = (tools || []).map(t => ({
     type: 'function',
     function: { name: t.name, description: t.description, parameters: t.parameters },
@@ -470,6 +479,7 @@ async function _callOpenAIWithTools(apiKey, model, messages, systemPrompt, tools
   const MAX_ROUNDS = 5;
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
+    signal?.throwIfAborted();
     const selectedModel = model || AI_DEFAULT_MODELS.openai;
     const body = {
       model: selectedModel,
@@ -489,6 +499,7 @@ async function _callOpenAIWithTools(apiKey, model, messages, systemPrompt, tools
     if (apiKey && apiKey !== 'no-key') headers['Authorization'] = `Bearer ${apiKey}`;
 
     const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+      signal,
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -508,6 +519,7 @@ async function _callOpenAIWithTools(apiKey, model, messages, systemPrompt, tools
     for (const tc of msg.tool_calls) {
       if (onToolCall) onToolCall(tc.function.name);
       const args = JSON.parse(tc.function.arguments || '{}');
+      signal?.throwIfAborted();
       const result = await _executeTool(tc.function.name, args);
       currentMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
     }
@@ -538,7 +550,7 @@ export function geminiModelFor(model) {
   return GEMINI_RETIRED.has(m) ? AI_DEFAULT_MODELS.gemini : m;
 }
 
-async function _callGeminiWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall) {
+async function _callGeminiWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall, signal) {
   const m = geminiModelFor(model);
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
 
@@ -562,6 +574,7 @@ async function _callGeminiWithTools(apiKey, model, messages, systemPrompt, tools
   const MAX_ROUNDS = 5;
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
+    signal?.throwIfAborted();
     const body = {
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents,
@@ -569,6 +582,7 @@ async function _callGeminiWithTools(apiKey, model, messages, systemPrompt, tools
     if (geminiTools) body.tools = geminiTools;
 
     const res = await fetch(url, {
+      signal,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -590,6 +604,7 @@ async function _callGeminiWithTools(apiKey, model, messages, systemPrompt, tools
     const responseParts = [];
     for (const fc of functionCalls) {
       if (onToolCall) onToolCall(fc.functionCall.name);
+      signal?.throwIfAborted();
       const result = await _executeTool(fc.functionCall.name, fc.functionCall.args || {});
       responseParts.push({ functionResponse: { name: fc.functionCall.name, response: result } });
     }
