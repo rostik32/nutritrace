@@ -20,14 +20,16 @@ its `AGENTS.md` too — its rules (no secrets, write history, back up first) app
 
 ## How to work
 
-1. Read `DEVELOPMENT.md` (local run, tests) and the upstream `ARCHITECTURE.md` for the code layout.
-2. Plan non-trivial changes with OpenSpec: `/opsx:explore` → `/opsx:propose <name>` → owner reviews
+1. Before coding a behaviour change, check whether an existing setting already gives it (Settings pages,
+   `src/stores/settings.js`, server env). If it does, tell the owner where it is and ask before changing code.
+2. Read `DEVELOPMENT.md` (local run, tests) and the upstream `ARCHITECTURE.md` for the code layout.
+3. Plan non-trivial changes with OpenSpec: `/opsx:explore` → `/opsx:propose <name>` → owner reviews
    `openspec/changes/<name>/` → `/opsx:apply` → `/opsx:archive` after merge. Trivial fixes may skip it.
-3. Keep upstream merges cheap: minimal diffs in upstream files; fork-only tooling lives in `diaitika/`,
+4. Keep upstream merges cheap: minimal diffs in upstream files; fork-only tooling lives in `diaitika/`,
    `openspec/`, `.claude/`, this file and `DEVELOPMENT.md`.
-4. Before opening a PR: `npm test` and `npm run i18n:check` pass on Node 20; every new user-facing
+5. Before opening a PR: `npm test` and `npm run i18n:check` pass on Node 20; every new user-facing
    string is a key in `src/i18n/en.json`.
-5. Never touch production from here. Deploying is a separate step (diaitika-infra runbook).
+6. Never touch production from here. Deploying is a separate step (diaitika-infra runbook).
 
 ## Rules
 
