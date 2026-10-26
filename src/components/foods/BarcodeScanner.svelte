@@ -1,6 +1,6 @@
 <script>
   import { closeOnBack } from '../../lib/back-stack.js';
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { onDestroy, createEventDispatcher, tick } from 'svelte';
   import { fly } from 'svelte/transition';
   import { _ } from 'svelte-i18n';
   import { isNative } from '../../lib/platform.js';
@@ -18,58 +18,31 @@
     };
   }
   import { barcodeBeep, barcodeFlashlight } from '../../stores/settings.js';
+  import { createConfirmer, decodersForTick, checkDigitOk, PRODUCT_FORMATS } from '../../lib/barcode-scan.js';
+  import { createDecoders, decodeImage } from '../../lib/barcode-decoders.js';
 
   export let open = false;
 
   const dispatch = createEventDispatcher();
 
-  let readerId = 'scanner-' + Math.random().toString(36).slice(2);
-  let scannerDiv;
-  let engine = null;
+  // Web scanner: one camera stream shown in <video>, its frames handed to
+  // the decoders best first (barcode-decoders.js), on the schedule and with
+  // the read checks of barcode-scan.js. The user only aims the camera.
+  let videoEl;
+  let stream = null;
   let detected = false;
-  let selectedEngine = localStorage.getItem('wl_scanEngine') || 'zxing';
   let selectedCamId  = localStorage.getItem('wl_scanCamId')  || '';
   let cameras = [];
-  let status = 'Requesting camera…';
+  let status = 'barcode_scanner.status.starting';   // i18n key of the status pill
   let torchVisible = false;
   let torchOn = false;
   let manualCode = '';
   let scanlineVisible = false;
   let scanning = false;
-
-  // CSS injected for quagga/html5qr video fill
-  let styleEl = null;
-
-  // Lazy-load the barcode scanner libraries (~870 KB total) only when the
-  // scanner actually opens. Cached promise so subsequent opens reuse loaded scripts.
-  let _libsPromise = null;
-  function _loadBarcodeLibs() {
-    if (_libsPromise) return _libsPromise;
-    const inject = (src) => new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.async = false;
-      s.onload = resolve;
-      s.onerror = () => reject(new Error('Failed to load ' + src));
-      document.head.appendChild(s);
-    });
-    _libsPromise = Promise.all([
-      inject('/vendor/zxing.min.js'),
-      inject('/vendor/html5-qrcode.min.js'),
-      inject('/vendor/quagga2.min.js'),
-    ]).catch(e => {
-      _libsPromise = null;          // allow retry
-      throw e;
-    });
-    return _libsPromise;
-  }
-
-  const _hideEl = el => {
-    el.style.setProperty('display','none','important');
-    el.style.setProperty('visibility','hidden','important');
-  };
-
-  let h5Observer = null;
+  let _decoders = null;        // Promise of the decoder list, made once per open
+  let _run = 0;                // bumped on every camera (re)start; a stale loop stops
+  let photoInput;
+  let readingPhoto = false;
 
   function playBeep() {
     try {
@@ -83,30 +56,17 @@
     } catch(e) {}
   }
 
-  async function stopEngine() {
-    if (!engine) return;
-    try {
-      if (engine._type === 'zxing') {
-        engine.reader.reset();
-        if (engine.videoEl && engine.videoEl.srcObject) {
-          engine.videoEl.srcObject.getTracks().forEach(t => t.stop());
-          engine.videoEl.srcObject = null;
-        }
-      } else if (engine._type === 'html5qr' && engine.running) {
-        await engine.reader.stop().catch(() => {});
-      } else if (engine._type === 'quagga2') {
-        try { window.Quagga && Quagga.stop(); } catch(e) {}
-      }
-    } catch(e) {}
-    engine = null;
+  function stopStream() {
+    _run++;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    if (videoEl) videoEl.srcObject = null;
   }
 
   async function close() {
     detected = true;
     scanning = false;
-    await stopEngine();
-    if (h5Observer) { h5Observer.disconnect(); h5Observer = null; }
-    if (styleEl) { styleEl.remove(); styleEl = null; }
+    stopStream();
     dispatch('close');
   }
 
@@ -120,190 +80,117 @@
     dispatch('scan', { code });
   }
 
-  async function startCamera(deviceId) {
-    if (detected || !deviceId || !scannerDiv) return;
-    status = 'Starting camera…';
+  async function startCamera() {
+    stopStream();
+    const run = _run;
+    status = 'barcode_scanner.status.starting';
     torchVisible = false;
     torchOn = false;
+    const video = { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+    if (selectedCamId) video.deviceId = { exact: selectedCamId };
+    let s;
+    try {
+      s = await navigator.mediaDevices.getUserMedia({ video });
+    } catch (e) {
+      if (run !== _run) return;
+      // A remembered camera that is gone: forget it and take the rear one.
+      if (selectedCamId && (e?.name === 'OverconstrainedError' || e?.name === 'NotFoundError')) {
+        selectedCamId = '';
+        localStorage.removeItem('wl_scanCamId');
+        return startCamera();
+      }
+      status = e?.name === 'NotAllowedError' ? 'barcode_scanner.status.denied'
+        : e?.name === 'NotFoundError' ? 'barcode_scanner.status.no_camera' : 'barcode_scanner.status.error';
+      return;
+    }
+    if (run !== _run || detected || !videoEl) { s.getTracks().forEach(t => t.stop()); return; }
+    stream = s;
+    videoEl.srcObject = s;
+    await videoEl.play().catch(() => {});
+    const track = s.getVideoTracks()[0];
+    try {
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+        track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+      }
+      if ('torch' in caps) {
+        torchVisible = true;
+        if ($barcodeFlashlight) {
+          torchOn = true;
+          track.applyConstraints({ advanced: [{ torch: true }] }).catch(() => {});
+        }
+      }
+    } catch(e) {}
+    try {
+      cameras = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    } catch { cameras = []; }
+    const camId = track.getSettings ? track.getSettings().deviceId : '';
+    if (camId) { selectedCamId = camId; localStorage.setItem('wl_scanCamId', camId); }
+    if (run !== _run) return;
+    status = 'barcode_scanner.status.align';
+    _decodeLoop(run);
+  }
 
-    if (selectedEngine === 'zxing') {
-      if (!window.ZXing || !ZXing.BrowserMultiFormatReader) { status = 'ZXing not loaded.'; return; }
-      scannerDiv.innerHTML = '';
-      const videoEl = document.createElement('video');
-      videoEl.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;position:absolute;top:0;left:0';
-      videoEl.setAttribute('playsinline', ''); videoEl.setAttribute('muted', '');
-      scannerDiv.appendChild(videoEl);
-      const reader = new ZXing.BrowserMultiFormatReader();
-      engine = { _type: 'zxing', reader, videoEl, torchOn: false };
-      navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } })
-        .then(stream => {
-          videoEl.srcObject = stream;
-          return videoEl.play().then(() => reader.decodeFromStream(stream, videoEl, async r => { if (r) await onCode(r.getText()); }));
-        }).then(() => {
-          if (!detected) status = 'Align Barcode';
+  // Ticks ~100 ms apart, never two decodes at once. A decoder that keeps
+  // failing (script would not load, API missing) is dropped for this open.
+  async function _decodeLoop(run) {
+    let decoders = await _decoders;
+    const confirmer = createConfirmer();
+    const errors = new Map();
+    const t0 = performance.now();
+    for (let n = 0; run === _run && !detected; n++) {
+      if (videoEl && videoEl.readyState >= 2) {
+        for (const id of decodersForTick(decoders.map(d => d.id), n, performance.now() - t0)) {
+          const d = decoders.find(x => x.id === id);
+          let r = null;
           try {
-            const t = videoEl.srcObject && videoEl.srcObject.getVideoTracks()[0];
-            if (t) {
-              const caps = t.getCapabilities ? t.getCapabilities() : {};
-              if ('torch' in caps) {
-                torchVisible = true;
-                if ($barcodeFlashlight) {
-                  torchOn = true; engine.torchOn = true;
-                  t.applyConstraints({ advanced: [{ torch: true }] }).catch(() => {});
-                }
-              }
-            }
-          } catch(e) {}
-        }).catch(err => { console.error('[ZXing]', err); status = 'Camera error — try another engine.'; });
-
-    } else if (selectedEngine === 'html5qr') {
-      if (!window.Html5Qrcode) { status = 'html5-qrcode not loaded.'; return; }
-      scannerDiv.innerHTML = '';
-      const hId = readerId + 'h';
-      const inner = document.createElement('div');
-      inner.id = hId; inner.style.cssText = 'width:100%;height:100%;position:relative';
-      scannerDiv.appendChild(inner);
-
-      if (h5Observer) h5Observer.disconnect();
-      h5Observer = new MutationObserver(mutations => {
-        mutations.forEach(m => {
-          m.addedNodes && m.addedNodes.forEach(node => {
-            if (node.nodeType !== 1) return;
-            const id = node.id || '';
-            if (id === 'qr-shaded-region' || id.includes('__scan_region__') || id.includes('__dashboard') || id.includes('__header')) {
-              _hideEl(node);
-            } else if (id.includes('__scan_region')) {
-              node.style.setProperty('position','absolute','important');
-              node.style.setProperty('inset','0','important');
-              node.style.setProperty('width','100%','important');
-              node.style.setProperty('height','100%','important');
-              node.style.setProperty('border','none','important');
-              node.style.setProperty('box-shadow','none','important');
-            } else if (node.tagName === 'VIDEO') {
-              node.style.cssText = 'width:100%!important;height:100%!important;object-fit:cover!important;position:absolute!important;top:0!important;left:0!important;display:block!important';
-            } else if (node.tagName !== 'CANVAS' && id && id.startsWith(hId)) {
-              _hideEl(node);
-            }
-          });
-          if (m.type === 'attributes' && m.target && m.target.nodeType === 1) {
-            const id = m.target.id || '';
-            if (id === 'qr-shaded-region' || id.includes('__scan_region__') || id.includes('__dashboard') || id.includes('__header')) {
-              _hideEl(m.target);
+            r = await d.decode(videoEl);
+            errors.delete(id);
+          } catch (e) {
+            errors.set(id, (errors.get(id) || 0) + 1);
+            if (errors.get(id) >= 3) {
+              console.warn('[BarcodeScanner] ' + id + ' dropped:', e);
+              decoders = decoders.filter(x => x !== d);
             }
           }
-        });
-      });
-      h5Observer.observe(inner, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
-
-      const reader = new Html5Qrcode(inner.id);
-      engine = { _type: 'html5qr', reader, running: false, torchOn: false };
-      reader.start(deviceId, { fps: 10 }, async t => await onCode(t), () => {})
-        .then(() => {
-          engine.running = true;
-          if (!detected) status = 'Align Barcode';
-          try {
-            inner.querySelectorAll('div,img,button,span').forEach(el => _hideEl(el));
-            const shaded = document.getElementById('qr-shaded-region');
-            if (shaded) _hideEl(shaded);
-            const vid = inner.querySelector('video');
-            if (vid) {
-              vid.style.setProperty('display','block','important');
-              vid.style.setProperty('visibility','visible','important');
-              vid.style.setProperty('width','100%','important');
-              vid.style.setProperty('height','100%','important');
-              vid.style.setProperty('object-fit','cover','important');
-              vid.style.setProperty('position','absolute','important');
-              vid.style.setProperty('top','0','important');
-              vid.style.setProperty('left','0','important');
-            }
-          } catch(e) {}
-          try {
-            const caps = reader.getRunningTrackCameraCapabilities();
-            const tf = caps.torchFeature();
-            if (tf.isSupported()) {
-              torchVisible = true;
-              if ($barcodeFlashlight) {
-                torchOn = true; engine.torchOn = true;
-                tf.apply(true).catch(() => {});
-              }
-            }
-          } catch(e) {}
-        }).catch(err => { console.error('[html5qr]', err); status = 'Camera error — try another engine.'; });
-
-    } else if (selectedEngine === 'quagga2') {
-      if (!window.Quagga) { status = 'Quagga2 not loaded.'; return; }
-      scannerDiv.innerHTML = '';
-      engine = { _type: 'quagga2', torchOn: false };
-      Quagga.init({
-        inputStream: { type: 'LiveStream', target: scannerDiv, constraints: { deviceId: { exact: deviceId } } },
-        decoder: { readers: ['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','code_39_reader'] },
-        locate: true
-      }, err => {
-        if (err) { console.error('[Quagga2]', err); status = 'Quagga2 error — try another engine.'; return; }
-        Quagga.start();
-        if (!detected) status = 'Align Barcode';
-        setTimeout(() => {
-          try {
-            const t = window.Quagga && Quagga.CameraAccess && Quagga.CameraAccess.getActiveTrack && Quagga.CameraAccess.getActiveTrack();
-            if (t) {
-              const caps = t.getCapabilities ? t.getCapabilities() : {};
-              if ('torch' in caps) {
-                torchVisible = true;
-                if ($barcodeFlashlight) {
-                  torchOn = true; engine.torchOn = true;
-                  t.applyConstraints({ advanced: [{ torch: true }] }).catch(() => {});
-                }
-              }
-            }
-          } catch(e) {}
-        }, 800);
-      });
-      Quagga.offDetected();
-      Quagga.onDetected(async result => { if (result && result.codeResult) await onCode(result.codeResult.code); });
+          if (run !== _run || detected) return;
+          const code = r && confirmer.offer({ ...r, decoder: id });
+          if (code) return onCode(code);
+        }
+      }
+      await new Promise(res => setTimeout(res, 100));
     }
   }
 
   async function toggleTorch() {
-    if (!engine) return;
+    const track = stream && stream.getVideoTracks()[0];
+    if (!track) return;
     torchOn = !torchOn;
-    engine.torchOn = torchOn;
-    try {
-      if (engine._type === 'zxing' && engine.videoEl && engine.videoEl.srcObject) {
-        const t = engine.videoEl.srcObject.getVideoTracks()[0];
-        if (t) await t.applyConstraints({ advanced: [{ torch: torchOn }] });
-      } else if (engine._type === 'html5qr') {
-        await engine.reader.getRunningTrackCameraCapabilities().torchFeature().apply(torchOn).catch(() => {});
-      } else if (engine._type === 'quagga2') {
-        const t = window.Quagga && Quagga.CameraAccess && Quagga.CameraAccess.getActiveTrack && Quagga.CameraAccess.getActiveTrack();
-        if (t) await t.applyConstraints({ advanced: [{ torch: torchOn }] }).catch(() => {});
-      }
-    } catch(e) {}
+    try { await track.applyConstraints({ advanced: [{ torch: torchOn }] }); } catch(e) {}
   }
 
-  async function onEngineChange(e) {
-    selectedEngine = e.target.value;
-    localStorage.setItem('wl_scanEngine', selectedEngine);
-    await stopEngine();
-    if (scannerDiv) scannerDiv.innerHTML = '';
-    torchVisible = false;
-    if (selectedCamId) setTimeout(() => startCamera(selectedCamId), 300);
-  }
-
-  async function onCamChange(e) {
-    selectedCamId = e.target.value;
+  function switchCamera() {
+    if (cameras.length < 2) return;
+    const i = cameras.findIndex(c => c.deviceId === selectedCamId);
+    selectedCamId = cameras[(i + 1) % cameras.length].deviceId;
     localStorage.setItem('wl_scanCamId', selectedCamId);
-    await stopEngine();
-    if (scannerDiv) scannerDiv.innerHTML = '';
-    torchVisible = false;
-    setTimeout(() => startCamera(selectedCamId), 300);
+    startCamera();
   }
 
-  async function refresh() {
-    if (!selectedCamId) return;
-    await stopEngine();
-    if (scannerDiv) scannerDiv.innerHTML = '';
-    torchVisible = false;
-    setTimeout(() => startCamera(selectedCamId), 300);
+  // A photo picked from the gallery (or taken by the phone's own camera app)
+  // instead of the live preview. The preview keeps scanning meanwhile.
+  async function onPhotoPicked(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file || readingPhoto || detected) return;
+    readingPhoto = true;
+    status = 'barcode_scanner.status.reading_photo';
+    let code = null;
+    try { code = await decodeImage(file); } catch { code = null; }
+    readingPhoto = false;
+    if (detected) return;
+    if (code) return onCode(code);
+    status = 'barcode_scanner.photo_none';
   }
 
   async function doManual() {
@@ -318,38 +205,10 @@
   async function startScanner() {
     detected = false;
     scanning = true;
-    status = 'Loading scanner…';
-    try {
-      await _loadBarcodeLibs();
-    } catch (e) {
-      status = 'Failed to load scanner libraries.';
-      scanning = false;
-      return;
-    }
-
-    // Inject video fill CSS
-    styleEl = document.createElement('style');
-    styleEl.textContent =
-      '#' + readerId + ' video{width:100%!important;height:100%!important;object-fit:cover!important;position:absolute!important;top:0!important;left:0!important;display:block!important}' +
-      '#' + readerId + ' canvas{width:100%!important;height:100%!important;position:absolute!important;top:0!important;left:0!important;pointer-events:none!important}';
-    document.head.appendChild(styleEl);
-
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(ps => { ps.getTracks().forEach(t => t.stop()); return navigator.mediaDevices.enumerateDevices(); })
-      .then(devices => {
-        if (detected) return;
-        cameras = devices.filter(d => d.kind === 'videoinput').map((d, i) => ({
-          deviceId: d.deviceId, label: d.label || ('Camera ' + (i + 1))
-        }));
-        if (!cameras.length) { status = 'No camera found.'; return; }
-        const preferred = (selectedCamId && cameras.find(d => d.deviceId === selectedCamId))
-                       || cameras.find(d => /back|rear|environment/i.test(d.label))
-                       || cameras[0];
-        selectedCamId = preferred.deviceId;
-        localStorage.setItem('wl_scanCamId', selectedCamId);
-        startCamera(selectedCamId);
-      })
-      .catch(() => { status = 'Camera access denied.'; });
+    status = 'barcode_scanner.status.starting';
+    _decoders = createDecoders();
+    await tick();   // the <video> is in the page once `open` has rendered
+    startCamera();
   }
 
   // Native mode: use ML Kit bundled scanner. Runs camera BEHIND the
@@ -449,6 +308,43 @@
     } catch {}
   }
 
+  // Android: a photo from the gallery, read by ML Kit. The live scan is
+  // paused while the picker is open and resumed when nothing was found.
+  async function nativeFromPhoto() {
+    if (detected || readingPhoto || !_nativeBarcodeScannerRef) return;
+    readingPhoto = true;
+    let code = null;
+    try {
+      const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
+      try { await _nativeBarcodeScannerRef.stopScan(); } catch {}
+      const photo = await Camera.getPhoto({ source: CameraSource.Photos, resultType: CameraResultType.Uri, quality: 100 });
+      const { barcodes } = await _nativeBarcodeScannerRef.readBarcodesFromImage({
+        path: photo.path,
+        formats: PRODUCT_FORMATS.map(f => f.toUpperCase()),
+      });
+      const hit = (barcodes || []).find(b => b.rawValue && checkDigitOk(b.rawValue, String(b.format || '').toLowerCase()));
+      code = hit ? hit.rawValue : null;
+      if (!code) {
+        const { showError } = await import('../../stores/toast.js');
+        showError($_('barcode_scanner.photo_none'));
+      }
+    } catch (e) {
+      // Closing the picker without a photo lands here; nothing to say.
+      console.warn('[BarcodeScanner] photo:', e?.message || e);
+    } finally {
+      readingPhoto = false;
+    }
+    if (code) {
+      if (detected) return;
+      detected = true;
+      if ($barcodeBeep) playBeep();
+      open = false;
+      dispatch('scan', { code });
+      return;
+    }
+    if (open && !detected) { try { await _nativeBarcodeScannerRef.startScan(); } catch {} }
+  }
+
   function closeNative() {
     // Same ordering rule as the scan listener: open=false first so the
     // reactive cleans up. Avoids the re-open loop.
@@ -477,11 +373,7 @@
   onDestroy(() => {
     detected = true;
     if (isNative) stopNativeScanner();
-    else {
-      stopEngine();
-      if (h5Observer) h5Observer.disconnect();
-      if (styleEl) styleEl.remove();
-    }
+    else stopStream();
   });
 </script>
 
@@ -515,6 +407,10 @@
     </div>
 
     <div class="ns-bottom">
+      <button class="sc-btn" on:click={nativeFromPhoto} disabled={readingPhoto}>
+        <span class="material-symbols-rounded">photo_library</span>
+        {$_('barcode_scanner.from_photo')}
+      </button>
       <div class="ns-manual">
         <input
           class="input"
@@ -540,33 +436,12 @@
         </button>
       </div>
 
-      <!-- Engine + Camera selects -->
-      <div class="scanner-controls">
-        <div class="sc-field">
-          <label class="sc-label">{$_('barcode_scanner.library')}</label>
-          <select class="sc-select" bind:value={selectedEngine} on:change={onEngineChange}>
-            <option value="zxing">@zxing/library</option>
-            <option value="html5qr">html5-qrcode</option>
-            <option value="quagga2">quagga2</option>
-          </select>
-        </div>
-        <div class="sc-field">
-          <label class="sc-label">{$_('barcode_scanner.camera')}</label>
-          <select class="sc-select" bind:value={selectedCamId} on:change={onCamChange}>
-            {#if cameras.length === 0}
-              <option>Loading…</option>
-            {:else}
-              {#each cameras as cam}
-                <option value={cam.deviceId}>{cam.label}</option>
-              {/each}
-            {/if}
-          </select>
-        </div>
-      </div>
-
       <!-- Viewport -->
       <div class="scanner-viewport">
-        <div id={readerId} bind:this={scannerDiv} class="scanner-feed"></div>
+        <div class="scanner-feed">
+          <!-- svelte-ignore a11y-media-has-caption -->
+          <video class="scanner-video" bind:this={videoEl} playsinline muted autoplay></video>
+        </div>
         <!-- Aim guide -->
         <div class="scanner-aim" aria-hidden="true">
           <div class="aim-box">
@@ -580,21 +455,32 @@
           </div>
         </div>
         <!-- Status pill -->
-        <div class="scanner-status-pill">{status}</div>
+        <div class="scanner-status-pill">{$_(status)}</div>
       </div>
 
       <!-- Action buttons -->
       <div class="scanner-actions">
-        <button class="sc-btn" on:click={refresh}>
+        <button class="sc-btn" on:click={startCamera}>
           <span class="material-symbols-rounded">refresh</span>
-          Refresh
+          {$_('barcode_scanner.refresh')}
         </button>
         {#if torchVisible}
           <button class="sc-btn" class:sc-btn-torch={torchOn} on:click={toggleTorch}>
             <span class="material-symbols-rounded">{torchOn ? 'flash_on' : 'flash_off'}</span>
-            {torchOn ? 'Flash On' : 'Flash Off'}
+            {torchOn ? $_('barcode_scanner.flash_on') : $_('barcode_scanner.flash_off')}
           </button>
         {/if}
+        {#if cameras.length > 1}
+          <button class="sc-btn" on:click={switchCamera}>
+            <span class="material-symbols-rounded">cameraswitch</span>
+            {$_('barcode_scanner.switch_camera')}
+          </button>
+        {/if}
+        <button class="sc-btn" on:click={() => photoInput.click()} disabled={readingPhoto}>
+          <span class="material-symbols-rounded">photo_library</span>
+          {$_('barcode_scanner.from_photo')}
+        </button>
+        <input type="file" accept="image/*" hidden bind:this={photoInput} on:change={onPhotoPicked} />
       </div>
 
       <!-- Manual entry -->
@@ -651,26 +537,6 @@
     color: var(--text-1);
   }
 
-  .scanner-controls {
-    display: flex;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .sc-field { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 3px; }
-  .sc-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; }
-  .sc-select {
-    flex: 1;
-    padding: 6px 8px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface-1);
-    color: var(--text-1);
-    font-size: 13px;
-  }
-
   .scanner-viewport {
     position: relative;
     width: 100%;
@@ -683,6 +549,14 @@
     position: absolute;
     inset: 0;
     overflow: hidden;
+  }
+  .scanner-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
   .scanner-aim {
     position: absolute;
