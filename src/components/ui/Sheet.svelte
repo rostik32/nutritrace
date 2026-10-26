@@ -55,6 +55,7 @@
       {#if title}
         <div class="sheet-header">
           <h3 class="sheet-title">{title}</h3>
+          <slot name="header-actions" />
           <button class="btn-icon" on:click={close} aria-label={$_('common.close')} title={$_('common.close')}>
             <span class="material-symbols-rounded">close</span>
           </button>

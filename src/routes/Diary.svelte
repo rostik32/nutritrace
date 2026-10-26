@@ -22,7 +22,9 @@
   import AddActivitySheet from '../components/diary/AddActivitySheet.svelte';
   import QuickCaloriesSheet from '../components/diary/QuickCaloriesSheet.svelte';
   import FastingWidget from '../components/diary/FastingWidget.svelte';
-  import { mealIcon } from '../lib/mealIcon.js';
+  import { mealIcon, mealColor } from '../lib/mealIcon.js';
+  import { itemSourceRef } from '../lib/item-source.js';
+  import { catalogFoodFor } from '../lib/food-history.js';
   import Sheet        from '../components/ui/Sheet.svelte';
   import Dialog       from '../components/ui/Dialog.svelte';
   import ActionSheet  from '../components/ui/ActionSheet.svelte';
@@ -501,9 +503,7 @@
   $: _mp = Nutrition.macroPercents(totals);
 
   // Meal visual identity (icon + accent color per meal slot)
-  // Icons are now computed per meal name via mealIcon(); colors cycle for any number of meals
-  const MEAL_COLORS = ['#FFB347','#4FFFB0','#4FC3F7','#CE93D8','#FF7070','#80DEEA','#C5E1A5','#FFD54F','#FF80AB','#B39DDB'];
-  const mealColor = i => MEAL_COLORS[i % MEAL_COLORS.length];
+  // Icons are computed per meal name via mealIcon(); colors cycle via mealColor()
 
   // Tweened counters — animate numbers when food is added/removed
   // Pass duration dynamically so they respect "Disable animations"
@@ -1393,11 +1393,40 @@
   function onItemTouchEnd() {
     if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
   }
+  // Saved: the catalog food behind the long-pressed item, looked up as the
+  // menu opens so it can offer Add or Remove. The web reads that one food by
+  // its server id; the phone matches it in its own catalog.
+  let actionItemFood = null;
+  $: if (showItemAction && actionItem) loadActionItemFood(actionItem);
+  async function loadActionItemFood(item) {
+    actionItemFood = null;
+    try {
+      const ref = itemSourceRef(item, { native: isNative });
+      if (!ref || item.is_recipe || item.type === 'quick_calories') return;
+      const food = isNative
+        ? catalogFoodFor(item, await NtApi.getFoods(), { native: true })
+        : catalogFoodFor(item, [await NtApi.getFood(ref.serverId)]);
+      if (actionItem === item) actionItemFood = food;
+    } catch { /* no catalog food to reach: the menu has no Saved action */ }
+  }
+  async function toggleItemSaved() {
+    const food = actionItemFood;
+    if (!food) return;
+    const favorite = food.favorite ? 0 : 1;
+    try {
+      await NtApi.updateFood(food.id, { ...food, favorite });
+      showSuccess($_(favorite ? 'foods.picker.saved_added' : 'foods.picker.saved_removed', { values: { name: food.name } }));
+    } catch {
+      showError($_('foods.picker.saved_failed'));
+    }
+  }
+
   function onItemAction(e) {
     const val = e.detail?.value;
     if (!actionItem) return;
     if (val === 'edit')        { openEditItem(actionItem); }
     if (val === 'replace')     { replaceItem(actionItem); }
+    if (val === 'saved')       { toggleItemSaved(); }
     if (val === 'move')        { _lockAndOpen(() => showMoveToMeal = true); }
     if (val === 'copy_to') {
       // Open the shared Copy sheet in 'item' mode. Same single-sheet UX
@@ -2992,6 +3021,11 @@
     { label: 'Replace',         icon: 'find_replace',  value: 'replace'     },
     { label: 'Move to Meal',    icon: 'swap_horiz',    value: 'move'        },
     { label: 'Copy',            icon: 'content_copy',  value: 'copy_to'     },
+    ...(actionItemFood ? [{
+      label: actionItemFood.favorite ? $_('foods.picker.unsave_food') : $_('foods.picker.save_food'),
+      icon: actionItemFood.favorite ? 'heart_minus' : 'favorite',
+      value: 'saved',
+    }] : []),
     { label: 'Select Multiple', icon: 'checklist',     value: 'select'      },
     ...(_actionItemIsRecipe ? [{ label: 'Split Recipe', icon: 'call_split', value: 'split' }] : []),
     { label: 'Delete',          icon: 'delete',        value: 'delete', danger: true },

@@ -8,3 +8,7 @@ export function mealIcon(name) {
   if (n.includes('drink') || n.includes('smoothie') || n.includes('shake')) return 'local_cafe';
   return 'restaurant';
 }
+
+/** Accent color per meal slot; cycles for any number of meals */
+export const MEAL_COLORS = ['#FFB347','#4FFFB0','#4FC3F7','#CE93D8','#FF7070','#80DEEA','#C5E1A5','#FFD54F','#FF80AB','#B39DDB'];
+export const mealColor = i => MEAL_COLORS[i % MEAL_COLORS.length];

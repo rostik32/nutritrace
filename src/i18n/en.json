@@ -800,9 +800,15 @@
       "show_more": "Show more",
       "nothing_here": "Nothing logged here in the last 90 days",
       "no_history": "Nothing logged in the last 90 days yet. Search for a food to add it.",
-      "saved_empty": "No saved foods yet. Mark a food as a favorite to see it here.",
+      "saved_empty": "No saved foods yet. Tap the heart on a food, or long-press it in the diary and choose Add to Saved.",
       "save_card": "Save",
-      "loading": "Loading your history…"
+      "loading": "Loading your history…",
+      "save_food": "Add to Saved",
+      "unsave_food": "Remove from Saved",
+      "saved_added": "{name} added to Saved",
+      "saved_removed": "{name} removed from Saved",
+      "saved_failed": "Couldn't update Saved",
+      "saved_no_values": "Open Food Facts has no values for this product, so it can't be saved."
     },
     "off_no_values_listed": "No values listed",
     "off_skipped": "Left out, since Open Food Facts has no values \"as sold\" for them: {names}. Add them under Foods with the values from the label.",

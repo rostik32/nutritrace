@@ -43,6 +43,13 @@
 - [x] 7.3 Show the energy of each history row for its amount (tick amount once ticked). Verified: "100g × 2 · 310 kcal" for 2 × 100 g of a 155 kcal food; 150 g of a 59 kcal food shows 89 kcal.
 - [x] 7.4 Skip the Set Portions sheet when every pick already has a quantity from its tick. Verified with the quantity prompt setting on: two ticks went into the diary at once (150 g and 100 g) with no sheet.
 
+## 8. Saving foods and meal icons
+
+- [x] 8.1 Show the meal's icon in its diary color on the meal block title and a history icon on the all-meals title. Verified: the Breakfast picker shows the orange breakfast cup and a history icon.
+- [x] 8.2 Add a heart to the product card that toggles Saved, saving a database product to My Foods first; no heart for shared foods. Verified for a catalog food: the heart fills and Saved lists it at once, tapping again empties Saved. The database-product path was not run in the browser (needs live OFF).
+- [x] 8.3 Add "Add to Saved" / "Remove from Saved" to the diary item's long-press menu for items logged from a catalog food. Verified on the web: the action sets the food's favorite (other fields unchanged) and the menu then offers Remove from Saved. Recipes and quick calories are excluded by `catalogFoodFor` (unit tested).
+- [x] 8.4 Find a diary item's catalog food with one shared helper (`catalogFoodFor`). Verified: the unit test covers web ids, phone ids, unsent phone items, recipes, quick calories and deleted foods; `npm test` 987/987 on Node 20.
+
 ## Workflow follow-up
 
 - Open a pull request into `diaitika` (protected branch; changes only through pull requests).

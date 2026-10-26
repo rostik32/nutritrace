@@ -124,3 +124,28 @@ The history tabs and Saved SHALL NOT show a sort control. Their order is fixed b
 #### Scenario: Sort control absent
 - **WHEN** the user opens the picker on any of the history tabs or Saved
 - **THEN** no sort control is shown
+
+### Requirement: Meal icons on history blocks
+The current meal's block title SHALL show that meal's icon in the color the diary uses for it. The all-meals block title SHALL show a history icon.
+
+#### Scenario: Breakfast block
+- **WHEN** the user opens Recently Eaten while adding to Breakfast
+- **THEN** the Breakfast block title shows the breakfast icon in the diary's breakfast color, and the all-meals title shows a history icon
+
+### Requirement: Save a food from the product card
+The product card SHALL show a heart for the user's own catalog foods and for database products, and not for foods shared by someone else. Tapping the heart SHALL add the food to Saved or remove it. A database product SHALL be saved to My Foods first.
+
+#### Scenario: Heart on an own food
+- **WHEN** the user opens the card of "Tuna Fillet" from their catalog and taps the heart
+- **THEN** the heart fills and "Tuna Fillet" is listed on Saved
+
+#### Scenario: Heart on a database product
+- **WHEN** the user opens the card of an Open Food Facts result with values and taps the heart
+- **THEN** the product is saved to My Foods and listed on Saved
+
+### Requirement: Save a food from the diary
+The long-press menu of a diary item logged from a catalog food SHALL offer "Add to Saved", or "Remove from Saved" when the food is saved already. Recipes and quick calories SHALL NOT get this action.
+
+#### Scenario: Adding from the diary
+- **WHEN** the user long-presses "Brumík" in Breakfast and chooses "Add to Saved"
+- **THEN** "Brumík" is listed on Saved, and the menu offers "Remove from Saved" next time
