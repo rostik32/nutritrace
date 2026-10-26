@@ -45,6 +45,7 @@
   let hasUnread  = false;
   let attachedImage = null; // { base64, mimeType, preview }
   let _toolStatus = ''; // shown while AI is calling tools
+  let _abort = null;     // AbortController of the reply in flight (Stop button)
 
   // Photo-log review card state. When the AI calls propose_quick_calories,
   // its sanitized payload lands here and the chat renders an FDA-style
@@ -1760,6 +1761,8 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
     input    = '';
     attachedImage = null;
     loading  = true;
+    _abort   = new AbortController();
+    const signal = _abort.signal;
     // #158: hold a screen wake lock while the request is in-flight so
     // the user doesn't have to keep tapping the screen when a slow
     // self-hosted model is thinking. Released in the finally block.
@@ -1784,7 +1787,9 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
       const ctx          = await buildContext();
       const systemPrompt = buildSystemPrompt(ctx);
       // Build API messages — include image in the last user message if present
+      // 'error' and 'stopped' rows are notes for the user, not conversation.
       const apiMessages  = messages
+        .filter(m => m.role === 'user' || m.role === 'assistant')
         .map(m => ({ role: m.role, content: m.content }))
         .slice(-20);
       // If image attached, modify the last user message to include it.
@@ -1828,22 +1833,31 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
         : TOOLS.filter(t => t.name !== 'propose_quick_calories'
                          && !(t.name === 'propose_food' && _cardAwaitingUser));
       const reply = aiEnvLocked
-        ? await callAIProxy({ messages: apiMessages, systemPrompt, tools: toolsForRound, onToolCall })
-        : await callAI({ provider, apiKey: key, model, baseUrl, messages: apiMessages, systemPrompt, tools: toolsForRound, onToolCall });
+        ? await callAIProxy({ messages: apiMessages, systemPrompt, tools: toolsForRound, onToolCall, signal })
+        : await callAI({ provider, apiKey: key, model, baseUrl, messages: apiMessages, systemPrompt, tools: toolsForRound, onToolCall, signal });
       messages = [...messages, { role: 'assistant', content: reply, time: fmtTime() }];
       // Persist assistant reply to server (best-effort)
       NtApi.post('/api/ai/history', { role: 'assistant', content: reply }).catch(() => {});
       if (!panelOpen) hasUnread = true;
     } catch (e) {
-      showError(e.message || 'AI request failed');
+      // Errors and Stop land in the chat (and its saved history), not in a
+      // toast: coming back to the app later, you still see why there's no reply.
+      const note = signal.aborted
+        ? { role: 'stopped', content: 'stopped' }
+        : { role: 'error', content: e?.message || 'AI request failed' };
+      messages = [...messages, { ...note, time: fmtTime() }];
+      NtApi.post('/api/ai/history', note).catch(() => {});
     } finally {
       loading = false;
+      _abort = null;
       _toolStatus = '';
       try { await _releaseWakeLock(); } catch { /* noop */ }
       await tick();
       _scrollBottom();
     }
   }
+
+  function stopReply() { _abort?.abort(); }
 
   function _buildImageMessage(provider, text, image) {
     if (provider === 'claude') {
@@ -2178,6 +2192,13 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
                is safe here because chat is strictly append-only — no reorders
                or interior insertions to worry about. -->
           {#each messages as msg, i (i + ':' + msg.role + ':' + msg.time)}
+            {#if msg.role === 'error' || msg.role === 'stopped'}
+              <div class="ai-note" class:error={msg.role === 'error'}>
+                <span class="material-symbols-rounded">{msg.role === 'error' ? 'error' : 'stop_circle'}</span>
+                <span>{msg.role === 'error' ? $_('trace.reply_failed', { values: { error: msg.content } }) : $_('trace.reply_stopped')}</span>
+                {#if msg.time}<span class="ai-time">{msg.time}</span>{/if}
+              </div>
+            {:else}
             <div class="ai-msg" class:user={msg.role === 'user'}>
               {#if msg.role === 'assistant'}
                 <div class="ai-msg-avatar">
@@ -2194,7 +2215,16 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
                 {/if}
               </div>
             </div>
+            {/if}
           {/each}
+          <!-- The last question has no answer and nothing is in flight: the app
+               was closed or lost its connection mid-reply, so no error was saved. -->
+          {#if !loading && messages.length && messages[messages.length - 1].role === 'user'}
+            <div class="ai-note">
+              <span class="material-symbols-rounded">help</span>
+              <span>{$_('trace.reply_missing')}</span>
+            </div>
+          {/if}
 
           <!-- Photo-log review card. Renders below the most recent
                assistant message when propose_quick_calories has fired
@@ -2359,9 +2389,15 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
           rows="1"
           disabled={loading}
         ></textarea>
-        <button class="ai-send-btn" on:click={send} disabled={loading || (!input.trim() && !attachedImage)}>
-          <span class="material-symbols-rounded">send</span>
-        </button>
+        {#if loading}
+          <button class="ai-send-btn" on:click={stopReply} title={$_('trace.stop')} aria-label={$_('trace.stop')}>
+            <span class="material-symbols-rounded">stop</span>
+          </button>
+        {:else}
+          <button class="ai-send-btn" on:click={send} disabled={!input.trim() && !attachedImage}>
+            <span class="material-symbols-rounded">send</span>
+          </button>
+        {/if}
       </div>
     </aside>
   {/if}
@@ -2857,6 +2893,19 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
   .ai-send-btn:not(:disabled):hover  { transform: scale(1.08); }
   .ai-send-btn:not(:disabled):active { transform: scale(0.94); }
   .ai-send-btn .material-symbols-rounded { font-size: 20px; }
+
+  /* Error / stopped / no-reply notes between messages */
+  .ai-note {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 6px;
+    margin: 4px 12px;
+    font-size: 12px;
+    color: var(--text-3);
+    text-align: center;
+  }
+  .ai-note .material-symbols-rounded { font-size: 16px; }
+  .ai-note.error { color: var(--danger); }
+  .ai-note .ai-time { margin: 0; }
 
   .ai-image-preview {
     position: relative;
