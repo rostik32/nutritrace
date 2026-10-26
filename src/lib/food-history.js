@@ -50,7 +50,7 @@ const _isFoodEntry = it =>
 
 // A food as the picker needs it, from one diary entry. Keeps the nutrition
 // the entry was logged with; the catalog id is kept only when there is one.
-function _snapshotFood(it) {
+export function snapshotFood(it) {
   const {
     uuid: _u, addedAt: _a, meal: _m, quantity: _q, totals: _t, meal_name: _n,
     food_server_id, server_id: _s, food_device: _d, id: _i, ...rest
@@ -104,7 +104,7 @@ export function buildFoodHistory(days, { meal = 0, today, catalogById = null } =
 
   const rowOf = s => {
     if (!foodByKey.has(s.key)) {
-      const snap = _snapshotFood(s.latest);
+      const snap = snapshotFood(s.latest);
       const id = snap.id;
       foodByKey.set(s.key, (id && catalogById?.get(id)) || snap);
     }

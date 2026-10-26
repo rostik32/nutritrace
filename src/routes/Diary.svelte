@@ -24,7 +24,7 @@
   import FastingWidget from '../components/diary/FastingWidget.svelte';
   import { mealIcon, mealColor } from '../lib/mealIcon.js';
   import { itemSourceRef } from '../lib/item-source.js';
-  import { catalogFoodFor } from '../lib/food-history.js';
+  import { catalogFoodFor, snapshotFood } from '../lib/food-history.js';
   import Sheet        from '../components/ui/Sheet.svelte';
   import Dialog       from '../components/ui/Dialog.svelte';
   import ActionSheet  from '../components/ui/ActionSheet.svelte';
@@ -263,6 +263,7 @@
     editQuantity = item.quantity || 1;
     editLoggedTime = _isoToHm(item.addedAt || item.dateTime);
     _editChildContext = null;
+    _editFoodChanges = null;
     if (item?.type === 'quick_calories') {
       const storedKcal = Math.round(item.nutrition?.calories || 0);
       // Display in user's current energy unit; saved back to kcal.
@@ -293,6 +294,66 @@
   // null when editing a regular diary item; { parentIdx, childIdx } when
   // editing a split-recipe ingredient.
   let _editChildContext = null;
+
+  // "Edit nutrition" in the item sheet: open the food behind the entry in
+  // the food editor (its catalog food, else a copy of the entry), then come
+  // back to this sheet with the amount typed here, recalculated from the
+  // saved values. The entry changes only when the sheet is saved.
+  $: _editItemCanEditFood = !!editItem && !_editChildContext
+    && !editItem.is_recipe && editItem.type !== 'quick_calories';
+  let _editFoodChanges = null;       // name/brand of the food saved in the editor
+  async function editItemNutrition() {
+    const item = editItem;
+    if (!item) return;
+    let food = null;
+    try {
+      const ref = itemSourceRef(item, { native: isNative });
+      if (ref) food = isNative
+        ? catalogFoodFor(item, await NtApi.getFoods(), { native: true })
+        : catalogFoodFor(item, [await NtApi.getFood(ref.serverId)]);
+    } catch { /* no catalog food to reach: edit a copy of the entry */ }
+    if (!food) {
+      const { id: _id, _i: _idx, ...copy } = snapshotFood(item);
+      food = copy;
+    }
+    editorState.diaryEditReturn = {
+      date: $currentDate, uuid: item.uuid, index: item._i,
+      portion: editPortion, unit: editUnit, quantity: editQuantity, loggedTime: editLoggedTime,
+    };
+    editorState.foodSaved = null;
+    editorState.foodPrefill = { ...food };
+    editorState.foodStore = 'foodList';
+    editorState.foodDiaryCtx = null;
+    showEditSheet = false;
+    push('/foods/edit');
+  }
+
+  // Back from the editor: reopen the item sheet. With a saved food, the
+  // entry's values are rebased onto it so the sheet scales from them.
+  function _reopenEditAfterFoodEdit(back, entryNow) {
+    const items = entryNow?.items || [];
+    const idx = back.uuid ? items.findIndex(it => it.uuid === back.uuid) : back.index;
+    if (!(idx >= 0 && items[idx])) return;
+    const saved = editorState.foodSaved;
+    editorState.foodSaved = null;
+    openEditItem({ ...items[idx], _i: idx });
+    if (saved) {
+      editItem = {
+        ...editItem,
+        portion: parseFloat(saved.portion) || 100,
+        unit: saved.unit || 'g',
+        nutrition: (({ _derived, ...n }) => n)(saved.nutrition || {}),
+        nutrition_basis: saved.nutrition_basis ?? null,
+        alt_units: saved.alt_units || [],
+        density_g_ml: saved.density_g_ml ?? null,
+      };
+      _editFoodChanges = { name: saved.name, brand: saved.brand ?? null };
+    }
+    editPortion = back.portion;
+    editUnit = back.unit;
+    editQuantity = back.quantity;
+    editLoggedTime = back.loggedTime;
+  }
 
   async function saveEditItem() {
     if (!editItem) return;
@@ -344,6 +405,7 @@
       );
     }
     const changes = {
+      ...(_editFoodChanges || {}),
       portion:   newPortion,
       unit:      editUnit,
       quantity:  parseDecimal(editQuantity) || 1,
@@ -1752,6 +1814,14 @@
       currentDate.set(targetDate);
     }
 
+    const editBack = editorState.diaryEditReturn;
+    editorState.diaryEditReturn = null;
+    if (editBack && editBack.date === targetDate) {
+      let entryNow = null;
+      currentEntry.subscribe(v => entryNow = v)();
+      _reopenEditAfterFoodEdit(editBack, entryNow);
+    }
+
     // Handle replace flow — food picker added the new item, now delete the old one
     const replaceData = sessionStorage.getItem('nt:replaceItem');
     if (replaceData) {
@@ -2984,6 +3054,12 @@
         </div>
       </div>
       <button class="btn btn-primary w-full" style="margin-top:16px" on:click={saveEditItem}>{$_('diary.edit_item.save')}</button>
+      {#if _editItemCanEditFood}
+        <button class="btn btn-secondary w-full" style="margin-top:8px" on:click={editItemNutrition}>
+          <span class="material-symbols-rounded" style="font-size:18px">edit</span>
+          {$_('foods.qty_edit')}
+        </button>
+      {/if}
       {/if}
     </div>
   {/if}

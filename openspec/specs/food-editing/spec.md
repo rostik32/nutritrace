@@ -16,7 +16,8 @@ in the food editor. Saving SHALL store the edited product in My Foods and add it
 
 #### Scenario: Edit from the quantity sheet
 - **WHEN** the user taps a USDA result, the quantity sheet opens, and the user chooses "Edit"
-- **THEN** the food editor opens with that product's values, and saving adds the edited copy to the meal
+- **THEN** the food editor opens with that product's values; saving stores the edited copy and returns to the
+  quantity sheet with the amount kept and the macros recalculated, and nothing is logged until the sheet is confirmed
 
 #### Scenario: Cancel
 - **WHEN** the user opens the editor for a database result and leaves without saving
