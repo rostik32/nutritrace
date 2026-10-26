@@ -13,6 +13,9 @@
    *  empty. Useful for sheets that draw their own header/banner inside the
    *  slot and need the X to stay visible while the content scrolls. */
   export let overlayClose = false;
+  /** Open without the slide/fade in, for a sheet coming back after a page
+   *  change (it should read as never having left). */
+  export let instant = false;
 
   const dispatch = createEventDispatcher();
   let _locked = false;
@@ -38,12 +41,12 @@
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div use:portal class="sheet-backdrop" on:click={onBackdropClick} use:closeOnBack={close}
-    in:fade={{ duration: 200 }} out:fade={{ duration: 160 }}>
+    in:fade={{ duration: instant ? 0 : 200 }} out:fade={{ duration: 160 }}>
     <div
       class="sheet-panel"
       class:sheet-full={height === 'full'}
       style={height !== 'auto' && height !== 'full' ? `height:${height}` : ''}
-      in:fly={{ y: 80, duration: 280, easing: cubicOut }}
+      in:fly={{ y: 80, duration: instant ? 0 : 280, easing: cubicOut }}
       out:fly={{ y: 80, duration: 200 }}
       role="dialog"
       aria-modal="true"
