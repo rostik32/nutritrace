@@ -49,6 +49,7 @@
 - [x] 8.2 Add a heart to the product card that toggles Saved, saving a database product to My Foods first; no heart for shared foods. Verified for a catalog food: the heart fills and Saved lists it at once, tapping again empties Saved. The database-product path was not run in the browser (needs live OFF).
 - [x] 8.3 Add "Add to Saved" / "Remove from Saved" to the diary item's long-press menu for items logged from a catalog food. Verified on the web: the action sets the food's favorite (other fields unchanged) and the menu then offers Remove from Saved. Recipes and quick calories are excluded by `catalogFoodFor` (unit tested).
 - [x] 8.4 Find a diary item's catalog food with one shared helper (`catalogFoodFor`). Verified: the unit test covers web ids, phone ids, unsent phone items, recipes, quick calories and deleted foods; `npm test` 987/987 on Node 20.
+- [x] 8.5 Show "Edit nutrition" on product cards opened from the history tabs and Saved (it was hidden in tick mode). Saving logs the product with the card's quantity, as from Search.
 
 ## Workflow follow-up
 

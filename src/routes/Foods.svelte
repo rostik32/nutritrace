@@ -3283,7 +3283,9 @@
       </div>
     </div>
     <button class="btn btn-primary w-full" on:click={confirmQtyPrompt} disabled={_addingToDiary}>{qtyPromptTick ? $_('foods.picker.save_card') : $_('foods.add_to_diary')}</button>
-    {#if pickMode && activeTab === 0 && !qtyPromptTick}
+    <!-- Also on history cards (tick mode): there "Edit nutrition" logs the
+         edited product right away, as from search, instead of ticking it. -->
+    {#if pickMode && activeTab === 0}
       <button class="btn btn-secondary w-full" on:click={editFromQtyPrompt} disabled={_addingToDiary}>
         <span class="material-symbols-rounded" style="font-size:18px">edit</span>
         {$_('foods.qty_edit')}
