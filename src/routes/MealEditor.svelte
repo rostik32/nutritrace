@@ -1356,6 +1356,10 @@
 <Sheet bind:open={portionSheet} title={portionFood ? portionFood.name : 'Set Portion'}
   on:close={() => { editingIndex = null; }}>
   <div style="display:flex;flex-direction:column;gap:16px;padding-top:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface-2);border-radius:var(--radius-md)">
+      <span style="font-size:13px;color:var(--text-3)">{$_('meal_editor_deep.total_amount')}</span>
+      <span style="font-size:14px;font-weight:500">{Math.round((parseDecimal(portionAmount) || 100) * (parseDecimal(portionQty) || 1) * 10) / 10}{portionUnit || 'g'}</span>
+    </div>
     <div style="display:flex;gap:12px">
       <div style="flex:1">
         <label class="form-label" style="font-size:11px;color:var(--text-3);display:block;margin-bottom:6px">{$_('meal_editor.field_serving_size')}</label>
@@ -1371,10 +1375,6 @@
       <label class="form-label" style="font-size:11px;color:var(--text-3);display:block;margin-bottom:6px">{$_('meal_editor.field_quantity')}</label>
       <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={portionQty}
         style="font-size:16px;width:100%" />
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface-2);border-radius:var(--radius-md)">
-      <span style="font-size:13px;color:var(--text-3)">{$_('meal_editor_deep.total_amount')}</span>
-      <span style="font-size:14px;font-weight:500">{Math.round((parseDecimal(portionAmount) || 100) * (parseDecimal(portionQty) || 1) * 10) / 10}{portionUnit || 'g'}</span>
     </div>
     <button class="btn btn-primary w-full" on:click={confirmPortion}>{editingIndex !== null ? $_('meal_editor.save_changes') : $_('meal_editor.add_ingredient')}</button>
   </div>

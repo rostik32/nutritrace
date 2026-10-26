@@ -54,7 +54,8 @@
       "network_error_upload": "Network error during upload",
       "voice_unsupported": "Voice input not supported in this browser",
       "cant_start_mic": "Couldn't start microphone"
-    }
+    },
+    "tap_again_to_exit": "Tap again to exit"
   },
   "sync": {
     "synced": "Synced",

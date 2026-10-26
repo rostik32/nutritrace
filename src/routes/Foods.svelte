@@ -3229,6 +3229,32 @@
     {/if}
   </svelte:fragment>
   <div style="display:flex;flex-direction:column;gap:16px;padding-top:8px" on:keydown={_onQtyPromptKey}>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface-2);border-radius:var(--radius-md)">
+      <span style="font-size:13px;color:var(--text-3)">{$_('foods_deep.total_amount')}</span>
+      <span style="font-size:14px;font-weight:500">{Math.round((parseDecimal(promptPortion) || 100) * (parseDecimal(promptServings) || 1) * 10) / 10}{promptUnit || 'g'}</span>
+    </div>
+    <!-- Live nutrition preview (#30) — recomputes with portion/unit/servings changes.
+         First in the sheet, so the keyboard opened for the fields below never covers it.
+         Color scheme mirrors the Nutrition Summary sheet + diary totals so the
+         four macros read with the same visual language app-wide. -->
+    <div class="qty-macros">
+      <div class="qty-macro-pill" style="background:var(--macro-calories-dim)">
+        <span class="qty-macro-val" style="color:var(--macro-calories)">{_qtyEnergy.value.toLocaleString()}</span>
+        <span class="qty-macro-label">{_qtyEnergy.unit}</span>
+      </div>
+      <div class="qty-macro-pill" style="background:var(--macro-protein-dim)">
+        <span class="qty-macro-val" style="color:var(--macro-protein)">{Math.round((qtyCalc.proteins || 0) * 10) / 10}g</span>
+        <span class="qty-macro-label">protein</span>
+      </div>
+      <div class="qty-macro-pill" style="background:var(--macro-carbs-dim)">
+        <span class="qty-macro-val" style="color:var(--macro-carbs)">{Math.round((qtyCalc.carbohydrates || 0) * 10) / 10}g</span>
+        <span class="qty-macro-label">carbs</span>
+      </div>
+      <div class="qty-macro-pill" style="background:var(--macro-fat-dim)">
+        <span class="qty-macro-val" style="color:var(--macro-fat)">{Math.round((qtyCalc.fat || 0) * 10) / 10}g</span>
+        <span class="qty-macro-label">fat</span>
+      </div>
+    </div>
     <!-- Issues #69 + #70: surface the OFF nutrition basis so users know
          whether values are per-100-g or per-100-ml at a glance. Gated on
          the showUnitMetadata opt-in (or the warn-about-conversions toggle
@@ -3290,31 +3316,6 @@
       <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={promptServings}
         bind:this={_qtyPromptServingsEl} data-field="servings"
         style="font-size:16px;width:100%" />
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface-2);border-radius:var(--radius-md)">
-      <span style="font-size:13px;color:var(--text-3)">{$_('foods_deep.total_amount')}</span>
-      <span style="font-size:14px;font-weight:500">{Math.round((parseDecimal(promptPortion) || 100) * (parseDecimal(promptServings) || 1) * 10) / 10}{promptUnit || 'g'}</span>
-    </div>
-    <!-- Live nutrition preview (#30) — recomputes with portion/unit/servings changes.
-         Color scheme mirrors the Nutrition Summary sheet + diary totals so the
-         four macros read with the same visual language app-wide. -->
-    <div class="qty-macros">
-      <div class="qty-macro-pill" style="background:var(--macro-calories-dim)">
-        <span class="qty-macro-val" style="color:var(--macro-calories)">{_qtyEnergy.value.toLocaleString()}</span>
-        <span class="qty-macro-label">{_qtyEnergy.unit}</span>
-      </div>
-      <div class="qty-macro-pill" style="background:var(--macro-protein-dim)">
-        <span class="qty-macro-val" style="color:var(--macro-protein)">{Math.round((qtyCalc.proteins || 0) * 10) / 10}g</span>
-        <span class="qty-macro-label">protein</span>
-      </div>
-      <div class="qty-macro-pill" style="background:var(--macro-carbs-dim)">
-        <span class="qty-macro-val" style="color:var(--macro-carbs)">{Math.round((qtyCalc.carbohydrates || 0) * 10) / 10}g</span>
-        <span class="qty-macro-label">carbs</span>
-      </div>
-      <div class="qty-macro-pill" style="background:var(--macro-fat-dim)">
-        <span class="qty-macro-val" style="color:var(--macro-fat)">{Math.round((qtyCalc.fat || 0) * 10) / 10}g</span>
-        <span class="qty-macro-label">fat</span>
-      </div>
     </div>
     <button class="btn btn-primary w-full" on:click={confirmQtyPrompt} disabled={_addingToDiary}>{qtyPromptTick ? $_('foods.picker.save_card') : $_('foods.add_to_diary')}</button>
     {#if pickMode && activeTab === 0}

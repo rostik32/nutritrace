@@ -3017,6 +3017,29 @@
         {/if}
         <button class="btn btn-primary w-full" style="margin-top:16px" on:click={saveEditItem}>{$_('diary.edit_item.save')}</button>
       {:else}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface-2);border-radius:var(--radius-md);margin-bottom:16px">
+        <span style="font-size:13px;color:var(--text-3)">{$_('diary_deep.total_amount')}</span>
+        <span style="font-size:14px;font-weight:500">{Math.round((parseDecimal(editPortion) || 100) * (parseDecimal(editQuantity) || 1) * 10) / 10}{editUnit}</span>
+      </div>
+      <!-- Above the fields, so the keyboard never covers it. -->
+      <div class="edit-macros" style="margin-bottom:16px">
+        <div class="edit-macro-pill" style="background:var(--macro-calories-dim)">
+          <span class="edit-macro-val" style="color:var(--macro-calories)">{_editEnergy.value.toLocaleString()}</span>
+          <span class="edit-macro-label">{_editEnergy.unit}</span>
+        </div>
+        <div class="edit-macro-pill" style="background:var(--macro-protein-dim)">
+          <span class="edit-macro-val" style="color:var(--macro-protein)">{Math.round((editCalc.proteins || 0) * 10)/10}g</span>
+          <span class="edit-macro-label">protein</span>
+        </div>
+        <div class="edit-macro-pill" style="background:var(--macro-carbs-dim)">
+          <span class="edit-macro-val" style="color:var(--macro-carbs)">{Math.round((editCalc.carbohydrates || 0) * 10)/10}g</span>
+          <span class="edit-macro-label">carbs</span>
+        </div>
+        <div class="edit-macro-pill" style="background:var(--macro-fat-dim)">
+          <span class="edit-macro-val" style="color:var(--macro-fat)">{Math.round((editCalc.fat || 0) * 10)/10}g</span>
+          <span class="edit-macro-label">fat</span>
+        </div>
+      </div>
       <div style="display:flex;gap:12px;margin-bottom:16px">
         <div style="flex:1">
           <label class="form-label" style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">{$_('diary_deep.serving_size')}</label>
@@ -3038,28 +3061,6 @@
             <TimePicker bind:value={editLoggedTime} />
           </div>
         {/if}
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface-2);border-radius:var(--radius-md);margin-bottom:16px">
-        <span style="font-size:13px;color:var(--text-3)">{$_('diary_deep.total_amount')}</span>
-        <span style="font-size:14px;font-weight:500">{Math.round((parseDecimal(editPortion) || 100) * (parseDecimal(editQuantity) || 1) * 10) / 10}{editUnit}</span>
-      </div>
-      <div class="edit-macros">
-        <div class="edit-macro-pill" style="background:var(--macro-calories-dim)">
-          <span class="edit-macro-val" style="color:var(--macro-calories)">{_editEnergy.value.toLocaleString()}</span>
-          <span class="edit-macro-label">{_editEnergy.unit}</span>
-        </div>
-        <div class="edit-macro-pill" style="background:var(--macro-protein-dim)">
-          <span class="edit-macro-val" style="color:var(--macro-protein)">{Math.round((editCalc.proteins || 0) * 10)/10}g</span>
-          <span class="edit-macro-label">protein</span>
-        </div>
-        <div class="edit-macro-pill" style="background:var(--macro-carbs-dim)">
-          <span class="edit-macro-val" style="color:var(--macro-carbs)">{Math.round((editCalc.carbohydrates || 0) * 10)/10}g</span>
-          <span class="edit-macro-label">carbs</span>
-        </div>
-        <div class="edit-macro-pill" style="background:var(--macro-fat-dim)">
-          <span class="edit-macro-val" style="color:var(--macro-fat)">{Math.round((editCalc.fat || 0) * 10)/10}g</span>
-          <span class="edit-macro-label">fat</span>
-        </div>
       </div>
       <button class="btn btn-primary w-full" style="margin-top:16px" on:click={saveEditItem}>{$_('diary.edit_item.save')}</button>
       {#if _editItemCanEditFood}

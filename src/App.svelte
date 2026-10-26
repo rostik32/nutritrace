@@ -4,7 +4,7 @@
   import { portal } from './lib/portal.js';
   import { initFold } from './lib/fold.js';
   import { isPullSyncExempt } from './lib/pull-sync.js';
-  import { handleBack } from './lib/back-stack.js';
+  import { handleBack, installHistoryBack } from './lib/back-stack.js';
   import Router, { location } from 'svelte-spa-router';
 
   import BottomNav from './components/layout/BottomNav.svelte';
@@ -449,7 +449,7 @@
             } else {
               lastBack = now;
               import('./stores/toast.js').then(({ showSuccess }) => {
-                showSuccess('Tap again to exit');
+                showSuccess($_('common.tap_again_to_exit'));
               });
             }
           }
@@ -549,6 +549,16 @@
             console.warn('[app] deep link parse error:', e);
           }
         });
+      });
+    } else {
+      // Browser / installed PWA: the same order, through history (#226).
+      installHistoryBack({
+        closeOther: () => {
+          if (!sidebarOpen || sidebarPinned) return false;
+          sidebarOpen = false;
+          return true;
+        },
+        onExitHint: () => import('./stores/toast.js').then(({ showSuccess }) => showSuccess($_('common.tap_again_to_exit'))),
       });
     }
 
