@@ -5,18 +5,19 @@
  * straight away; it always picked the first one, Serving Size. People who
  * mostly change the number of servings then needed an extra tap every time
  * (#224), so Settings, Diary, Default Field chooses between the two.
+ * diaitika fork: Serving Size is the default (most foods are logged in grams).
  *
  * The sheets mark their boxes with data-field="portion" (Serving Size) and
  * data-field="servings" (Number of Servings). A sheet without the preferred
  * box (Quick Calories, say) falls back to its first number box, as before.
  */
 
-export const DEFAULT_FIELDS = ['servings', 'portion'];
+export const DEFAULT_FIELDS = ['portion', 'servings'];
 
 /** The box to focus inside `root`, or null when there's nothing to focus. */
 export function defaultFieldInput(root, preference) {
   if (!root || typeof root.querySelector !== 'function') return null;
-  const field = DEFAULT_FIELDS.includes(preference) ? preference : 'servings';
+  const field = DEFAULT_FIELDS.includes(preference) ? preference : DEFAULT_FIELDS[0];
   return root.querySelector(`input[data-field="${field}"]`)
     || root.querySelector('input[inputmode="numeric"], input[inputmode="decimal"]');
 }
