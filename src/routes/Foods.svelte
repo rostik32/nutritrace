@@ -20,6 +20,7 @@
   import { staleIngredientNames } from '../lib/stale-ingredients.js';
   import { editorState, clearFoodEditorState } from '../stores/editorState.js';
   import { DB, localDateStr } from '../lib/db.js';
+  import { buildFoodHistory, savedFoodRows, visibleRows, historyStart, HISTORY_FIRST, HISTORY_MORE } from '../lib/food-history.js';
   import { loadEntry } from '../stores/diary.js';
   import { API, USDA, NtApi } from '../lib/api.js';
   import { Nutrition } from '../lib/nutrition.js';
@@ -531,9 +532,57 @@
   let showBulkDeleteDialog = false;
   let bulkDeleting = false;
 
+  // ── Picker history tabs (pick mode, Foods tab) ─────────────────────────
+  // Search keeps the search pipeline. Recently Eaten, Most Eaten and Saved
+  // are computed on the device from the last 90 days of the diary
+  // (src/lib/food-history.js), so they work offline and on every device.
+  const PICK_SUB_IDS = ['search', 'recent', 'most', 'saved'];
+  let pickSubIndex = 0;
+  let pickSubReady = false;          // the default tab is chosen once per open
+  let pickDays = [];                 // diary days of the last 90 days
+  let pickShown = { mealRecent: HISTORY_FIRST, mealMost: HISTORY_FIRST, allRecent: HISTORY_FIRST, allMost: HISTORY_FIRST };
+  let pickSelection = new Map();     // ticked food -> { portion, unit, servings }
+  let qtyPromptTick = false;         // the quantity sheet saves a tick instead of adding
+  $: pickSub = PICK_SUB_IDS[pickSubIndex];
+  $: _pickHistoryActive = pickMode && activeTab === 0 && pickSub !== 'search';
+  $: _pickSubTabs = [
+    { label: $_('foods.picker.tab_search'), value: 'search' },
+    { label: $_('foods.picker.tab_recent'), value: 'recent' },
+    { label: $_('foods.picker.tab_most'), value: 'most' },
+    { label: $_('foods.picker.tab_saved'), value: 'saved' },
+  ];
+  $: _catalogById = new Map((localFoods || []).map(f => [f.id, f]));
+  $: _pickHistory = pickMode
+    ? buildFoodHistory(pickDays, { meal: Number(pickMeal) || 0, today: localDateStr(), catalogById: _catalogById })
+    : null;
+  $: _pickSaved = pickMode ? savedFoodRows(localFoods) : [];
+  $: _pickQty = food => pickSelection.get(food);
+  $: _pickMealRows = _pickHistory ? (pickSub === 'most' ? _pickHistory.meal.most : _pickHistory.meal.recent) : [];
+  $: _pickAllRows = _pickHistory ? (pickSub === 'most' ? _pickHistory.all.most : _pickHistory.all.recent) : [];
+  $: _pickMealKey = pickSub === 'most' ? 'mealMost' : 'mealRecent';
+  $: _pickAllKey = pickSub === 'most' ? 'allMost' : 'allRecent';
+  $: if (pickMode) loadPickHistory();
+
+  // The diary days of the last 90 days, from the server when online and from
+  // the device copy when not (NtApi.getDiaryRange). On the first load the
+  // picker opens on Recently Eaten when there is history, else on Search.
+  async function loadPickHistory() {
+    const today = localDateStr();
+    try {
+      pickDays = (await NtApi.getDiaryRange(historyStart(today), today)) || [];
+    } catch {
+      pickDays = [];
+    }
+    if (!pickSubReady) {
+      pickSubReady = true;
+      const hasHistory = buildFoodHistory(pickDays, { today }).all.recent.length > 0;
+      pickSubIndex = hasHistory ? 1 : 0;
+    }
+  }
+
   // Clear selection when tab changes (different list context); search does NOT clear selection.
   // Also exit manage mode on tab change so the count reflects the new list.
-  $: { activeTab; selectedFoods = new Set(); manageMode = false; manageSelected = new Set(); }
+  $: { activeTab; selectedFoods = new Set(); pickSelection = new Map(); manageMode = false; manageSelected = new Set(); }
   // Clear the desktop detail pane on tab or filter change so users
   // don't see a "ghost" preview of a food that isn't in the newly-
   // filtered list. Applies to the pane; the modal sheet is user-
@@ -601,7 +650,9 @@
   onDestroy(() => _foodSearch.destroy());
   let fsFilterOpen = false;
   $: _fsExcluded = new Set($foodsSearchExcluded || []);
-  $: _fsSort = $foodsSort || 'relevance';
+  // In the picker the recent and most-used orders are the history tabs, so a
+  // saved catalog sort of either falls back to relevance there.
+  $: _fsSort = pickMode && ($foodsSort === 'recent' || $foodsSort === 'most') ? 'relevance' : ($foodsSort || 'relevance');
   // Live OFF past the mirror is only a separate step when there is a mirror
   // and the server allows going out (no OFF_LOCAL_ONLY).
   $: _liveOffAvailable = !!($envLocks?.off_local && !$envLocks?.off_local_only);
@@ -674,6 +725,7 @@
     sources: _fsSourceOptions,
     excluded: [..._fsExcluded],
     sort: _fsSort,
+    sortValues: pickMode ? ['relevance', 'alpha'] : null,
     showOffTiers: $offEnabled && !_fsExcluded.has('off'),
     offTiers: offTiersActive,
     showUsdaTiers: $usdaEnabled && !_fsExcluded.has('usda'),
@@ -1141,6 +1193,7 @@
       promptServings = 1;
       promptPortion = food.portion || 100;
       promptUnit = food.unit || 'g';
+      qtyPromptTick = false;
       showQtyPrompt = true;
       return;
     }
@@ -1259,6 +1312,7 @@
       promptServings = 1;
       promptPortion = food.portion || 100;
       promptUnit = food.unit || 'g';
+      qtyPromptTick = false;
       showQtyPrompt = true;
       return;
     }
@@ -1370,6 +1424,29 @@
     selectedFoods = selectedFoods;
   }
 
+  // Pick history: the checkbox ticks a row at the quantity the row shows.
+  function togglePickTick(row) {
+    if (selectedFoods.has(row.food)) {
+      selectedFoods.delete(row.food);
+      pickSelection.delete(row.food);
+    } else {
+      selectedFoods.add(row.food);
+      pickSelection.set(row.food, { portion: row.portion, unit: row.unit, servings: row.servings });
+    }
+    selectedFoods = selectedFoods;
+    pickSelection = pickSelection;
+  }
+
+  // Pick history: a tap on the row opens its quantity sheet, which saves a tick.
+  function openPickCard(row) {
+    promptFood = row.food;
+    promptServings = row.servings;
+    promptPortion = row.portion;
+    promptUnit = row.unit;
+    qtyPromptTick = true;
+    showQtyPrompt = true;
+  }
+
   async function confirmMultiAdd() {
     if (selectedFoods.size === 0 || multiAdding) return;
     let foods = [...selectedFoods];
@@ -1390,24 +1467,35 @@
       return;
     }
 
+    // Picks from the history tabs carry the quantity they were ticked with.
+    const ticked = new Map(foods.map(food => [food, pickSelection.get(food)]));
+    const tickOf = food => ticked.get(food);
+
     // Foods & Recipes: if prompt setting on, show single stacked portion sheet
     foods = await _resolveOffPicks(foods);
     if (!foods.length) return;
 
     if ($diaryPromptQuantity) {
-      multiPortionItems = foods.map(food => ({
-        food,
-        portion: food.portion || 100,
-        unit: food.unit || 'g',
-        servings: 1,
-      }));
+      multiPortionItems = foods.map(food => {
+        const tick = tickOf(food);
+        return {
+          food,
+          portion: tick ? tick.portion : (food.portion || 100),
+          unit: tick ? tick.unit : (food.unit || 'g'),
+          servings: tick ? tick.servings : 1,
+        };
+      });
       showMultiPortionSheet = true;
       return;
     }
 
-    // No prompt — add all with defaults
+    // No prompt — add all with defaults, or with the ticked quantities
     multiAdding = true;
-    for (const food of foods) await _addFoodToDiaryNoNav(food, 1);
+    for (const food of foods) {
+      const tick = tickOf(food);
+      if (tick) await _addFoodToDiaryNoNav(_scaledFood(food, tick.portion, tick.unit), tick.servings);
+      else await _addFoodToDiaryNoNav(food, 1);
+    }
     showSuccess(`Added ${foods.length} item${foods.length > 1 ? 's' : ''} to diary`);
     editorState.lastMealAdded = Number(pickMeal) || 0;
     multiAdding = false;
@@ -1447,29 +1535,45 @@
     } });
   }
 
+  // The food as logged at `newPortion` `newUnit`, with its nutrition scaled
+  // from the food's own portion. Scales by mass when both units are
+  // mass-convertible (g/oz/lb/ml/etc.), otherwise by a pure portion ratio.
+  // Passes the food so the scaler can use per-food alt_units (slice=35g etc.)
+  // + density when set. See src/lib/units.js. Issues #69 + #70.
+  function _scaledFood(food, newPortion, newUnit) {
+    const origPortion = parseFloat(food.portion) || 100;
+    const origUnit    = food.unit || 'g';
+    const portionFactor = _unitScaleFactor(origPortion, origUnit, newPortion, newUnit, food);
+    const scaledNutrition = food.nutrition ?
+      Object.fromEntries(Object.entries(food.nutrition).map(([k,v]) => [k, (parseFloat(v)||0) * portionFactor])) :
+      food.nutrition;
+    return { ...food, portion: newPortion, unit: newUnit, nutrition: scaledNutrition };
+  }
+
   async function confirmQtyPrompt() {
     if (!promptFood || _addingToDiary) return;
+    if (qtyPromptTick) return tickPromptFood();
     const origPortion = parseFloat(promptFood.portion) || 100;
-    const origUnit    = promptFood.unit || 'g';
-    const newPortion  = parseDecimal(promptPortion) || origPortion;
-    const newUnit     = promptUnit || origUnit;
-
-    // Scale by mass when both units are mass-convertible (g/oz/lb/ml/etc.),
-    // otherwise fall back to a pure portion ratio. Passes promptFood so the
-    // scaler can use per-food alt_units (slice=35g etc.) + density when set.
-    // See src/lib/units.js. Issues #69 + #70.
-    const portionFactor = _unitScaleFactor(origPortion, origUnit, newPortion, newUnit, promptFood);
-    const scaledNutrition = promptFood.nutrition ?
-      Object.fromEntries(Object.entries(promptFood.nutrition).map(([k,v]) => [k, (parseFloat(v)||0) * portionFactor])) :
-      promptFood.nutrition;
-
-    const food = {
-      ...promptFood,
-      portion: newPortion,
-      unit: newUnit,
-      nutrition: scaledNutrition
-    };
+    const food = _scaledFood(promptFood,
+      parseDecimal(promptPortion) || origPortion,
+      promptUnit || promptFood.unit || 'g');
     await _addFoodToDiary(food, parseDecimal(promptServings) || 1);
+  }
+
+  // Pick history: the product card saves a tick (kept with its quantity) and
+  // adds nothing to the diary. "Add N" adds every tick at once.
+  function tickPromptFood() {
+    const food = promptFood;
+    pickSelection.set(food, {
+      portion: parseDecimal(promptPortion) || parseFloat(food.portion) || 100,
+      unit: promptUnit || food.unit || 'g',
+      servings: parseDecimal(promptServings) || 1,
+    });
+    selectedFoods.add(food);
+    selectedFoods = selectedFoods;
+    pickSelection = pickSelection;
+    qtyPromptTick = false;
+    showQtyPrompt = false;
   }
 
   async function deleteItem(item) {
@@ -2077,8 +2181,13 @@
   <div class="foods-tabs">
     <Tabs tabs={TABS} bind:active={activeTab} on:change={onTabChange} />
   </div>
+  {#if pickMode && activeTab === 0}
+    <div class="foods-tabs pick-sub-tabs">
+      <Tabs tabs={_pickSubTabs} bind:active={pickSubIndex} />
+    </div>
+  {/if}
 
-  <div class="foods-search">
+  <div class="foods-search" class:pick-hidden={_pickHistoryActive}>
     <span class="material-symbols-rounded foods-search-icon">search</span>
     <div class="foods-search-input-wrap">
       <input
@@ -2092,7 +2201,7 @@
         <span class="material-symbols-rounded">barcode_scanner</span>
       </button>
     </div>
-    {#if activeTab === 0 && !_foodsRailMode}
+    {#if activeTab === 0 && !_foodsRailMode && !_pickHistoryActive}
       <button class="btn-icon foods-filter-btn" class:active={_fsFilterActive}
         on:click={() => fsFilterOpen = true}
         aria-label={$_('foods.search.filter_title')} title={$_('foods.search.filter_title')}>
@@ -2103,7 +2212,7 @@
   </div>
 
   {#if activeTab === 0}
-    {#if _fsShowOnlineBtn}
+    {#if _fsShowOnlineBtn && !_pickHistoryActive}
       <div class="foods-online-row">
         <button class="foods-online-btn" on:click={() => _foodSearch.searchOnline()}>
           <span class="material-symbols-rounded">travel_explore</span>
@@ -2219,10 +2328,67 @@
     </div>
   {/if}
 
+  {#snippet pickRow(row)}
+    <li class="food-item card" class:food-selected={selectedFoods.has(row.food)}>
+      <button class="food-select-btn" on:click={() => togglePickTick(row)} aria-label={row.name}>
+        <span class="food-check material-symbols-rounded" class:food-check-on={selectedFoods.has(row.food)}>
+          {selectedFoods.has(row.food) ? 'check_circle' : 'radio_button_unchecked'}
+        </span>
+      </button>
+      <button class="food-item-btn" on:click={() => openPickCard(row)}>
+        <div class="food-info">
+          <span class="food-name">{row.name}</span>
+          <span class="food-kcal text-sm">{amountAndUnit((_pickQty(row.food) || row).portion, (_pickQty(row.food) || row).unit)}{(_pickQty(row.food) || row).servings !== 1 ? ` × ${(_pickQty(row.food) || row).servings}` : ''}</span>
+        </div>
+        <span class="material-symbols-rounded text-3" style="font-size:18px;flex-shrink:0">chevron_right</span>
+      </button>
+    </li>
+  {/snippet}
+
+  {#snippet pickBlock(title, rows, shownKey)}
+    <p class="pick-block-title">{title}</p>
+    {#if rows.length === 0}
+      <p class="pick-block-empty text-3 text-sm">{$_('foods.picker.nothing_here')}</p>
+    {:else}
+      <ul class="food-list">
+        {#each visibleRows(rows, pickShown[shownKey]) as row (row.key)}
+          {@render pickRow(row)}
+        {/each}
+      </ul>
+      {#if rows.length > pickShown[shownKey]}
+        <button class="pick-more-btn" on:click={() => pickShown = { ...pickShown, [shownKey]: pickShown[shownKey] + HISTORY_MORE }}>
+          {$_('foods.picker.show_more')}
+        </button>
+      {/if}
+    {/if}
+  {/snippet}
+
   <div class="page-content">
     {#if activeTab === 0}
       <!-- ── Foods: one list over every source (food-search.js) ───────────── -->
-      {#if !fsState.query}
+      {#if _pickHistoryActive && pickSub === 'saved'}
+        {#if _pickSaved.length === 0}
+          <div class="empty-state">
+            <span class="material-symbols-rounded empty-icon">favorite_border</span>
+            <p>{$_('foods.picker.saved_empty')}</p>
+          </div>
+        {:else}
+          <ul class="food-list">
+            {#each _pickSaved as row (row.key)}
+              {@render pickRow(row)}
+            {/each}
+          </ul>
+        {/if}
+      {:else if _pickHistoryActive && _pickAllRows.length === 0}
+        <div class="empty-state">
+          <span class="material-symbols-rounded empty-icon">history</span>
+          <p>{$_('foods.picker.no_history')}</p>
+          <button class="btn btn-secondary" on:click={() => pickSubIndex = 0}>{$_('foods.picker.tab_search')}</button>
+        </div>
+      {:else if _pickHistoryActive}
+        {@render pickBlock($_('foods.picker.this_meal', { values: { meal: $mealNames?.[Number(pickMeal) || 0] || '' } }), _pickMealRows, _pickMealKey)}
+        {@render pickBlock($_('foods.picker.all_meals'), _pickAllRows, _pickAllKey)}
+      {:else if !fsState.query}
         <div class="empty-state">
           <span class="material-symbols-rounded empty-icon">search</span>
           <p>{$_('foods.search.hint')}</p>
@@ -3038,8 +3204,8 @@
         <span class="qty-macro-label">fat</span>
       </div>
     </div>
-    <button class="btn btn-primary w-full" on:click={confirmQtyPrompt} disabled={_addingToDiary}>{$_('foods.add_to_diary')}</button>
-    {#if pickMode && activeTab === 0}
+    <button class="btn btn-primary w-full" on:click={confirmQtyPrompt} disabled={_addingToDiary}>{qtyPromptTick ? $_('foods.picker.save_card') : $_('foods.add_to_diary')}</button>
+    {#if pickMode && activeTab === 0 && !qtyPromptTick}
       <button class="btn btn-secondary w-full" on:click={editFromQtyPrompt} disabled={_addingToDiary}>
         <span class="material-symbols-rounded" style="font-size:18px">edit</span>
         {$_('foods.qty_edit')}
@@ -3631,6 +3797,18 @@
   .food-check-on { color: var(--accent); }
 
   .food-item.food-selected { background: var(--accent-dim); }
+
+  .foods-search.pick-hidden { display: none; }
+  .pick-sub-tabs { margin-top: 8px; }
+  .pick-block-title {
+    margin: 16px 16px 4px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3);
+  }
+  .pick-block-empty { margin: 0 16px 12px; }
+  .pick-more-btn {
+    display: block; width: 100%; padding: 12px; background: none; border: 0;
+    color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer;
+  }
 
   .pick-count-title { color: var(--accent); }
   .pick-confirm-btn {

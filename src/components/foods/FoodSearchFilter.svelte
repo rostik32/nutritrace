@@ -13,6 +13,7 @@
   export let sources = [];          // [{ id, label }] that can be searched
   export let excluded = [];         // source ids the user left out
   export let sort = 'relevance';
+  export let sortValues = null;     // the sort orders to offer; null = all
   export let showOffTiers = false;
   export let offTiers = new Set();  // active OFF completeness buckets
   export let showUsdaTiers = false;
@@ -62,7 +63,7 @@
 
   <section class="fsf-section">
     <p class="fsf-heading">{$_('foods.search.filter_sort')}</p>
-    {#each SORTS as s (s.value)}
+    {#each SORTS.filter(s => !sortValues || sortValues.includes(s.value)) as s (s.value)}
       <label class="tier-option">
         <input type="radio" name="fsf-sort" checked={sort === s.value}
           on:change={() => dispatch('sort', { value: s.value })} />
