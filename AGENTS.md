@@ -35,3 +35,6 @@ its `AGENTS.md` too — its rules (no secrets, write history, back up first) app
   DB in `.dev-data/` (git-ignored); never copy the production database to a laptop.
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `ci:`).
 - Talk to the owner in Russian; code, comments and docs in English.
+- Leave no test servers behind: stop every dev/test server or watcher you started (`diaitika/dev.sh`,
+  `node index.js`, Vite, scratch servers) as soon as the check is done, and delete the scratch data and
+  builds you made. Details: rule 8 in `../diaitika-infra/AGENTS.md`.
