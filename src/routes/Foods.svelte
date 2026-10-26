@@ -537,8 +537,10 @@
   // are computed on the device from the last 90 days of the diary
   // (src/lib/food-history.js), so they work offline and on every device.
   const PICK_SUB_IDS = ['search', 'recent', 'most', 'saved'];
-  let pickSubIndex = 0;
-  let pickSubReady = false;          // the default tab is chosen once per open
+  let pickSubIndex = 1;              // Recently Eaten; Search once it turns out there is no history
+  let pickSubReady = false;          // the default tab is settled once per open
+  let pickSubTouched = false;        // the user chose a tab before the history arrived
+  let pickHistoryLoaded = false;
   let pickDays = [];                 // diary days of the last 90 days
   let pickShown = { mealRecent: HISTORY_FIRST, mealMost: HISTORY_FIRST, allRecent: HISTORY_FIRST, allMost: HISTORY_FIRST };
   let pickSelection = new Map();     // ticked food -> { portion, unit, servings }
@@ -557,6 +559,12 @@
     : null;
   $: _pickSaved = pickMode ? savedFoodRows(localFoods) : [];
   $: _pickQty = food => pickSelection.get(food);
+  // Energy of a history row at the amount it shows (its tick, once ticked).
+  $: _pickRowEnergy = row => {
+    const q = _pickQty(row.food) || row;
+    const kcal = (parseFloat(_scaledFood(row.food, q.portion, q.unit).nutrition?.calories) || 0) * (q.servings || 1);
+    return Nutrition.displayEnergy(kcal, $energyUnit);
+  };
   $: _pickMealRows = _pickHistory ? (pickSub === 'most' ? _pickHistory.meal.most : _pickHistory.meal.recent) : [];
   $: _pickAllRows = _pickHistory ? (pickSub === 'most' ? _pickHistory.all.most : _pickHistory.all.recent) : [];
   $: _pickMealKey = pickSub === 'most' ? 'mealMost' : 'mealRecent';
@@ -564,8 +572,9 @@
   $: if (pickMode) loadPickHistory();
 
   // The diary days of the last 90 days, from the server when online and from
-  // the device copy when not (NtApi.getDiaryRange). On the first load the
-  // picker opens on Recently Eaten when there is history, else on Search.
+  // the device copy when not (NtApi.getDiaryRange). The picker opens on
+  // Recently Eaten while they load, and moves to Search only when there is
+  // no history and the user has not picked a tab meanwhile.
   async function loadPickHistory() {
     const today = localDateStr();
     try {
@@ -573,11 +582,18 @@
     } catch {
       pickDays = [];
     }
+    pickHistoryLoaded = true;
     if (!pickSubReady) {
       pickSubReady = true;
       const hasHistory = buildFoodHistory(pickDays, { today }).all.recent.length > 0;
-      pickSubIndex = hasHistory ? 1 : 0;
+      if (!hasHistory && !pickSubTouched) pickSubIndex = 0;
     }
+  }
+
+  function selectPickSub(i, el) {
+    pickSubIndex = i;
+    pickSubTouched = true;
+    el?.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
   }
 
   // Clear selection when tab changes (different list context); search does NOT clear selection.
@@ -1476,17 +1492,21 @@
     if (!foods.length) return;
 
     if ($diaryPromptQuantity) {
-      multiPortionItems = foods.map(food => {
-        const tick = tickOf(food);
-        return {
-          food,
-          portion: tick ? tick.portion : (food.portion || 100),
-          unit: tick ? tick.unit : (food.unit || 'g'),
-          servings: tick ? tick.servings : 1,
-        };
-      });
-      showMultiPortionSheet = true;
-      return;
+      // Ticks from the history tabs already carry the amount set in the card,
+      // so the portion sheet only comes up when a pick has none.
+      if (!foods.every(tickOf)) {
+        multiPortionItems = foods.map(food => {
+          const tick = tickOf(food);
+          return {
+            food,
+            portion: tick ? tick.portion : (food.portion || 100),
+            unit: tick ? tick.unit : (food.unit || 'g'),
+            servings: tick ? tick.servings : 1,
+          };
+        });
+        showMultiPortionSheet = true;
+        return;
+      }
     }
 
     // No prompt — add all with defaults, or with the ticked quantities
@@ -2182,8 +2202,16 @@
     <Tabs tabs={TABS} bind:active={activeTab} on:change={onTabChange} />
   </div>
   {#if pickMode && activeTab === 0}
+    <!-- Scrolls sideways on narrow screens; the shared Tabs component splits
+         the bar evenly, which four long labels do not fit. -->
     <div class="foods-tabs pick-sub-tabs">
-      <Tabs tabs={_pickSubTabs} bind:active={pickSubIndex} />
+      <div class="pick-sub-bar" role="tablist">
+        {#each _pickSubTabs as tab, i (tab.value)}
+          <button class="pick-sub-btn" class:active={i === pickSubIndex} role="tab"
+            aria-selected={i === pickSubIndex}
+            on:click={e => selectPickSub(i, e.currentTarget)}>{tab.label}</button>
+        {/each}
+      </div>
     </div>
   {/if}
 
@@ -2338,7 +2366,7 @@
       <button class="food-item-btn" on:click={() => openPickCard(row)}>
         <div class="food-info">
           <span class="food-name">{row.name}</span>
-          <span class="food-kcal text-sm">{amountAndUnit((_pickQty(row.food) || row).portion, (_pickQty(row.food) || row).unit)}{(_pickQty(row.food) || row).servings !== 1 ? ` × ${(_pickQty(row.food) || row).servings}` : ''}</span>
+          <span class="food-kcal text-sm">{amountAndUnit((_pickQty(row.food) || row).portion, (_pickQty(row.food) || row).unit)}{(_pickQty(row.food) || row).servings !== 1 ? ` × ${(_pickQty(row.food) || row).servings}` : ''} · {_pickRowEnergy(row).value.toLocaleString()} {_pickRowEnergy(row).unit}</span>
         </div>
         <span class="material-symbols-rounded text-3" style="font-size:18px;flex-shrink:0">chevron_right</span>
       </button>
@@ -2366,7 +2394,12 @@
   <div class="page-content">
     {#if activeTab === 0}
       <!-- ── Foods: one list over every source (food-search.js) ───────────── -->
-      {#if _pickHistoryActive && pickSub === 'saved'}
+      {#if _pickHistoryActive && pickSub !== 'saved' && !pickHistoryLoaded}
+        <div class="loading-row">
+          <span class="material-symbols-rounded spin">refresh</span>
+          <span class="text-2 text-sm">{$_('foods.picker.loading')}</span>
+        </div>
+      {:else if _pickHistoryActive && pickSub === 'saved'}
         {#if _pickSaved.length === 0}
           <div class="empty-state">
             <span class="material-symbols-rounded empty-icon">favorite_border</span>
@@ -3799,7 +3832,20 @@
   .food-item.food-selected { background: var(--accent-dim); }
 
   .foods-search.pick-hidden { display: none; }
-  .pick-sub-tabs { margin-top: 8px; }
+  .pick-sub-tabs { padding-top: 0; }
+  .pick-sub-bar {
+    display: flex; gap: 2px; padding: 3px;
+    background: var(--surface-2); border-radius: var(--radius-md);
+    overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .pick-sub-bar::-webkit-scrollbar { display: none; }
+  .pick-sub-btn {
+    flex: 1 0 auto; padding: 8px 14px; border: 0; background: none;
+    border-radius: calc(var(--radius-md) - 3px);
+    font-size: 13px; font-weight: 600; color: var(--text-2);
+    white-space: nowrap; cursor: pointer;
+  }
+  .pick-sub-btn.active { color: var(--accent); background: var(--surface-1); box-shadow: var(--shadow-sm); }
   .pick-block-title {
     margin: 16px 16px 4px; font-size: 12px; font-weight: 600;
     letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3);

@@ -36,6 +36,13 @@
 - [x] 6.1 Run the local production build and check the flow: log foods on two days, open the Breakfast picker, check each tab, tick products from different tabs, and add them in one step. Verify: the flow works as described, with a note of any difference.
 - [x] 6.2 Confirm no server code changed. Verify: `git diff --stat` shows no changes under `server/`.
 
+## 7. Fixes after the phone test
+
+- [x] 7.1 Replace the shared Tabs bar in the picker with a bar that sizes tabs to their labels and scrolls sideways without a visible scrollbar; a tapped tab scrolls into view. Verified at 375 px: page width 375 = viewport, bar scrollable, Saved fully visible after the tap; at desktop width the tabs fill the bar.
+- [x] 7.2 Open the picker on Recently Eaten with a loading state and move to Search only when there is no history and no tab was chosen. Verified: the first frame shows Recently Eaten with "Loading your history…", no Search in between.
+- [x] 7.3 Show the energy of each history row for its amount (tick amount once ticked). Verified: "100g × 2 · 310 kcal" for 2 × 100 g of a 155 kcal food; 150 g of a 59 kcal food shows 89 kcal.
+- [x] 7.4 Skip the Set Portions sheet when every pick already has a quantity from its tick. Verified with the quantity prompt setting on: two ticks went into the diary at once (150 g and 100 g) with no sheet.
+
 ## Workflow follow-up
 
 - Open a pull request into `diaitika` (protected branch; changes only through pull requests).
