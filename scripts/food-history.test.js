@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  historyStart, productKey, buildFoodHistory, savedFoodRows, visibleRows,
+  historyStart, productKey, buildFoodHistory, savedFoodRows, visibleRows, catalogFoodFor,
   HISTORY_FIRST, HISTORY_MORE,
 } from '../src/lib/food-history.js';
 
@@ -143,4 +143,19 @@ test('a full window of 90 days with 30 items a day is built within the time limi
   const elapsed = performance.now() - started;
   assert.ok(h.all.recent.length > 0 && h.meal.most.length > 0);
   assert.ok(elapsed < 250, `history took ${elapsed.toFixed(1)} ms`);
+});
+
+test('a diary item finds the catalog food it was logged from', () => {
+  // Web: catalog rows carry the server's id as id.
+  const web = [{ id: 7, name: 'Tuna' }, { id: 9, name: 'Oats' }];
+  assert.equal(catalogFoodFor({ name: 'Oats', id: 9, food_server_id: 9 }, web), web[1]);
+  // Android: rows have a local id and the server's id as server_id.
+  const phone = [{ id: 1, server_id: 9, name: 'Oats' }, { id: 2, server_id: null, name: 'Bread' }];
+  assert.equal(catalogFoodFor({ name: 'Oats', id: 1, food_server_id: 9 }, phone, { native: true }), phone[0]);
+  // Logged on the phone before the food reached the server.
+  assert.equal(catalogFoodFor({ name: 'Bread', id: 2, food_server_id: null }, phone, { native: true }), phone[1]);
+  // Recipes, quick calories and deleted foods have none.
+  assert.equal(catalogFoodFor({ name: 'Soup', id: 9, food_server_id: 9, is_recipe: true }, web), null);
+  assert.equal(catalogFoodFor({ name: 'Quick', type: 'quick_calories' }, web), null);
+  assert.equal(catalogFoodFor({ name: 'Gone', id: 42, food_server_id: 42 }, web), null);
 });

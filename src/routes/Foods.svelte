@@ -32,7 +32,7 @@
   import { itemSourceRef } from '../lib/item-source.js';
   import { offCountryTagToFlag, offCountryTagToName } from '../lib/off-country-flag.js';
   import { foodsShowThumbnails, foodsShowCategories, foodsShowLabels, foodsShowNotes, foodsSort, mealsSort, recipesSort, foodCategories, foodsShowYesterdayMeals, foodsYesterdayCollapsed, foodsSavedCollapsed, mealNames, usdaEnabled, usdaApiKey, offEnabled, offSearchCountry, offSearchLanguage, foodsSearchExcluded, envLocks, diaryDefaultField, catName as _catName, catDisplay as _catDisplay, pageBanners, bannerStyle, energyUnit } from '../stores/settings.js';
-  import { mealIcon } from '../lib/mealIcon.js';
+  import { mealIcon, mealColor } from '../lib/mealIcon.js';
   import { focusDefaultField } from '../lib/default-field.js';
   import { pageScrollTop, restorePageScroll } from '../lib/scroll-anchor.js';
   import { createFoodSearch, rankFoods, foodItemActions, foodWithBarcode, findBarcode } from '../lib/food-search.js';
@@ -568,6 +568,7 @@
   $: _pickMealRows = _pickHistory ? (pickSub === 'most' ? _pickHistory.meal.most : _pickHistory.meal.recent) : [];
   $: _pickAllRows = _pickHistory ? (pickSub === 'most' ? _pickHistory.all.most : _pickHistory.all.recent) : [];
   $: _pickMealKey = pickSub === 'most' ? 'mealMost' : 'mealRecent';
+  $: _pickMealName = ($mealNames || ['Breakfast', 'Lunch', 'Dinner', 'Snacks'])[Number(pickMeal) || 0] || '';
   $: _pickAllKey = pickSub === 'most' ? 'allMost' : 'allRecent';
   $: if (pickMode) loadPickHistory();
 
@@ -1596,6 +1597,37 @@
     showQtyPrompt = false;
   }
 
+  // The product card's heart. An own catalog food toggles Saved; a database
+  // product (no catalog id yet) is saved to My Foods first, the way adding it
+  // would. Shared foods belong to someone else and get no heart.
+  let _savingFav = false;
+  async function togglePromptSaved() {
+    if (!promptFood || _savingFav) return;
+    _savingFav = true;
+    try {
+      let food = promptFood;
+      if (typeof food.id !== 'number') {
+        const { food: full, ok } = await _completeOffValues(food);
+        if (!ok) { showError($_('foods.picker.saved_no_values')); return; }
+        const { id: _drop, ...rest } = full;
+        food = await NtApi.createFood({ ...rest, created_at: full.dateTime || new Date().toISOString() });
+      }
+      const favorite = food.favorite ? 0 : 1;
+      const saved = await NtApi.updateFood(food.id, { ...food, favorite });
+      Object.assign(promptFood, { id: saved.id, favorite });
+      promptFood = promptFood;
+      const own = localFoods.find(f => f.id === saved.id);
+      if (own) own.favorite = favorite;
+      else localFoods = [...localFoods, { ...saved, favorite }];
+      localFoods = localFoods;
+      showSuccess($_(favorite ? 'foods.picker.saved_added' : 'foods.picker.saved_removed', { values: { name: saved.name } }));
+    } catch {
+      showError($_('foods.picker.saved_failed'));
+    } finally {
+      _savingFav = false;
+    }
+  }
+
   async function deleteItem(item) {
     if (currentStore === 'foodList') await NtApi.deleteFood(item.id);
     else await NtApi.deleteMeal(item.id);
@@ -2373,8 +2405,10 @@
     </li>
   {/snippet}
 
-  {#snippet pickBlock(title, rows, shownKey)}
-    <p class="pick-block-title">{title}</p>
+  {#snippet pickBlock(title, icon, color, rows, shownKey)}
+    <p class="pick-block-title">
+      <span class="material-symbols-rounded pick-block-icon" style="color:{color}">{icon}</span>{title}
+    </p>
     {#if rows.length === 0}
       <p class="pick-block-empty text-3 text-sm">{$_('foods.picker.nothing_here')}</p>
     {:else}
@@ -2419,8 +2453,9 @@
           <button class="btn btn-secondary" on:click={() => pickSubIndex = 0}>{$_('foods.picker.tab_search')}</button>
         </div>
       {:else if _pickHistoryActive}
-        {@render pickBlock($_('foods.picker.this_meal', { values: { meal: $mealNames?.[Number(pickMeal) || 0] || '' } }), _pickMealRows, _pickMealKey)}
-        {@render pickBlock($_('foods.picker.all_meals'), _pickAllRows, _pickAllKey)}
+        {@render pickBlock($_('foods.picker.this_meal', { values: { meal: _pickMealName } }),
+          mealIcon(_pickMealName), mealColor(Number(pickMeal) || 0), _pickMealRows, _pickMealKey)}
+        {@render pickBlock($_('foods.picker.all_meals'), 'history', 'var(--text-3)', _pickAllRows, _pickAllKey)}
       {:else if !fsState.query}
         <div class="empty-state">
           <span class="material-symbols-rounded empty-icon">search</span>
@@ -3149,6 +3184,16 @@
 
 <!-- Quantity prompt sheet -->
 <Sheet bind:open={showQtyPrompt} title={promptFood ? promptFood.name : 'Add to Diary'}>
+  <svelte:fragment slot="header-actions">
+    {#if promptFood && !promptFood._shared_by}
+      <button class="btn-icon qty-fav-btn" class:on={!!promptFood.favorite}
+        on:click={togglePromptSaved} disabled={_savingFav}
+        aria-label={promptFood.favorite ? $_('foods.picker.unsave_food') : $_('foods.picker.save_food')}
+        title={promptFood.favorite ? $_('foods.picker.unsave_food') : $_('foods.picker.save_food')}>
+        <span class="material-symbols-rounded">{promptFood.favorite ? 'favorite' : 'favorite_border'}</span>
+      </button>
+    {/if}
+  </svelte:fragment>
   <div style="display:flex;flex-direction:column;gap:16px;padding-top:8px" on:keydown={_onQtyPromptKey}>
     <!-- Issues #69 + #70: surface the OFF nutrition basis so users know
          whether values are per-100-g or per-100-ml at a glance. Gated on
@@ -3850,7 +3895,11 @@
     margin: 16px 16px 4px; font-size: 12px; font-weight: 600;
     letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3);
   }
+  .pick-block-icon { font-size: 18px; vertical-align: -4px; margin-right: 8px; }
   .pick-block-empty { margin: 0 16px 12px; }
+  .qty-fav-btn { margin-left: auto; margin-right: 4px; color: var(--text-3); }
+  .qty-fav-btn.on { color: var(--macro-protein, #ec4899); }
+  .qty-fav-btn.on .material-symbols-rounded { font-variation-settings: 'FILL' 1; }
   .pick-more-btn {
     display: block; width: 100%; padding: 12px; background: none; border: 0;
     color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer;

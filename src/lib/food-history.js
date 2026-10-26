@@ -10,6 +10,7 @@
  * quantity a product opens with come from its latest entry in the scope.
  */
 import { foldText } from './search-text.js';
+import { itemSourceRef } from './item-source.js';
 
 export const HISTORY_DAYS = 90;
 export const HISTORY_FIRST = 5;
@@ -136,6 +137,22 @@ export function savedFoodRows(foods) {
       unit: food.unit || 'g',
       servings: 1,
     }));
+}
+
+/**
+ * The catalog food a diary item was logged from, or null (recipes, quick
+ * calories, a food since deleted). Same matching as the diary photo lookup:
+ * by server id, else by this device's own id for an item logged before its
+ * food reached the server. `foods` is the device's catalog.
+ */
+export function catalogFoodFor(item, foods, { native = false } = {}) {
+  if (!item || item.is_recipe || item.type === 'quick_calories') return null;
+  const ref = itemSourceRef(item, { native });
+  if (!ref) return null;
+  const list = foods || [];
+  const serverIdOf = f => ('server_id' in f) ? f.server_id : f.id;
+  if (ref.serverId != null) return list.find(f => serverIdOf(f) === ref.serverId) || null;
+  return list.find(f => f.id === ref.localId && (!ref.unsent || (f.server_id == null && f.name === item.name))) || null;
 }
 
 /** The first `shown` rows of a history list; the picker grows `shown` by HISTORY_MORE. */
