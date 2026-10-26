@@ -432,10 +432,15 @@
   // Body Stats weight-edit pattern the user called out as the
   // reference. Same applied to every other sheet on this page.
   // #224: the cursor starts in the box chosen in Settings, Diary, Default Field.
-  $: if (showQtyPrompt) tick().then(() => {
+  // A function so the block below reruns only when the sheet opens.
+  function _focusQtyPrompt() {
+    // Back from "Edit nutrition": the sheet is restored as it was, without
+    // pulling the keyboard up again.
+    if (_qtyRestored) { _qtyRestored = false; _qtyInstant = false; return; }
     const el = $diaryDefaultField === 'portion' ? _qtyPromptPortionEl : (_qtyPromptServingsEl || _qtyPromptPortionEl);
     el?.focus(); el?.select?.();
-  });
+  }
+  $: if (showQtyPrompt) tick().then(_focusQtyPrompt);
   // Enter anywhere in the sheet submits (mirrors QuickCalories + water
   // custom + activity flows). Guarded to not fire inside a select/textarea.
   function _onQtyPromptKey(e) {
@@ -446,6 +451,8 @@
     if (!_addingToDiary) confirmQtyPrompt();
   }
   let promptFood = null;
+  let _qtyInstant = false;           // reopen the sheet without its slide-in
+  let _qtyRestored = false;          // ... and without focusing a field
   let promptServings = 1;
   let promptPortion = 100;
   // Phase 2 of the NutritionFactsBox rollout: tap a food on the Foods tab
@@ -1554,7 +1561,7 @@
       tick: qtyPromptTick, sub: pickSubIndex, date: pickDate, meal: pickMeal,
     };
     editorState.foodSaved = null;
-    showQtyPrompt = false;
+    // The sheet stays up until the editor replaces the page.
     openEditor(food, 'foodList', { diary: false });
   }
 
@@ -2139,21 +2146,27 @@
     const qtyBack = editorState.qtyReturn;
     editorState.qtyReturn = null;
     const _qtyBackHere = qtyBack && pickMode && qtyBack.date === pickDate && qtyBack.meal === pickMeal;
+    // The sheet is shown at once, before the lists load, so coming back
+    // reads as the editor closing over it; the catalog's copy of the saved
+    // food replaces it once loaded (ticks match by object).
+    const qtySaved = _qtyBackHere ? editorState.foodSaved : null;
     if (_qtyBackHere) {
+      editorState.foodSaved = null;
       pickSubIndex = qtyBack.sub;
       pickSubTouched = true;
-    }
-    // Load local data FIRST — don't block on server calls
-    await load();
-    if (_qtyBackHere) {
-      const saved = editorState.foodSaved;
-      editorState.foodSaved = null;
-      promptFood = saved ? (localFoods.find(f => f.id === saved.id) || saved) : qtyBack.food;
+      promptFood = qtySaved || qtyBack.food;
       promptPortion = qtyBack.portion;
       promptUnit = qtyBack.unit;
       promptServings = qtyBack.servings;
       qtyPromptTick = qtyBack.tick;
+      _qtyInstant = true;
+      _qtyRestored = true;
       showQtyPrompt = true;
+    }
+    // Load local data FIRST — don't block on server calls
+    await load();
+    if (qtySaved && showQtyPrompt && promptFood === qtySaved) {
+      promptFood = localFoods.find(f => f.id === qtySaved.id) || qtySaved;
     }
     await loadYesterdayMeals();
     // Sharing status from server — non-blocking, updates UI when ready
@@ -3204,7 +3217,7 @@
   on:deleted={() => { detailSheetFood = null; load(); }} />
 
 <!-- Quantity prompt sheet -->
-<Sheet bind:open={showQtyPrompt} title={promptFood ? promptFood.name : 'Add to Diary'}>
+<Sheet bind:open={showQtyPrompt} instant={_qtyInstant} title={promptFood ? promptFood.name : 'Add to Diary'}>
   <svelte:fragment slot="header-actions">
     {#if promptFood && !promptFood._shared_by}
       <button class="btn-icon qty-fav-btn" class:on={!!promptFood.favorite}

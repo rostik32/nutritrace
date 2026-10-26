@@ -121,11 +121,15 @@
   // #170 follow-up (drekkym on 2026-08-26): also select the existing
   // value so typing replaces it instead of appending. Matches the
   // Body Stats weight-edit pattern.
-  $: if (showEditSheet) tick().then(() => {
+  // A function so the block below reruns only when the sheet opens.
+  function _focusEditSheet() {
+    // Back from "Edit nutrition": restored as it was, keyboard stays down.
+    if (_editRestored) { _editRestored = false; _editInstant = false; return; }
     // #224: Serving Size or Number of Servings per Default Field; the
     // Quick Calories branch has neither, so its first number box is used.
     focusDefaultField(_editSheetEl, $diaryDefaultField);
-  });
+  }
+  $: if (showEditSheet) tick().then(_focusEditSheet);
   function _onEditSheetKey(e) {
     if (e.key !== 'Enter') return;
     const t = e.target;
@@ -302,6 +306,8 @@
   $: _editItemCanEditFood = !!editItem && !_editChildContext
     && !editItem.is_recipe && editItem.type !== 'quick_calories';
   let _editFoodChanges = null;       // name/brand of the food saved in the editor
+  let _editInstant = false;          // reopen the sheet without its slide-in
+  let _editRestored = false;         // ... and without focusing a field
   async function editItemNutrition() {
     const item = editItem;
     if (!item) return;
@@ -324,7 +330,7 @@
     editorState.foodPrefill = { ...food };
     editorState.foodStore = 'foodList';
     editorState.foodDiaryCtx = null;
-    showEditSheet = false;
+    // The sheet stays up until the editor replaces the page.
     push('/foods/edit');
   }
 
@@ -336,6 +342,8 @@
     if (!(idx >= 0 && items[idx])) return;
     const saved = editorState.foodSaved;
     editorState.foodSaved = null;
+    _editInstant = true;
+    _editRestored = true;
     openEditItem({ ...items[idx], _i: idx });
     if (saved) {
       editItem = {
@@ -2950,7 +2958,7 @@
 </Sheet>
 
 <!-- Edit item sheet -->
-<Sheet bind:open={showEditSheet} title={editItem ? editItem.name : ''} on:close={() => showEditSheet = false}>
+<Sheet bind:open={showEditSheet} instant={_editInstant} title={editItem ? editItem.name : ''} on:close={() => showEditSheet = false}>
   {#if editItem}
     <div class="edit-sheet-body" bind:this={_editSheetEl} on:keydown={_onEditSheetKey}>
       {#if editItem.type === 'quick_calories'}
