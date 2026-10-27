@@ -41,6 +41,7 @@
   let sessionSaved = false;
 
   // Password Policy (admin-only) — 'standard' | 'strong'
+  let openSignup = false;
   let passwordPolicy = 'standard';
   let passwordPolicySaved = false;
 
@@ -111,8 +112,31 @@
       const cfg = await res.json();
       sessionHours = cfg.session_hours ?? '8760';
       passwordPolicy = cfg.password_policy || 'standard';
+      openSignup = cfg.registration_open === 'true';
     } catch (e) {
       console.warn('[user-mgmt] loadSessionConfig threw', e);
+    }
+  }
+
+  // Open sign-up: anyone who reaches the login page can create an account.
+  // The server stores 'true' or 'false' in app_config.registration_open.
+  async function saveOpenSignup(on) {
+    const prev = openSignup;
+    openSignup = on;
+    try {
+      const res = await fetch(apiUrl('/api/app-config'), {
+        method: 'PUT', credentials: 'include',
+        headers: _csrfHeaders(),
+        body: JSON.stringify({ key: 'registration_open', value: on ? 'true' : 'false' }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showError($_('settings.users.err_open_signup', { values: { msg: data.error || res.status } }));
+        openSignup = prev;
+      }
+    } catch (e) {
+      showError($_('settings.users.err_open_signup', { values: { msg: e?.message || $_('settings.users.network_error') } }));
+      openSignup = prev;
     }
   }
 
@@ -599,6 +623,15 @@
           </div>
         {/if}
 
+
+        <div class="setting-divider"></div>
+        <div class="setting-row">
+          <div>
+            <span class="setting-label">{$_('settings.users.open_signup')}</span>
+            <div class="setting-desc">{$_('settings.users.open_signup_desc')}</div>
+          </div>
+          <Toggle checked={openSignup} on:change={e => saveOpenSignup(e.detail)} />
+        </div>
 
         <div class="setting-divider"></div>
         <div class="setting-row">
