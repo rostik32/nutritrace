@@ -22,6 +22,7 @@ const ALLOWED_KEYS = new Set([
   'bulk_vis_foods', 'bulk_vis_meals', 'bulk_vis_recipes',
   'bulk_users_foods', 'bulk_users_meals', 'bulk_users_recipes',
   'password_policy',
+  'registration_open',
 ]);
 
 // ── GET /api/app-config/env-locks — which sections are locked by env vars ──
@@ -141,6 +142,9 @@ router.get('/', requireAuth, requireAdmin, wrap((req, res) => {
 router.put('/', requireAuth, requireAdmin, wrap((req, res) => {
   const { key, value } = req.body;
   if (!ALLOWED_KEYS.has(key)) return res.status(400).json({ error: 'Unknown config key' });
+  if (key === 'registration_open' && value !== 'true' && value !== 'false') {
+    return res.status(400).json({ error: 'registration_open must be true or false' });
+  }
   // Block writes to env-locked sections
   if (key.startsWith('smtp_') && isSmtpEnvLocked()) return res.status(403).json({ error: 'SMTP is configured via environment variables and cannot be changed here.' });
   if (key.startsWith('ai_')   && isAiEnvLocked())   return res.status(403).json({ error: 'AI is configured via environment variables and cannot be changed here.' });

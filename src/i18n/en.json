@@ -298,6 +298,9 @@
       "role_user_display": "User",
       "expires_short": "expires {date}",
       "revoke_invite_aria": "Revoke Invite",
+      "open_signup": "Allow sign-up",
+      "open_signup_desc": "Anyone who reaches the login page can create an account. New accounts are normal users, not admins. Turn it off to go back to invites only.",
+      "err_open_signup": "Could not change sign-up: {msg}",
       "strong_passwords": "Require Strong Passwords",
       "strong_passwords_desc": "Reject weak passwords (zxcvbn score below 3) on top of the standard 8-char + mixed-case + number + symbol rules. Affects new sign-ups, invites, and password changes. Existing passwords aren't re-checked.",
       "saved_short": "Saved.",
@@ -428,6 +431,16 @@
     "sso_sign_in_with": "Sign In With {provider}",
     "sso_or": "or",
     "no_signin_methods": "No sign-in methods available. Ask your administrator.",
+    "signup": {
+      "open": "Create an account",
+      "create": "Create account",
+      "creating": "Creating account…",
+      "back": "Back to sign in",
+      "email": "Email (optional)",
+      "email_placeholder": "you@example.com",
+      "password_hint": "At least 8 characters, with upper and lower case, a number and a symbol",
+      "failed": "Could not create the account"
+    },
     "biometric": {
       "sign_in_button": "Sign In with Biometric",
       "prompt": "Sign in to NutriTrace",

@@ -58,6 +58,18 @@ function _bumpBucket(map, key, max) {
   return true;
 }
 
+// Open sign-up switch, stored in app_config and set by an admin. Off by default.
+function registrationOpen() {
+  return db.prepare(`SELECT value FROM app_config WHERE key = 'registration_open'`).get()?.value === 'true';
+}
+
+// Sign-up requests from people who are not admins share the login limiter, so
+// accounts cannot be created in a loop. Admins and the first account are not limited.
+function rateLimitSignup(req, res, next) {
+  if (!userMgmtActive() || req.user?.role === 'admin') return next();
+  return rateLimitLogin(req, res, next);
+}
+
 function rateLimitLogin(req, res, next) {
   const ip = req.ip || req.connection.remoteAddress;
   const username = (req.body?.username || '').trim().toLowerCase();
@@ -143,6 +155,8 @@ router.get('/status', wrap((req, res) => {
     single_user_mode: singleUser,
     oidc: { providers, enable_email_password_login: isPasswordLoginEnabled() },
     password_policy: policy,                  // 'standard' | 'strong'
+    // Whether anyone may create an account (Settings → Users → Allow sign-up).
+    registration_open: registrationOpen(),
     password_min_score: policy === 'strong' ? STRONG_MIN_SCORE : 0,
     // Whether the sign-in cookie is HTTPS-only, so the login page can say up
     // front that signing in from a plain-HTTP page will not stick.
@@ -199,11 +213,15 @@ router.post('/logout', (req, res) => {
 });
 
 // ── Register (admin only, or first user = auto-admin) ─────────────────────
-router.post('/register', wrap((req, res) => {
+router.post('/register', rateLimitSignup, wrap((req, res) => {
   const isFirst = !userMgmtActive();
+  // Open sign-up (Settings → Users → Allow sign-up): anyone may create an
+  // account while the switch is on. Those accounts are always plain users.
+  // An admin session keeps creating users with any role, as before.
+  const openSignup = !isFirst && registrationOpen() && req.user?.role !== 'admin';
 
-  // Only first registration is open; subsequent require admin JWT
-  if (!isFirst && (!req.user || req.user.role !== 'admin')) {
+  // First registration is open; then an admin session is required, or open sign-up
+  if (!isFirst && !openSignup && (!req.user || req.user.role !== 'admin')) {
     return res.status(403).json({ error: 'Admin only' });
   }
 
@@ -212,7 +230,7 @@ router.post('/register', wrap((req, res) => {
   { const pwErr = validatePassword(password, [username, email, full_name].filter(Boolean)); if (pwErr) return res.status(400).json({ error: pwErr }); }
 
   const hash = bcrypt.hashSync(password, 12);
-  const assignedRole = isFirst ? 'admin' : (role === 'admin' ? 'admin' : 'user');
+  const assignedRole = isFirst ? 'admin' : (!openSignup && role === 'admin' ? 'admin' : 'user');
 
   const result = db.prepare(
     `INSERT INTO users (username, password_hash, full_name, nickname, birthday, gender, role, email)

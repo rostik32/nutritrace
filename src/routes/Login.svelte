@@ -27,6 +27,14 @@
   // since there's no server to talk to.
   let oidcProviders = [];
   let passwordLoginEnabled = true;
+  // Open sign-up (admin switch in Settings → Users). When on, the page shows
+  // a "Create an account" link and a sign-up form under the sign-in form.
+  let registrationOpen = false;
+  let signUpMode = false;
+  let signUpUsername = '';
+  let signUpPassword = '';
+  let signUpEmail = '';
+  let signingUp = false;
   // Why signing in won't stick, if it won't: 'http' when this page is plain
   // HTTP and the server's cookie is HTTPS-only, 'dropped' when a sign-in
   // succeeded but the browser still didn't keep the cookie. See cookie-check.js.
@@ -42,6 +50,7 @@
       if (r.ok) {
         const data = await r.json();
         authStatus = data;
+        registrationOpen = data.registration_open === true;
         if (cookieBlockedByHttp(data, { native: isNative })) signInProblem.set('http');
         if (data?.oidc) {
           oidcProviders = Array.isArray(data.oidc.providers) ? data.oidc.providers : [];
@@ -187,6 +196,35 @@
     }
   }
 
+  // Creates the account through the public sign-up route, then signs in with
+  // the same details, so the session cookie is set the usual way.
+  async function signUp() {
+    if (!signUpUsername.trim() || !signUpPassword) return;
+    signingUp = true;
+    try {
+      const res = await fetch(apiUrl('/api/auth/register'), {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: signUpUsername.trim(),
+          password: signUpPassword,
+          email: signUpEmail.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(data.error || $_('login.signup.failed')); return; }
+      username = signUpUsername.trim();
+      password = signUpPassword;
+      signUpPassword = '';
+      signUpMode = false;
+      await login();
+    } catch(e) {
+      showError($_('common.errors.cant_reach_server'));
+    } finally {
+      signingUp = false;
+    }
+  }
+
   function onKey(e) { if (e.key === 'Enter') login(); }
 </script>
 
@@ -221,7 +259,34 @@
         {/if}
       {/if}
 
-      {#if passwordLoginEnabled}
+      {#if passwordLoginEnabled && signUpMode}
+        <div class="form-group">
+          <label class="form-label">{$_('login.username')}</label>
+          <input class="input" type="text" autocomplete="username" bind:value={signUpUsername}
+            placeholder={$_('login.username_placeholder')} autofocus />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{$_('login.signup.email')}</label>
+          <input class="input" type="email" autocomplete="email" bind:value={signUpEmail}
+            placeholder={$_('login.signup.email_placeholder')} />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{$_('login.password')}</label>
+          <input class="input" type="password" autocomplete="new-password" bind:value={signUpPassword}
+            placeholder={$_('login.signup.password_hint')} />
+        </div>
+
+        <button class="btn btn-primary w-full" class:loading={signingUp} on:click={signUp}
+          disabled={signingUp || !signUpUsername.trim() || !signUpPassword}>
+          {signingUp ? $_('login.signup.creating') : $_('login.signup.create')}
+        </button>
+
+        <div style="text-align:center">
+          <button class="recovery-toggle" on:click={() => signUpMode = false}>{$_('login.signup.back')}</button>
+        </div>
+      {:else if passwordLoginEnabled}
         <div class="form-group">
           <label class="form-label">{$_('login.username')}</label>
           <input class="input" type="text" autocomplete="username"
@@ -251,6 +316,12 @@
         <div style="text-align:center">
           <button class="recovery-toggle" on:click={() => push('/forgot-password')}>{$_('login.forgot_password')}</button>
         </div>
+
+        {#if registrationOpen}
+          <div style="text-align:center">
+            <button class="recovery-toggle" on:click={() => signUpMode = true}>{$_('login.signup.open')}</button>
+          </div>
+        {/if}
       {:else if !oidcProviders.length}
         <p class="text-3 text-sm" style="text-align:center">{$_('login.no_signin_methods')}</p>
       {/if}
