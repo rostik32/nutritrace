@@ -3,7 +3,7 @@ import { linkBase } from '../lib/public-url.js';
 import db from '../db.js';
 import { wrap } from '../logger.js';
 import { requireAuth, requireAdmin, userMgmtActive } from '../middleware/auth.js';
-import { testSmtp, isSmtpEnvLocked } from '../email.js';
+import { testSmtp, isSmtpEnvLocked, cleanSmtpValue } from '../email.js';
 import { isAiEnvLocked } from '../ai.js';
 
 const router = Router();
@@ -147,7 +147,7 @@ router.put('/', requireAuth, requireAdmin, wrap((req, res) => {
   // Don't overwrite secrets with the redaction placeholder
   if ((key === 'smtp_pass' || key === 'ai_api_key' || key === 'fitbit_client_secret' || key === 'withings_client_secret') && value === '••••••••') return res.json({ ok: true });
   db.prepare('INSERT INTO app_config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
-    .run(key, value || null);
+    .run(key, cleanSmtpValue(key, value) || null);
 
   // When disabling sharing, reset ALL items to private and clear share grants
   if (key === 'sharing_enabled' && value !== 'true') {
