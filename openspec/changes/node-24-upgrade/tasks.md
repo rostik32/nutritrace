@@ -44,9 +44,9 @@
 
 ## 6. Deploy (diaitika-infra)
 
-- [ ] 6.1 New ADR `docs/decisions/0006-node-24-runtime.md` (24 vs 22 vs 26, `better-sqlite3` 12, the reason Node 20
-  was pinned); update `docs/onboarding.md` (Node 24) and ADR 0005's local-dev line; add `:sha-1bed569` (last Node 20
-  build) to the rollback list in `docs/runbooks/update-nutritrace.md`; verify `grep -rn "Node 20" docs/onboarding.md
+- [x] 6.1 New ADR `docs/decisions/0006-node-24-runtime.md` (24 vs 22 vs 26, `better-sqlite3` 12, the reason Node 20
+  was pinned); update `docs/onboarding.md` (Node 24) and ADR 0005's local-dev line; add `:sha-0c05768` (Node 20 build in
+  production) to the rollback list in `docs/runbooks/update-nutritrace.md`; verify `grep -rn "Node 20" docs/onboarding.md
   docs/decisions/0005-dev-workflow.md` finds nothing
 - [ ] 6.2 Merge after green CI; wait for "diaitika image" on the merge commit to be green (`gh run list --repo
   rostik32/nutritrace --branch diaitika`)

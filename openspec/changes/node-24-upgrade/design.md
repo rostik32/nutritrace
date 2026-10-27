@@ -74,11 +74,11 @@ after merge.
 1. PR into `diaitika` with code + docs; CI `checks` green on Node 24; local arm64 image build/run (decision 4).
 2. Merge → wait for "diaitika image" green.
 3. Deploy strictly by `diaitika-infra/docs/runbooks/update-nutritrace.md` (backup → pull → up → log line + HTTP 200 +
-   public check). Before deploying, add the current image (`:sha-1bed569`, the last Node 20 build) to the
+   public check). Before deploying, add the current image (`:sha-0c05768`, the Node 20 build running in production) to the
    runbook's rollback list.
 4. Extra post-deploy checks: log shows no `better-sqlite3`/DuckDB load errors, `[off-local] search index ready`
    appears, a food search and a diary read work on https://nutri.diaitika.com.
-5. Rollback: `image: ghcr.io/rostik32/nutritrace:sha-1bed569` → `docker compose up -d`; restore the pre-deploy backup
+5. Rollback: `image: ghcr.io/rostik32/nutritrace:sha-0c05768` → `docker compose up -d`; restore the pre-deploy backup
    only if data was damaged (`restore-backup.md`).
 
 ## Open Questions
