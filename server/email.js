@@ -2,6 +2,13 @@ import nodemailer from 'nodemailer';
 import db from './db.js';
 import { logger } from './logger.js';
 
+/** Trim whitespace that comes in with pasted host, port, username and from
+ *  values (a stray space in the username makes the relay refuse the login).
+ *  The password is kept as typed. */
+export function cleanSmtpValue(key, value) {
+  return key === 'smtp_pass' || typeof value !== 'string' ? value : value.trim();
+}
+
 /** Seed app_config from env vars at startup (env vars take priority) */
 export function seedSmtpFromEnv() {
   const map = {
@@ -18,7 +25,7 @@ export function seedSmtpFromEnv() {
   let locked = false;
   for (const [envKey, dbKey] of Object.entries(map)) {
     if (process.env[envKey] != null) {
-      upsert.run(dbKey, process.env[envKey]);
+      upsert.run(dbKey, cleanSmtpValue(dbKey, process.env[envKey]));
       locked = true;
     }
   }
@@ -35,7 +42,7 @@ export function isSmtpEnvLocked() {
 function getSmtpConfig() {
   const rows = db.prepare('SELECT key, value FROM app_config WHERE key LIKE ?').all('smtp_%');
   const cfg = {};
-  for (const { key, value } of rows) cfg[key] = value;
+  for (const { key, value } of rows) cfg[key] = cleanSmtpValue(key, value);
   return cfg;
 }
 
@@ -47,7 +54,7 @@ function _mergedCfg(overrides) {
   if (!overrides) return stored;
   const merged = { ...stored };
   for (const k of ['smtp_host', 'smtp_port', 'smtp_secure', 'smtp_user', 'smtp_pass', 'smtp_from']) {
-    if (overrides[k] !== undefined) merged[k] = overrides[k];
+    if (overrides[k] !== undefined) merged[k] = cleanSmtpValue(k, overrides[k]);
   }
   return merged;
 }
