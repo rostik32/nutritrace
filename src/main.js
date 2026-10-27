@@ -1,5 +1,6 @@
 // Install console.* wrappers BEFORE any other import logs anything,
 // so the in-app diagnostic-log buffer captures the full app lifecycle.
+import { mount } from 'svelte';
 import { setAppVersion } from './lib/log-capture.js';
 import { APP_VERSION } from './lib/version.js';
 import { installRequestIdFetch } from './lib/request-id-fetch.js';
@@ -48,7 +49,7 @@ DB.init()
       const { loadImageMap } = await import('./lib/platform.js');
       await loadImageMap();
     }
-    new App({ target: document.getElementById('app') });
+    mount(App, { target: document.getElementById('app') });
   })
   .catch(err => {
     console.error('DB init failed:', err);
