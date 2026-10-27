@@ -48,12 +48,12 @@
   was pinned); update `docs/onboarding.md` (Node 24) and ADR 0005's local-dev line; add `:sha-0c05768` (Node 20 build in
   production) to the rollback list in `docs/runbooks/update-nutritrace.md`; verify `grep -rn "Node 20" docs/onboarding.md
   docs/decisions/0005-dev-workflow.md` finds nothing
-- [ ] 6.2 Merge after green CI; wait for "diaitika image" on the merge commit to be green (`gh run list --repo
+- [x] 6.2 Merge after green CI; wait for "diaitika image" on the merge commit to be green (`gh run list --repo
   rostik32/nutritrace --branch diaitika`)
-- [ ] 6.3 Deploy by `docs/runbooks/update-nutritrace.md` step by step (backup → pull → up → log line → HTTP 200 →
+- [x] 6.3 Deploy by `docs/runbooks/update-nutritrace.md` step by step (backup → pull → up → log line → HTTP 200 →
   public check); verify the log shows `NutriTrace v…-diaitika`, `[off-local] search index ready`, no native-module
   errors, and a food search and a diary page load on https://nutri.diaitika.com
-- [ ] 6.4 History entry `docs/history/YYYY-MM-DD.md`: runbook followed, backup name, new and previous image IDs,
+- [x] 6.4 History entry `docs/history/YYYY-MM-DD.md`: runbook followed, backup name, new and previous image IDs,
   checks done and not done (e.g. not checked on a real phone); verify it is pushed to diaitika-infra `main`
 
 ## Workflow follow-up
