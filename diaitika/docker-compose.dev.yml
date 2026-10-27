@@ -5,7 +5,7 @@
 # native modules (better-sqlite3, duckdb) must be built for Linux, not for the host OS.
 services:
   dev:
-    image: node:20-bookworm
+    image: node:24-bookworm
     working_dir: /app
     command: diaitika/dev.sh
     environment:

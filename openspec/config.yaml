@@ -6,7 +6,7 @@ context: |
   whether a change is generic (offer upstream as a PR against upstream `dev`) or diaitika-only.
   Every user-facing string goes through src/i18n/en.json (npm run i18n:check must pass).
   Server and client copies of shared helpers must stay identical (see src/lib/search-text.js note).
-  Tests: node --test (npm test) on Node 20; add tests next to similar ones in scripts/*.test.js.
+  Tests: node --test (npm test) on Node 24; add tests next to similar ones in scripts/*.test.js.
   Production runs the Docker image on linux/arm64; nothing may depend on host-specific binaries.
 
 rules:

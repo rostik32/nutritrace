@@ -21,12 +21,17 @@ docker compose -f diaitika/docker-compose.dev.yml up            # first start in
 docker compose -f diaitika/docker-compose.dev.yml exec dev diaitika/seed-dev.sh   # once, creates test admin
 ```
 
+After a Node major change (`node:<major>-bookworm` in the compose file), recreate the module volumes once:
+`docker compose -f diaitika/docker-compose.dev.yml down -v`.
+
 ## Run locally — option B: Node on the host
 
-Needs Node **20** (see `.nvmrc`; `better-sqlite3` does not build on newer Node with this lockfile).
+Needs Node **24** (see `.nvmrc`; the Dockerfiles and CI use the same major). Native modules
+(`better-sqlite3`, DuckDB) are built for one Node version, so after switching Node reinstall them:
+`npm ci && npm ci --prefix server`.
 
 ```bash
-nvm install && nvm use        # picks Node 20 from .nvmrc
+nvm install && nvm use        # picks Node 24 from .nvmrc
 diaitika/dev.sh               # API on :3001 (auto-restart) + Vite on :5173 (hot reload)
 diaitika/seed-dev.sh          # in a second terminal, once
 ```
