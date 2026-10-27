@@ -16,9 +16,9 @@
 
 ## 3. Tests and checks
 
-- [x] 3.1 Server tests for the 403 with switch off, role forcing, admin-only switch, password policy, rate limit.
+- [ ] 3.1 Server tests for the 403 with switch off, role forcing, admin-only switch, password policy, rate limit. (Open: source checks plus a scratch API run; no test of the rate limit itself.)
 - [x] 3.2 `npm test` and `npm run i18n:check` on Node 24.
-- [x] 3.3 Local check of the login page with the switch on and off, then stop every server and delete scratch data.
+- [ ] 3.3 Local check of the login page with the switch on and off, then stop every server and delete scratch data. (Open: API checked on a scratch server; the page itself not yet checked in a browser.)
 
 ## 4. Docs and release
 
