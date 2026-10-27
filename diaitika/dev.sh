@@ -9,8 +9,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DATA="${DEV_DATA:-$ROOT/.dev-data}"
 mkdir -p "$DATA/db" "$DATA/uploads"
 
-if [ "$(node -p 'process.versions.node.split(".")[0]')" != "20" ]; then
-  echo "dev.sh: Node 20 is required (see .nvmrc). Run: nvm use" >&2
+if [ "$(node -p 'process.versions.node.split(".")[0]')" != "24" ]; then
+  echo "dev.sh: Node 24 is required (see .nvmrc). Run: nvm use" >&2
   exit 1
 fi
 
