@@ -29,7 +29,8 @@ its `AGENTS.md` too — its rules (no secrets, write history, back up first) app
    `openspec/`, `.claude/`, this file and `DEVELOPMENT.md`.
 5. Before opening a PR: `npm test` and `npm run i18n:check` pass on Node 20; every new user-facing
    string is a key in `src/i18n/en.json`.
-6. Never touch production from here. Deploying is a separate step (diaitika-infra runbook).
+6. Never touch production from here. Deploying is a separate step: follow
+   `../diaitika-infra/docs/runbooks/update-nutritrace.md` step by step (rule 9 in `../diaitika-infra/AGENTS.md`).
 
 ## Rules
 
