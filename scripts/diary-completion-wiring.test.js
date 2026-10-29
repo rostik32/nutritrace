@@ -134,7 +134,7 @@ test('#207: Statistics computes completionStats and renders the KPI', () => {
   const stats = readFileSync(new URL('../src/routes/Statistics.svelte', import.meta.url), 'utf8');
   assert.match(stats, /let completionStats/);
   assert.match(stats, /completedDatesSet/);
-  assert.match(stats, /Marked complete/);
+  assert.match(stats, /statistics_page\.rail\.marked_complete/);
   assert.match(stats, /completionMarkerPlugin/);
 });
 

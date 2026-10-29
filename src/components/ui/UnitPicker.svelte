@@ -21,11 +21,12 @@
   import { customUnits } from '../../stores/settings.js';
   import { portal } from '../../lib/portal.js';
   import { foldText } from '../../lib/search-text.js';
+  import { _ } from 'svelte-i18n';
 
 
   /** Stored abbreviation. Must be a member of the merged catalog. */
   export let value = '';
-  export let placeholder = 'unit';
+  export let placeholder = '';
   export let disabled = false;
 
   const dispatch = createEventDispatcher();
@@ -157,7 +158,7 @@
     bind:this={inputEl}
     class="input unit-input"
     type="text"
-    {placeholder}
+    placeholder={placeholder || $_('ui.unit_picker.placeholder')}
     {disabled}
     value={open ? _query : (value || '')}
     on:input={onInput}
@@ -176,7 +177,7 @@
   <div use:portal class="popover" bind:this={popoverEl} role="listbox"
     style={popStyle} transition:fade={{ duration: 80 }}>
     {#if filteredGroups.length === 0}
-      <p class="empty-line">No matches. Add custom units in Settings → Foods → Custom Units.</p>
+      <p class="empty-line">{$_('ui.unit_picker.no_matches')}</p>
     {:else}
       {#each filteredGroups as group}
         <p class="group-label">{group.label}</p>

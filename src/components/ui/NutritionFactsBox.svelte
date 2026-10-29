@@ -107,7 +107,7 @@
   <div class="title">{$_('nutrition_facts.title')}</div>
 
   {#if servingsPerContainer}
-    <div class="serving-line">{servingsPerContainer} servings per container</div>
+    <div class="serving-line">{$_('nutrition_facts.servings_per_container', { values: { n: servingsPerContainer } })}</div>
   {/if}
   <div class="serving-line">
     <strong>{$_('nutrition_facts.serving_size')}</strong>
@@ -115,11 +115,11 @@
       {#if servingDescription}
         {servingDescription}
       {:else if yieldText}
-        1 of {servings || '?'} ({yieldText})
+        {$_('nutrition_facts.one_of_yield', { values: { servings: servings || '?', yield: yieldText } })}
       {:else if servings}
-        1 of {servings}
+        {$_('nutrition_facts.one_of', { values: { servings } })}
       {:else}
-        per serving
+        {$_('foods.detail.per_serving')}
       {/if}
     </span>
   </div>
@@ -137,7 +137,7 @@
     <div class="rule mid"></div>
   {/if}
 
-  <div class="dv-header">% Daily Value*</div>
+  <div class="dv-header">{$_('nutrition_facts.dv_header')}</div>
 
   {#each macroRows as nut (nut.id)}
     {@const v = nutrition[nut.id]}
@@ -150,14 +150,14 @@
         {#if nut.id === 'added-sugars'}
           <!-- FDA format: "Includes <qty> Added Sugars". Qty is
                embedded between "Includes" and the label. -->
-          <span class="row-name">Includes {fmt(v, nut.unit)} {nut.label}</span>
+          <span class="row-name">{$_('nutrition_facts.includes', { values: { amount: fmt(v, nut.unit), label: nut.label } })}</span>
         {:else}
           <span class="row-name">{nut.label}</span>
           <span class="row-value">{fmt(v, nut.unit)}</span>
         {/if}
         {#if derived}
           <span class="derived material-symbols-rounded"
-            title="Derived from {nut.id === 'sodium' ? 'salt' : 'sodium'}">calculate</span>
+            title={$_(nut.id === 'sodium' ? 'nutrition_facts.derived_from_salt' : 'nutrition_facts.derived_from_sodium')}>calculate</span>
         {/if}
       </span>
       <span class="row-dv">{dv != null ? `${dv}%` : ''}</span>
@@ -181,9 +181,7 @@
 
   <div class="rule thick"></div>
   <p class="footnote">
-    * The % Daily Value (DV) tells you how much a nutrient in a serving
-    of food contributes to a daily diet. 2,000 calories a day is used
-    for general nutrition advice.
+    {$_('nutrition_facts.footnote')}
   </p>
 </div>
 {/if}

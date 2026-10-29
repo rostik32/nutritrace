@@ -1,5 +1,6 @@
 <script>
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../../lib/server-errors.js';
   import { showError, showSuccess } from '../../stores/toast.js';
   import { apiUrl, resolveAssetUrl, isNative, getServerUrl, getAuthToken } from '../../lib/platform.js';
   import { loadEntry, currentDate } from '../../stores/diary.js';
@@ -81,7 +82,7 @@
         method: 'POST', credentials: 'include', headers: _authHeaders(), body: fd,
       });
       const data = await res.json();
-      if (!res.ok) { showError(data?.error || $_('settings_nutrition_import.preview_failed')); return; }
+      if (!res.ok) { showError(localizeError(data?.error) || $_('settings_nutrition_import.preview_failed')); return; }
       preview = data;
     } catch (e) {
       showError($_('common.errors.cant_reach_server'));
@@ -100,7 +101,7 @@
         method: 'POST', credentials: 'include', headers: _authHeaders(), body: fd,
       });
       const data = await res.json();
-      if (!res.ok) { showError(data?.error || $_('settings_nutrition_import.import_failed')); return; }
+      if (!res.ok) { showError(localizeError(data?.error) || $_('settings_nutrition_import.import_failed')); return; }
       const verb = $_(onDuplicate === 'merge' ? 'settings_nutrition_import.verb_merged'
                     : onDuplicate === 'replace' ? 'settings_nutrition_import.verb_replaced'
                     : 'settings_nutrition_import.verb_imported');

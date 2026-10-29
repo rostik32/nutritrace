@@ -5,7 +5,12 @@
     "wellness": "Wellness",
     "statistics": "Statistics",
     "goals": "Goals",
-    "settings": "Settings"
+    "settings": "Settings",
+    "main_navigation": "Main navigation",
+    "navigation_menu": "Navigation menu",
+    "update_available": "Update available",
+    "tagline": "Trace Every Bite — Personal Nutrition Tracker",
+    "open_menu": "Open menu"
   },
   "routes": {
     "diary": {
@@ -53,9 +58,14 @@
       "name_required": "Name is required",
       "network_error_upload": "Network error during upload",
       "voice_unsupported": "Voice input not supported in this browser",
-      "cant_start_mic": "Couldn't start microphone"
+      "cant_start_mic": "Couldn't start microphone",
+      "authorization_failed": "Authorization failed",
+      "upload_failed": "Upload failed"
     },
-    "tap_again_to_exit": "Tap again to exit"
+    "tap_again_to_exit": "Tap again to exit",
+    "provider_connected": "{provider} connected!",
+    "are_you_sure": "Are you sure?",
+    "ok": "OK"
   },
   "sync": {
     "synced": "Synced",
@@ -101,7 +111,22 @@
       "server_error": "The server returned HTTP {status}. Try again shortly.",
       "mobile_data": "You’re connected through mobile data. This server may require your home Wi-Fi or VPN.",
       "check_connection": "Check your Wi-Fi, VPN, or server.",
-      "saved_locally": "Your changes are saved locally and will sync automatically."
+      "saved_locally": "Your changes are saved locally and will sync automatically.",
+      "https_only": "This build only allows HTTPS connections. Set up a reverse proxy (Caddy, Tailscale, Cloudflare Tunnel) or install a debug APK. See DEPLOY.md → Connecting from Android."
+    },
+    "progress": {
+      "pushing": "Pushing local changes…",
+      "health_connect": "Reading Health Connect…",
+      "downloading": "Downloading data…",
+      "synced_changes": "Synced changes",
+      "caching_images": "Caching images…",
+      "caching_images_count": "Caching images… {done}/{total}"
+    },
+    "errors": {
+      "native_only": "This action only works in the native app.",
+      "connect_first": "Connect to a server first.",
+      "failed_see_console": "Sync failed (see console)",
+      "could_not_sync": "Could not sync with server"
     }
   },
   "settings": {
@@ -109,7 +134,35 @@
       "section": "Appearance",
       "theme": "Theme",
       "accent_color": "Accent Color",
-      "navigation_style": "Navigation Style"
+      "navigation_style": "Navigation Style",
+      "colors": {
+        "mint": "Mint",
+        "blue": "Blue",
+        "red": "Red",
+        "purple": "Purple",
+        "orange": "Orange",
+        "teal": "Teal",
+        "pink": "Pink",
+        "yellow": "Yellow",
+        "indigo": "Indigo",
+        "lime": "Lime",
+        "rose": "Rose",
+        "cyan": "Cyan"
+      },
+      "theme_system": "System Default",
+      "theme_dark": "Dark",
+      "theme_light": "Light",
+      "nav_bottom": "Bottom tab bar",
+      "nav_sidebar": "Side panel",
+      "nav_both": "Both",
+      "group_theme": "Theme & Color",
+      "group_theme_sub": "System theme and accent palette used across the app.",
+      "group_navigation": "Navigation",
+      "group_navigation_sub": "How you get around the app and where you land on open.",
+      "force_mobile": "Force Mobile Layout",
+      "force_mobile_desc": "For users who prefer the compact phone-style layout on large screens. When on, the large-screen breakpoints (Diary right rail, Settings two-pane, week strip) are all disabled at every viewport width, and drag-to-copy meals is turned off. Keep this off to use the full large-screen experience.",
+      "group_motion": "Motion & Chrome",
+      "group_motion_sub": "Animation intensity and top-of-page banner treatment."
     },
     "regional": {
       "section": "Regional & Units",
@@ -123,7 +176,13 @@
       "distance": "Distance",
       "temperature": "Temperature",
       "time_12h": "12-hour (AM/PM)",
-      "time_24h": "24-hour"
+      "time_24h": "24-hour",
+      "energy_kcal": "Calories (kcal)",
+      "energy_kj": "Kilojoules (kJ)",
+      "group_language": "Language & Formats",
+      "group_language_sub": "Interface language and how dates and times are shown.",
+      "group_units": "Units",
+      "group_units_sub": "Unit choices apply everywhere the value shows."
     },
     "diary": {
       "section": "Diary",
@@ -184,7 +243,80 @@
         "auto_refresh_off": "Off",
         "auto_refresh_daily": "Daily",
         "auto_refresh_weekly": "Weekly",
-        "auto_refresh_monthly": "Monthly"
+        "auto_refresh_monthly": "Monthly",
+        "country_world": "World",
+        "updated_hours_ago": "Updated {count, plural, one {# hour ago} other {# hours ago}}",
+        "updated_days_ago": "Updated {count, plural, one {# day ago} other {# days ago}}",
+        "refresh_failed": "Refresh failed",
+        "auto_refresh_failed": "Could not update auto-refresh",
+        "local_mirror": "Local Mirror",
+        "badge_air_gap": "Air-Gap",
+        "badge_refresh_failed": "Refresh Failed",
+        "badge_stale": "Stale",
+        "downloading_update": "Downloading update… {pct}% ({done} / {total})",
+        "first_download": "First download… {pct}% ({done} / {total})",
+        "last_refresh_failed": "Last refresh failed: {error}",
+        "last_refresh_failed_serving": "Last refresh failed: {error}; currently serving {size} from before",
+        "remote_disabled": "remote OFF API disabled",
+        "fallback_until_ready": "Lookups fall back to public OFF API until ready",
+        "refresh_now": "Refresh Now",
+        "downloading": "Downloading",
+        "syncing": "Syncing",
+        "odbl_notice": "Local Open Food Facts mirror is active. OFF data is licensed under the {odbl}. If you serve other users from this instance, share-alike obligations apply to your operation. See {licenses} for details."
+      },
+      "common": {
+        "network_error": "network error",
+        "unknown_error": "unknown error",
+        "show": "Show",
+        "saved": "Saved",
+        "api_token": "API Token"
+      },
+      "usda": {
+        "key_required": "USDA test failed: API key required",
+        "verified": "USDA API key verified",
+        "test_failed": "USDA test failed: {detail}",
+        "check_key": "Check API key",
+        "desc": "Search the USDA nutrition database when adding foods.",
+        "key_link": "Get a free API key →",
+        "api_key": "API Key"
+      },
+      "mealie": {
+        "fields_required": "Mealie test failed: URL and token both required",
+        "verified": "Mealie connection verified",
+        "test_failed": "Mealie test failed: {detail}",
+        "check": "Check URL and token",
+        "desc": "Import recipes from your self-hosted Mealie instance"
+      },
+      "cooktrace": {
+        "fields_required": "CookTrace test failed: URL and token both required",
+        "missing_recipes_scope": "CookTrace token is valid but lacks the read:recipes scope. Mint a new token on CookTrace with that scope ticked.",
+        "connected_as": "Connected as {name}",
+        "verified": "CookTrace connection verified",
+        "test_failed": "CookTrace test failed: {detail}",
+        "configure_first": "Configure and save the CookTrace connection first",
+        "confirm_recipes": "Import every recipe from CookTrace into your NutriTrace recipes catalog?\n\nRe-runs update existing imports in place. Any recipe you have edited on NT will still be updated with the CookTrace copy.",
+        "no_recipes": "No CookTrace recipes found to import",
+        "recipe_fetch_failed": "Recipe {id} could not be fetched from CookTrace",
+        "import_summary": "Imported {imported}, updated {updated}{collided, plural, =0 {} other {, # already in your library (matched by barcode)}}{skipped, plural, =0 {} other {, # skipped}}",
+        "summary_first_error": "{summary}. First error: {error}",
+        "bulk_failed": "CookTrace bulk import failed: {error}",
+        "confirm_pantry": "Import CookTrace pantry items into your NutriTrace foods library?\n\nStandalone items and variants come across. Generic parents (like 'Flour' with a Bread-flour variant) are skipped: their children carry the real nutrition. Safe to re-run.",
+        "missing_pantry_scope": "CookTrace token is missing the read:pantry scope. Mint a new token on CookTrace, tick read:pantry, and paste it here.",
+        "pantry_old_server": "This CookTrace server is on an older version that does not expose /api/v1/pantry. Update CookTrace, then retry.",
+        "token_rejected": "CookTrace token was rejected. Re-mint it and paste the new value.",
+        "pantry_request_failed": "CookTrace pantry request failed (HTTP {status}). Check the CookTrace server log.",
+        "no_pantry_items": "No importable CookTrace pantry items found",
+        "pantry_failed": "CookTrace pantry import failed: {error}",
+        "check": "Check URL, token, and read:recipes scope",
+        "mint_hint": "Mint on CookTrace: Settings, API Tokens, New Token, tick {scope}. Copy the token immediately: it is shown once.",
+        "import_recipes_title": "Import All Recipes",
+        "import_recipes_desc": "One-tap onboarding shortcut. Pulls every CookTrace recipe into your NutriTrace catalog and stamps each one with its CookTrace source so future edits sync via the recipe's own refresh banner. Safe to re-run: existing imports update in place instead of duplicating.",
+        "import_all": "Import All",
+        "last_run": "Last run: {imported} imported, {updated} updated, {skipped} skipped.",
+        "import_pantry_title": "Import Pantry Items",
+        "import_pantry_desc": "Bring your CookTrace pantry into NutriTrace's Foods library. Individual items and variants come across; generic parents (like \"Flour\" with a Bread-flour variant) are skipped because their variants already carry the real nutrition. Needs the {scope} scope on your CookTrace token.",
+        "import_pantry": "Import Pantry",
+        "last_run_collided": "{count} already in your library (matched by barcode), left as-is."
       }
     },
     "ai": {
@@ -310,7 +442,27 @@
       "save_failed_status": "Save failed ({status})",
       "network_error": "network error",
       "hide": "Hide",
-      "show": "Show"
+      "show": "Show",
+      "err_could_not_delete_user": "Could not delete user",
+      "delete_dialog": {
+        "title_fallback": "Delete user?",
+        "deleting": "Deleting…",
+        "confirm": "Delete Permanently",
+        "intro": "This will permanently delete the account and everything it owns. This cannot be undone.",
+        "loading_preview": "Loading data preview…",
+        "preview_failed": "Couldn't load data preview: {error}",
+        "foods": "{count, plural, one {food} other {foods}}",
+        "meals": "{count, plural, one {meal} other {meals}}",
+        "recipes": "{count, plural, one {recipe} other {recipes}}",
+        "diary_days": "{count, plural, one {diary day} other {diary days}}",
+        "activities": "{count, plural, one {manual activity} other {manual activities}}",
+        "workouts": "{count, plural, one {workout} other {workouts}}",
+        "wellness_data": "{count, plural, one {wellness data point} other {wellness data points}}",
+        "no_data": "No data attached to this account.",
+        "type_before": "Type",
+        "type_after": "to confirm:",
+        "hint": "Confirm button enables once the username matches exactly."
+      }
     },
     "email": {
       "section": "Email (SMTP)"
@@ -411,6 +563,23 @@
       "copy_failed": "Copy failed. Copy the command manually.",
       "view_notes": "View Release Notes",
       "channel_note": "To switch server channels, change your docker-compose.yml image tag (:latest, :dev) and re-run docker-compose pull && docker-compose up -d."
+    },
+    "apk_errors": {
+      "android_only": "APK install is only available in the Android app",
+      "download_failed": "Download failed",
+      "open_installer_failed": "Could not open installer: {error}"
+    },
+    "ago": {
+      "seconds": "{count} s ago",
+      "minutes": "{count} min ago",
+      "hours": "{count} h ago",
+      "days": "{count} d ago"
+    },
+    "size": {
+      "b": "{value} B",
+      "kb": "{value} KB",
+      "mb": "{value} MB",
+      "gb": "{value} GB"
     }
   },
   "attach_image": {
@@ -562,7 +731,22 @@
       "upload_failed": "Upload failed",
       "password_change_failed": "Could not change password",
       "delete_account_failed": "Could not delete account"
-    }
+    },
+    "biometric": {
+      "enable_prompt": "Enable biometric sign-in",
+      "verify_failed": "Biometric verification was canceled or failed.",
+      "desc": "Use fingerprint or face unlock instead of typing your password each time. Your password is still required on the first sign-in. Sign-in sessions stay valid for up to a year by default — admins can change this in <strong>Settings → Users → Session Duration</strong>.",
+      "not_enrolled": "Set up a fingerprint or face unlock in <strong>Android Settings → Security</strong> first, then come back here."
+    },
+    "gender_options": {
+      "male": "Male",
+      "female": "Female",
+      "non_binary": "Non-binary"
+    },
+    "unlink_confirm": "Unlink this provider? You won't be able to sign in with it again until you re-link.",
+    "avatar_alt": "Avatar",
+    "last_sign_in": "last sign-in {date}",
+    "link_with_provider": "Link with {provider}"
   },
   "wizard": {
     "nav": {
@@ -573,7 +757,8 @@
     },
     "welcome": {
       "title": "Welcome to NutriTrace",
-      "desc": "Your personal nutrition tracker. Let's get you set up in about a minute."
+      "desc": "Your personal nutrition tracker. Let's get you set up in about a minute.",
+      "later": "I'll do this later"
     },
     "name": {
       "title": "What should we call you?",
@@ -625,17 +810,45 @@
       "off": "Open Food Facts",
       "usda": "USDA FoodData Central",
       "mealie": "Mealie",
-      "ai": "AI Assistant"
+      "ai": "AI Assistant",
+      "off_desc": "Search the global crowd-sourced food database. An account is only needed to upload edits.",
+      "usda_key_link": "Get a free API key →",
+      "mealie_desc": "Import recipes from your self-hosted Mealie instance",
+      "ai_desc": "Trace, your AI nutrition assistant — bring your own API key"
     },
     "weight": {
-      "title": "What is your weight?"
+      "title": "What is your weight?",
+      "desc": "Your current body weight ({unit})."
     },
     "target": {
-      "title": "What is your target weight?"
+      "title": "What is your target weight?",
+      "desc": "Your goal weight ({unit}). Defaults to your current weight — change it if you're trying to lose or gain."
     },
     "activity": {
       "title": "How active are you?",
-      "desc": "Affects your daily calorie needs."
+      "desc": "Affects your daily calorie needs.",
+      "levels": {
+        "sedentary": {
+          "label": "Sedentary",
+          "desc": "Little or no exercise"
+        },
+        "light": {
+          "label": "Lightly Active",
+          "desc": "Light exercise 1–3 days/week"
+        },
+        "moderate": {
+          "label": "Moderately Active",
+          "desc": "Moderate exercise 3–5 days/week"
+        },
+        "active": {
+          "label": "Very Active",
+          "desc": "Hard exercise 6–7 days/week"
+        },
+        "very_active": {
+          "label": "Extremely Active",
+          "desc": "Very hard exercise & physical job"
+        }
+      }
     },
     "integrations": {
       "title": "Integrations",
@@ -643,7 +856,12 @@
     },
     "notifications": {
       "title": "Stay on Track",
-      "desc": "Get helpful reminders and celebrate your wins. You can customize all of these later in Settings."
+      "desc": "Get helpful reminders and celebrate your wins. You can customize all of these later in Settings.",
+      "enable_sub": "Reminders, goal celebrations, and health alerts",
+      "water_sub": "Periodic reminders to drink water (8am–10pm)",
+      "meals_sub": "Daily reminders to log breakfast, lunch, and dinner",
+      "goals_sub": "Celebrate when you hit your daily nutrition, water, or step goals",
+      "wellness_sub": "Alerts when HRV drops, sleep declines, or heart rate spikes"
     },
     "updates": {
       "title": "Check For Updates",
@@ -654,13 +872,31 @@
     },
     "summary": {
       "title": "Your Daily Goals",
-      "desc": "Calculated from your stats using the Mifflin-St Jeor formula."
+      "desc": "Calculated from your stats using the Mifflin-St Jeor formula.",
+      "factor_lose": "Lose −20%",
+      "factor_gain": "Gain +20%",
+      "factor_maintain": "Maintain",
+      "goal_factor": "{label} ({percent}% of TDEE)",
+      "unit_per_day": "{unit} / day",
+      "value_per_day": "{value} {unit}/day",
+      "tdee_help": "Total Daily Energy Expenditure · Mifflin-St Jeor + activity level",
+      "energy_goal": "Energy goal",
+      "calorie_goal": "Calorie goal"
     },
     "skip_modal": {
       "title": "Skip Setup?",
       "desc": "You can set up your goals, units, and integrations any time from <strong>Settings</strong>. Until then, calorie targets won't be calculated automatically.",
       "continue": "Continue Setup",
       "skip_now": "Skip for Now"
+    },
+    "done": {
+      "title": "You're All Set!",
+      "sub": "Welcome to NutriTrace. Loading your diary…"
+    },
+    "integrations_summary": {
+      "configured": "Configured: <strong>{list}</strong>",
+      "skipped": "Skipped: {list}",
+      "hint": "You can change these anytime in Settings."
     }
   },
   "diary": {
@@ -677,7 +913,14 @@
       "add": "Add",
       "adding": "Adding…",
       "cancel": "Cancel",
-      "summed_hint": "switch to Separate to edit individual entries"
+      "summed_hint": "switch to Separate to edit individual entries",
+      "help_macros": "Log just the {unit} when you don't have full nutrition info, or when you don't want to model the food. Optional macros are stored only when you fill them in. Adds straight to the diary; no food entry is created.",
+      "edit_entry": "Edit Quick Calories entry",
+      "collapse": "Collapse Quick Calorie entries",
+      "expand": "Expand Quick Calorie entries",
+      "summed_count": "Quick Calories × {count}",
+      "tap_to_collapse": "tap to collapse",
+      "tap_to_expand": "tap to expand"
     },
     "nav": {
       "previous_day": "Previous Day",
@@ -720,7 +963,21 @@
       "body_stats_saved": "Body stats saved",
       "updated": "Updated",
       "item_removed": "Item removed",
-      "activity_removed": "Activity removed"
+      "activity_removed": "Activity removed",
+      "already_in_meal": "Already in that meal",
+      "cleared_items": "{count, plural, one {Cleared # item from {meal}} other {Cleared # items from {meal}}}",
+      "copied_items": "{count, plural, one {Copied # item to {meal}} other {Copied # items to {meal}}}",
+      "copied_items_on": "{count, plural, one {Copied # item to {meal} on {date}} other {Copied # items to {meal} on {date}}}",
+      "copied_to": "Copied to {meal}",
+      "copied_to_on": "Copied to {meal} on {date}",
+      "copy_same_day": "Can't copy a meal onto the same day.",
+      "item_replaced": "Item replaced",
+      "items_removed": "{count, plural, one {# item removed} other {# items removed}}",
+      "moved_items": "{count, plural, one {Moved # item to {meal}} other {Moved # items to {meal}}}",
+      "moved_to": "Moved to {meal}",
+      "nothing_to_copy": "Nothing to copy",
+      "recipe_split": "Recipe split into ingredients",
+      "saved_to_meals": "Saved \"{name}\" to Meals"
     },
     "empty": {
       "tap_to_add_food": "Tap to add food"
@@ -732,26 +989,50 @@
     "water": {
       "custom": "Custom",
       "add": "Add",
-      "remove": "Remove"
+      "remove": "Remove",
+      "amount_placeholder": "Amount ({unit})",
+      "bottle_aria": "Water bottle, {pct}% full",
+      "of_goal": "of {goal}",
+      "open_sheet": "Open water sheet",
+      "remove_entry": "Remove entry",
+      "remove_entry_title": "Remove this entry",
+      "tap_to_edit": "Tap to edit",
+      "todays_log": "Today's Log"
     },
     "edit_item": {
       "save": "Save",
       "remove_ingredient": "Remove ingredient",
       "remove_qc_entry": "Remove entry",
-      "remove_qc_aria": "Remove Quick Calories entry"
+      "remove_qc_aria": "Remove Quick Calories entry",
+      "protein_lc": "protein",
+      "carbs_lc": "carbs",
+      "fat_lc": "fat",
+      "unit": "Unit"
     },
     "confirm": {
       "remove_item": "Remove {name} item?",
       "remove_fallback": "item",
       "clear_all_meal": "Clear all items from {meal}?",
-      "clear_all_fallback": "meal"
+      "clear_all_fallback": "meal",
+      "remove": "Remove",
+      "remove_item_msg": "This will remove it from your diary.",
+      "delete_selected_title": "{count, plural, one {Delete # item?} other {Delete # items?}}",
+      "delete_selected_msg": "This will permanently remove the selected items from your diary.",
+      "clear": "Clear",
+      "clear_meal_msg": "This will remove every item in this meal from your diary for {date}. This can't be undone."
     },
     "errors": {
       "note_save_failed": "Note save failed",
       "name_required": "Please enter a name",
       "nothing_to_save": "Nothing to save",
       "activity_save_failed": "Could not save activity",
-      "activity_delete_failed": "Could not delete activity"
+      "activity_delete_failed": "Could not delete activity",
+      "action_failed": "Action failed",
+      "clear_failed": "Clear failed",
+      "copy_failed": "Copy failed",
+      "positive_energy": "Enter a positive {unit} value.",
+      "quick_calories_save_failed": "Could not save quick calories.",
+      "split_failed": "Couldn't split — no ingredients found on this item"
     },
     "activity": {
       "section": "Activity",
@@ -800,7 +1081,154 @@
       "errors": {
         "name_required": "Name required",
         "kcal_required": "Calories required"
-      }
+      },
+      "duration_min": "{n} min",
+      "estimated_by_trace": "Estimated by Trace",
+      "field_distance_placeholder_unit": "e.g. 10 {unit}"
+    },
+    "activity_impact": {
+      "title": "Activity impact",
+      "dynamic": "Dynamic",
+      "dynamic_hint": "Dynamic goal moves with your wearable's burn",
+      "adaptive": "Adaptive",
+      "adaptive_hint": "Adaptive goal is learned from your weight trend",
+      "wearable_burn": "Wearable burn (yesterday)",
+      "base_goal": "Base goal",
+      "todays_active": "Today's active",
+      "adjusted_goal": "Adjusted goal",
+      "learned_tdee": "Learned TDEE (35-day)",
+      "todays_active_energy": "Today's active {unit}"
+    },
+    "body_stats": {
+      "open_sheet": "Open Body Stats sheet",
+      "edit_weight": "Edit today's weight",
+      "weight_not_logged": "Weight not logged",
+      "log": "Log",
+      "no_measurements": "No measurements logged today",
+      "log_stats": "Log Stats",
+      "waist": "Waist",
+      "hips": "Hips",
+      "chest": "Chest",
+      "neck": "Neck",
+      "thighs": "Thighs",
+      "biceps": "Biceps",
+      "calves": "Calves",
+      "weight": "Weight",
+      "body_fat_pct": "Body Fat %",
+      "body_water_pct": "Body Water %",
+      "with_unit": "{label} ({unit})"
+    },
+    "macro_toggle_aria": "Toggle macro display between percent and grams",
+    "macro_toggle_title": "Toggle percent / grams",
+    "view_trend": "View trend",
+    "open_nutrition_summary": "Open full nutrition summary",
+    "ring_of_goal": "of {goal}",
+    "week_strip": {
+      "aria": "Week strip",
+      "switch_to": "Switch diary to {date}",
+      "macro_p": "{g}g P",
+      "macro_c": "{g}g C",
+      "macro_f": "{g}g F",
+      "foods_logged": "{count, plural, one {# food logged} other {# foods logged}}"
+    },
+    "bar": {
+      "calories_pct": "Calories: {pct}%",
+      "water_pct": "Water: {pct}%",
+      "collapse_panel": "Collapse nutrition panel",
+      "expand_panel": "Expand nutrition panel",
+      "toggle_totals_aria": "Toggle consumed/remaining",
+      "adjusted_for_activity": "Adjusted for activity",
+      "unit_left": "{unit} left",
+      "unit_eaten": "{unit} eaten",
+      "g_protein": "g Protein",
+      "g_carbs": "g Carbs",
+      "g_fat": "g Fat",
+      "goal_value": "Goal {value}",
+      "activity_value": "Activity {value}",
+      "amount_left": "{amount} left"
+    },
+    "copy": {
+      "title": "Copy \"{name}\" to…",
+      "date": "Date",
+      "meal": "Meal",
+      "copying": "Copying…"
+    },
+    "edit_entry": "Edit entry",
+    "edit_name": "Edit {name}",
+    "has_notes": "Has notes",
+    "item_actions": {
+      "edit": "Edit",
+      "replace": "Replace",
+      "move": "Move to Meal",
+      "copy": "Copy",
+      "select": "Select Multiple",
+      "split": "Split Recipe"
+    },
+    "item_fallback": "Item",
+    "macro_pct": {
+      "p": "{pct}% P",
+      "c": "{pct}% C",
+      "f": "{pct}% F"
+    },
+    "macro_title": {
+      "protein": "Protein {pct}%",
+      "carbs": "Carbs {pct}%",
+      "fat": "Fat {pct}%"
+    },
+    "meal": {
+      "actions": "Meal actions",
+      "actions_for": "Meal actions for {meal}",
+      "add_food_to": "Add food to {meal}",
+      "mark_complete": "Mark {meal} complete",
+      "unmark_complete": "Unmark {meal} complete",
+      "quick_calories_for": "Quick calories for {meal}",
+      "show_totals": "Show nutrition totals",
+      "show_totals_for": "Show {meal} nutrition totals"
+    },
+    "meal_actions": {
+      "title_items": "{meal} · {count, plural, one {# item} other {# items}}",
+      "title_empty": "{meal} · empty",
+      "move_items": "Move Items to…",
+      "save_meal": "Save as Meal…",
+      "clear_all": "Clear All Items",
+      "move_to_title": "Move to meal"
+    },
+    "notes_characters": "{count, plural, one {# character} other {# characters}}",
+    "rail": {
+      "overview": "Overview",
+      "hide_aria": "Hide widget panel",
+      "hide_title": "Hide widgets (edge tab reopens)",
+      "pin_aria": "Pin widget panel",
+      "pin_title": "Pin widgets",
+      "close_aria": "Close widget panel",
+      "open_aria": "Open widget panel",
+      "close_title": "Close widgets",
+      "show_title": "Show widgets"
+    },
+    "save_meal": {
+      "title": "Save {meal} to library",
+      "placeholder": "e.g. Usual breakfast",
+      "count": "{count, plural, one {# item will be saved} other {# items will be saved}}"
+    },
+    "select": {
+      "selected": "{count} selected",
+      "toggle": "Toggle selection"
+    },
+    "split": {
+      "collapse": "Collapse ingredients",
+      "expand": "Expand ingredients",
+      "edit_serving": "Edit serving size"
+    },
+    "summary": {
+      "all_contributors": "All Contributors",
+      "top_contributors": "Top Contributors",
+      "no_contributors": "No items contribute to this nutrient.",
+      "quick_entry": "Quick entry",
+      "more_items": "{count, plural, one {# more item} other {# more items}}",
+      "tap_to_expand": "tap to expand",
+      "show_top_5": "Show top 5",
+      "meal_totals": "{meal} totals",
+      "items_count": "{count, plural, one {# item} other {# items}}"
     }
   },
   "foods": {
@@ -953,7 +1381,8 @@
       "recording_release": "Recording — release to log",
       "open_with_voice_hint": "Open AI coach (hold to dictate food)",
       "tap_chat_hold_voice": "Tap to chat · hold to log food by voice",
-      "open_short": "AI Assistant"
+      "open_short": "AI Assistant",
+      "listening_hint": "Listening… release to log"
     },
     "setup": {
       "api_key_required": "API key required",
@@ -964,7 +1393,52 @@
     "stop": "Stop",
     "reply_failed": "Couldn't get a reply: {error}",
     "reply_stopped": "Stopped",
-    "reply_missing": "No reply: the request was interrupted (the app was closed or the connection dropped). Send it again."
+    "reply_missing": "No reply: the request was interrupted (the app was closed or the connection dropped). Send it again.",
+    "voice": {
+      "mic_denied": "Microphone permission denied — Smart Log voice needs mic access",
+      "prompt": "Tell me what you ate",
+      "not_caught": "Didn't catch that — try again",
+      "failed": "Voice recognition failed: {error}",
+      "unavailable": "Voice plugin unavailable",
+      "error": "Voice error: {error}",
+      "cant_start_mic": "Couldn't start microphone: {error}",
+      "no_food_found": "Couldn't find any food in \"{text}\"",
+      "parse_failed": "Smart Log parse failed: {error}",
+      "unknown_error": "unknown error"
+    },
+    "add_api_key": "Add your API key in Settings → AI Assistant",
+    "fetching_tool": "Fetching {tool}…",
+    "request_failed": "AI request failed",
+    "save_failed_with": "Save failed: {error}",
+    "header_sub": "Your AI Health & Nutrition Coach",
+    "welcome": {
+      "greeting": "Hi, I'm {name}!",
+      "desc": "Ask me anything — nutrition, sleep, activity, recovery, hydration, body composition. I have access to all your data from today."
+    },
+    "chips": {
+      "today": "How am I doing today?",
+      "meal": "Meal suggestion",
+      "meal_question": "What should I eat for my next meal?",
+      "sleep": "Sleep & recovery",
+      "sleep_question": "How was my sleep and recovery?",
+      "goals": "Goal progress",
+      "goals_question": "Am I on track with my goals?"
+    },
+    "attached_image_alt": "Attached image",
+    "proposal": {
+      "per_serving": "per serving",
+      "meal": "Meal",
+      "discard": "Discard",
+      "add_to_diary": "Add to Diary",
+      "logged": "Logged {kcal} kcal to {meal}",
+      "meal_fallback": "meal",
+      "per_portion": "Per {portion} {unit}",
+      "save_to_foods": "Save to Foods",
+      "save_and_log": "Save & Add to Diary",
+      "saved_and_logged": "Saved {name} to your foods + logged to {meal}",
+      "saved_catalog": "Saved {name} to your food catalog",
+      "zero_kcal": "Cannot log: estimated calories is 0."
+    }
   },
   "goals_page": {
     "adaptive": {
@@ -986,7 +1460,9 @@
       "help_best_log": "<strong>Log your food consistently.</strong> Missing days are dropped from the calculation. The estimate gets noisy if you log half your days.",
       "help_best_switch": "<strong>Don't switch goals mid-window.</strong> The 35-day rolling average converges over time. If you bounce between cuts and bulks weekly, the learned TDEE will lag.",
       "help_best_reweigh": "<strong>Re-weigh in similar conditions</strong> — first thing in the morning, after using the bathroom, before food/drink. Day-to-day fluctuations are mostly water; the trend is what matters.",
-      "help_caveats": "<strong>Caveats.</strong> Big changes in activity (started running, broke a leg) take ~2 weeks to fully reflect. Travel weeks with under-logged food can pull the estimate up. The learned TDEE is multiplied by your goal factor (Lose -20% / Maintain / Gain +20%) to get your actual daily target."
+      "help_caveats": "<strong>Caveats.</strong> Big changes in activity (started running, broke a leg) take ~2 weeks to fully reflect. Travel weeks with under-logged food can pull the estimate up. The learned TDEE is multiplied by your goal factor (Lose -20% / Maintain / Gain +20%) to get your actual daily target.",
+      "learned_tdee": "Learned TDEE",
+      "days_progress": "{available} / {required} days"
     },
     "empty": {
       "no_goals": "No goals set yet.",
@@ -1005,10 +1481,14 @@
       "no_goal": "No goal",
       "min": "(min)",
       "stale_tip": "Most recent reading within the last 30 days, used until you log a new value",
-      "daily_water_goal": "Daily Water Goal"
+      "daily_water_goal": "Daily Water Goal",
+      "as_of": "as of {date}",
+      "view_trend": "View trend",
+      "view_trend_aria": "View trend in Statistics"
     },
     "all_fields": {
-      "intro": "Tap any field to set or edit its goal."
+      "intro": "Tap any field to set or edit its goal.",
+      "filter_placeholder": "Filter nutrients…"
     },
     "templates": {
       "intro": "Save your current goals as a named template to reuse later.",
@@ -1047,7 +1527,75 @@
       "value_label": "Value ({unit})",
       "value_label_day": "{day} ({unit})",
       "remove_goal": "Remove Goal",
-      "water_sheet_label": "Goal ({unit})"
+      "water_sheet_label": "Goal ({unit})",
+      "remove_confirm": "Remove goal for {name}?"
+    },
+    "fields": {
+      "weight": "Weight",
+      "neck": "Neck",
+      "waist": "Waist",
+      "hips": "Hips",
+      "chest": "Chest",
+      "thighs": "Thighs",
+      "biceps": "Biceps",
+      "calves": "Calves",
+      "body_fat": "Body Fat",
+      "body_water": "Body Water",
+      "steps": "Daily Steps",
+      "active_minutes": "Active Minutes",
+      "floors": "Floors Climbed",
+      "calories_out": "Calories Burned",
+      "sleep_duration": "Sleep Duration",
+      "sleep_efficiency": "Sleep Efficiency",
+      "hrv": "HRV (RMSSD)",
+      "target_weight": "Target Weight",
+      "target_body_fat": "Target Body Fat",
+      "target_muscle_mass": "Target Muscle Mass"
+    },
+    "units": {
+      "steps": "steps",
+      "floors": "floors",
+      "min": "min"
+    },
+    "warnings": {
+      "kcal_low": "Extreme calorie target ({kcal} kcal). Most guidelines suggest 1,200 kcal minimum.",
+      "kcal_high": "Extreme calorie target ({kcal} kcal). Double-check this is intentional.",
+      "macro_sum": "Macros sum to {sum} kcal, calorie goal is {kcal} kcal.",
+      "set_macros": "Set protein / carbs / fat goals to see the macro breakdown."
+    },
+    "macros": {
+      "title": "Macros",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "carbohydrates": "Carbohydrates",
+      "fat": "Fat",
+      "preset_balanced": "Balanced",
+      "preset_keto": "Keto",
+      "preset_high_protein": "High-Protein",
+      "preset_custom": "Custom",
+      "preset_match_tip": "Ratio matches this preset (±2% tolerance)",
+      "currently": "Currently:",
+      "protein_pct": "Protein {pct}%",
+      "carbs_pct": "Carbs {pct}%",
+      "fat_pct": "Fat {pct}%",
+      "summary": "P {p}g · C {c}g · F {f}g",
+      "chip_p": "P {value}g",
+      "chip_c": "C {value}g",
+      "chip_f": "F {value}g",
+      "kcal_value": "{value} kcal"
+    },
+    "reset_all_confirm": "Remove ALL goals? This clears every configured goal and cannot be undone.",
+    "tabs": {
+      "yours": "Your Goals",
+      "all": "All Fields",
+      "templates": "Templates"
+    },
+    "rail": {
+      "navigate": "Navigate",
+      "reset_all": "Reset all",
+      "preview": "Preview",
+      "macro_split": "Macro split by kcal",
+      "notes": "Notes"
     }
   },
   "goals": {
@@ -1056,7 +1604,9 @@
       "goal_saved": "Goal saved",
       "water_goal_saved": "Water goal saved",
       "template_saved": "Template saved",
-      "template_applied": "\"{name}\" applied"
+      "template_applied": "\"{name}\" applied",
+      "macros_set": "Macros set",
+      "goals_cleared": "Goals cleared"
     }
   },
   "settings_main": {
@@ -1078,7 +1628,24 @@
     "anim_shimmer": "Shimmer",
     "anim_drift": "Drift",
     "anim_pulse": "Pulse",
-    "anim_aurora": "Aurora"
+    "anim_aurora": "Aurora",
+    "group_data": "Data & Tracking",
+    "group_app": "App",
+    "clear_search": "Clear search",
+    "no_sections_match": "No sections match \"{query}\"",
+    "onboarding": {
+      "heading": "Get Set Up",
+      "server_label": "Connect a Server",
+      "server_desc": "Sync your diary across devices.",
+      "goals_label": "Set Your Goals",
+      "goals_desc": "Calorie + macro targets to track against.",
+      "wellness_label": "Set Up Wellness",
+      "wellness_desc": "Connect Fitbit, Garmin, or Health Connect.",
+      "theme_label": "Choose a Theme",
+      "theme_desc": "Pick a light / dark preference and accent color.",
+      "dismiss": "Dismiss",
+      "dismiss_aria": "Dismiss {label}"
+    }
   },
   "settings_diary": {
     "show_brand": "Show Brand Names",
@@ -1136,7 +1703,34 @@
     "schedule_goal": "Schedule Goal",
     "show_progress_bar": "Show Daily Goals Progress Bar",
     "show_progress_bar_desc": "Progress strip at the bottom of the diary showing how much of your daily goals you've hit",
-    "meal_names": "Meal Names"
+    "meal_names": "Meal Names",
+    "group_food_row": "Food Row Display",
+    "group_food_row_sub": "Fields shown beneath each food entry in the diary.",
+    "group_meal_card": "Meal Card Layout",
+    "group_meal_card_sub": "Header, footer, and interaction on each meal card.",
+    "group_units": "Nutrition Units",
+    "group_units_sub": "Off by default. Turn on if you log Open Food Facts liquids in grams or use custom serving units.",
+    "group_rail": "Rail Widgets",
+    "group_rail_sub": "Widgets in the right column on wide screens (≥1280px). Hidden widgets don't render at all; they don't take space.",
+    "rail_day_summary": "Day Summary",
+    "rail_day_summary_desc": "Calorie ring + macro cards.",
+    "rail_body_stats_desc": "Weight + measurements in one card.",
+    "rail_activity": "Activity Impact",
+    "rail_activity_desc": "Only renders when a wearable is connected.",
+    "rail_notes_desc": "Puts the notes card in the rail instead of at the bottom of the meal list.",
+    "group_quick_cals_sub": "One-tap calorie entries when you don't want a full food row.",
+    "group_activity": "Activity Section",
+    "group_activity_sub": "Manual workout logging shown as its own section under meals.",
+    "policy_title": "When Wearable + Manual Entries Both Exist",
+    "policy_desc_native": "How to combine your manually-logged activity with Health Connect active calories on days you have both.",
+    "policy_desc": "How to combine your manually-logged activity with calories from Fitbit / Garmin / Withings / Health Connect on days you have both.",
+    "policy_no_wearable_note": "When no wearable data exists for a day, manual entries always count regardless of this setting.",
+    "group_fasting_sub": "Intermittent fasting section with an optional recurring schedule.",
+    "schedule_desc": "Auto-start a fast at a fixed time each day. The schedule fires once per scheduled day; manually started fasts still work normally.",
+    "repeat_on_hint": "Tap a day to toggle. Sunday → Saturday.",
+    "remove_meal": "Remove meal",
+    "add_meal": "Add Meal",
+    "meal_names_sub": "Drag to reorder. Order sets the sequence meals appear in the diary."
   },
   "settings_water": {
     "display_unit": "Display Unit",
@@ -1144,7 +1738,15 @@
     "show_in_statistics": "Show In Statistics",
     "containers_title": "Water Containers",
     "no_containers": "No containers yet",
-    "add_container": "Add Container"
+    "add_container": "Add Container",
+    "invalid_container": "Enter a valid name and volume",
+    "display_title": "Display",
+    "display_desc": "Unit shown for water values and where the water card appears.",
+    "unit_ml": "Milliliters (ml)",
+    "unit_oz": "Fluid ounces (fl oz)",
+    "unit_l": "Liters (L)",
+    "unit_gal": "Gallons (G)",
+    "containers_desc": "Quick-add buttons shown in the Diary for logging water intake."
   },
   "settings_scanner": {
     "recipes_sort": "Recipes Sort",
@@ -1163,7 +1765,12 @@
     "adaptive_note": "Learns your true TDEE from 35 days of weight + diary and adjusts daily. Falls back to your fixed goal until enough data is logged. See the readiness card on the Goals page for current status.",
     "how_it_works": "How it works →",
     "dynamic_needs_wearable": "Dynamic mode needs a wearable that reports calorie burn (Fitbit, Garmin, or Google Health).",
-    "dynamic_needs_wearable_setup": "Set one up in Wellness"
+    "dynamic_needs_wearable_setup": "Set one up in Wellness",
+    "connect_wearable_first": "Connect a wearable in Wellness first",
+    "fixed_desc": "Uses the calorie target from your goal templates as the daily goal.",
+    "factor_lose": "Lose −20%",
+    "factor_gain": "Gain +20%",
+    "dynamic_desc": "Uses yesterday's final calorie burn from your wearable, multiplied by the factor. Falls back to your fixed goal if no data is available."
   },
   "settings_stats": {
     "default_chart": "Default Chart Type",
@@ -1178,7 +1785,26 @@
     "label": "Label",
     "custom_units": "Custom Units",
     "no_custom_units": "No custom units yet",
-    "full_name": "Full Name"
+    "full_name": "Full Name",
+    "chart_options": "Chart Options",
+    "chart_options_desc": "Default chart type and overlays applied across the Statistics page.",
+    "chart_bar": "Bar",
+    "chart_line": "Line",
+    "y_zero": "Lock Y-Axis To Zero",
+    "y_zero_desc": "Body stats (weight, HRV, RHR, etc.) always auto-fit. This toggle applies to nutrient and counted-metric charts.",
+    "include_today_desc": "For cumulative metrics (calories, water, steps, etc.) today is partial until the day ends. Off by default — the chart looks cleaner. Statistics page also has an inline toggle for one-off overrides.",
+    "show_empty_days_desc": "Keep every date in the chart's range visible even when nothing was logged that day. Lets gaps in logging show up rather than collapsing into a denser chart that hides them. Applies to both bar and line charts.",
+    "no_metrics": "No metrics available.",
+    "custom_units_intro": "Add units that aren't in the built-in catalog (e.g. \"shot\", \"scoop\", \"stick\"). Custom units appear under \"Custom\" at the top of the unit dropdown when adding foods.",
+    "custom_units_warning": "Custom units do not convert by mass. Picking one falls back to a pure portion-ratio scale (1 unit → 2 units = 2× nutrition), since \"shot\" or \"scoop\" has no fixed gram weight.",
+    "remove": "Remove",
+    "abbr_label": "Abbr *",
+    "abbr_placeholder": "shot",
+    "full_name_placeholder": "shot glass",
+    "add": "Add",
+    "pick_emoji": "Pick an emoji label",
+    "category_name_label": "Category name *",
+    "category_name_placeholder": "e.g. Dairy, Proteins…"
   },
   "settings_integrations": {
     "group": "Integrations",
@@ -1201,7 +1827,32 @@
     "bulk_share": "Bulk Share",
     "vis_private": "Private",
     "vis_group": "Everyone",
-    "vis_specific": "Specific People"
+    "vis_specific": "Specific People",
+    "sharing": {
+      "updated": "Sharing updated",
+      "apply_failed": "Could not apply: {error}",
+      "admin_sub": "Server-wide sharing switch. When off, group members can't share items with each other.",
+      "enable_desc": "Allow group members to share foods, meals, and recipes with each other",
+      "auto_share": "Auto Share",
+      "auto_share_sub": "Applied automatically to new foods, meals, and recipes you create. Existing items are left alone; use Bulk Share below to update those.",
+      "visibility": "Visibility",
+      "bulk_share_sub": "Set who can see your existing items. Each category has its own visibility, so changing one doesn't affect the others.",
+      "cat_foods": "Foods",
+      "cat_meals": "Meals",
+      "cat_recipes": "Recipes",
+      "members_foods": "Members who can see your foods:",
+      "members_meals": "Members who can see your meals:",
+      "members_recipes": "Members who can see your recipes:",
+      "loading": "Loading…",
+      "applying": "Applying…",
+      "apply": "Apply to Existing Items"
+    },
+    "server": {
+      "not_reachable": "Server not reachable",
+      "disconnected": "Disconnected — using local storage",
+      "disconnect": "Disconnect & Use Locally",
+      "connecting": "Connecting…"
+    }
   },
   "settings_diagnostics": {
     "diag_mode": "Diagnostic Mode",
@@ -1211,7 +1862,39 @@
     "logs_note": "Nothing is sent anywhere automatically.",
     "calibration_export": "Calibration Export",
     "crash_available": "Crash Report Available",
-    "log_help": "Recent log lines (capped at 500 normally, 1000 in verbose mode). Header shows app version + platform so the recipient knows what they're looking at. Redact any HRV / RHR / weight / calorie values before posting publicly, they're personal health data."
+    "log_help": "Recent log lines (capped at 500 normally, 1000 in verbose mode). Header shows app version + platform so the recipient knows what they're looking at. Redact any HRV / RHR / weight / calorie values before posting publicly, they're personal health data.",
+    "diag_mode_desc_native": "Enables detailed app-internal logs (sync, settings, notifications, Health Connect) and writes them to a daily log file on disk so they survive crashes and reloads. Also records screen sizes and positions (never what you type) to help with display problems on specific devices. Off by default. Turn on while reproducing a bug, then export below.",
+    "diag_mode_desc_web": "Enables detailed app-internal logs (sync, settings, notifications, Health Connect) and enables verbose console output. Also records screen sizes and positions (never what you type) to help with display problems on specific devices. Off by default. Turn on while reproducing a bug, then export below.",
+    "no_log_lines": "(no log lines captured yet)",
+    "cleared_placeholder": "(cleared)",
+    "copy_failed": "Copy failed. Select the text manually.",
+    "share_logs_title": "NutriTrace diagnostic logs",
+    "share_logs_dialog": "Share NutriTrace logs",
+    "no_log_file": "No log file yet — turn on Verbose logs and reproduce the issue first",
+    "share_log_file_text": "NutriTrace log file",
+    "share_log_file_dialog": "Share NutriTrace log file",
+    "share_crash_title": "NutriTrace crash report",
+    "share_crash_dialog": "Share NutriTrace crash report",
+    "calib_failed": "Could not generate calibration export: {error}",
+    "view_logs_btn": "View logs",
+    "view_logs_btn_crash": "View logs · crash report available",
+    "calib_desc": "Anonymized 30-day JSON of your wellness data (HRV, RHR, sleep, calculated Trace scores). Useful for tracking how Trace scores compare to your device's own scores over time, or for attaching to a wellness-related bug report. Held in-memory until you copy it — nothing is sent anywhere automatically. Review the JSON before sharing.",
+    "calib_device": "Your device (optional, free text)",
+    "calib_device_ph": "e.g. Pixel Watch 4, Fitbit Charge 6, Sense 2",
+    "calib_generate": "Generate calibration export",
+    "logs_sheet_title": "Diagnostic Logs",
+    "copied": "Copied",
+    "copy": "Copy",
+    "share_text": "Share text",
+    "clear": "Clear",
+    "share_log_file": "Share log file",
+    "log_file_desc": "Today's persisted log on disk (rotates daily, last 7 days kept). Better for long sessions or after a crash — the in-memory buffer above resets every reload.",
+    "crash_desc": "The app captured an uncaught error. Share the report to help track it down, then dismiss it.",
+    "share_crash": "Share crash report",
+    "dismiss": "Dismiss",
+    "calib_sheet_title": "Calibration Export — Review",
+    "calib_summary": "{count, plural, one {# day of data, anonymized. Review the JSON below before sharing — nothing is uploaded automatically.} other {# days of data, anonymized. Review the JSON below before sharing — nothing is uploaded automatically.}}",
+    "copy_json": "Copy JSON"
   },
   "settings_admin_group": "Admin",
   "settings_about": {
@@ -1222,7 +1905,13 @@
     "server_license": "(AGPL-3.0)",
     "family_line_prefix": "Part of the ",
     "family_line_suffix": " family",
-    "translations_from": "Translations powered by"
+    "translations_from": "Translations powered by",
+    "description": "Trace Every Bite — Personal Nutrition Tracker. NutriTrace is a self-hosted nutrition, wellness, and fitness tracker built for privacy. Your data lives on your server, not in the cloud. Features food diary, wellness integrations (Fitbit, Garmin, Withings, Health Connect), AI assistant, workout GPS maps, goal tracking, and more.",
+    "feature_self_hosted": "Self-hosted — your data, your server",
+    "feature_native": "Native Android app with offline support, plus a PWA for any browser",
+    "feature_no_tracking": "No tracking, no ads, no third-party analytics",
+    "disclaimer_title": "Disclaimer.",
+    "disclaimer_body": "NutriTrace is not medical, health, or nutrition-professional software. It does not provide medical advice, diagnosis, treatment, or personalized nutrition prescriptions. Food entries, calorie and macro tracking, Trace AI suggestions, Smart Log parsing, Scan Label output, Goal Insights, Adaptive TDEE recommendations, wellness scores (readiness, stress, sleep quality), and any analytical output are for informational and self-tracking purposes only. Nutrition decisions can interact with medical conditions (diabetes, eating disorders, food allergies, pregnancy, breastfeeding, pediatric needs, kidney or liver disease, metabolic disorders) in ways this app cannot assess. Consult a qualified healthcare professional, registered dietitian, or licensed nutritionist before starting a new eating plan, calorie target, or making significant dietary changes. Trace AI answers can be incorrect or incomplete; treat them as a starting point, not a substitute for human judgment or professional advice. Food nutrition data from Open Food Facts is community-curated and may contain inaccuracies. Use at your own risk."
   },
   "settings_support": {
     "lead": "NutriTrace is free and always will be. Support is optional and never unlocks anything.",
@@ -1240,13 +1929,44 @@
     "download": "Download Server to Phone",
     "merge": "Merge Both",
     "cancel": "Cancel",
-    "continue": "Continue"
+    "continue": "Continue",
+    "intro": "You have data on this phone. How should it be handled when connecting?",
+    "on_this_phone": "On this phone:",
+    "upload_desc": "Send this phone's foods, diary, and settings to the server. Existing server data stays.",
+    "download_desc": "Replace this phone's data with everything from the server. Local data is discarded.",
+    "merge_desc": "Upload phone data to the server AND download server data. Nothing is lost, but duplicates are possible.",
+    "preparing": "Preparing…",
+    "progress": {
+      "settings": "Uploading settings ({current} / {total})",
+      "foods": "Uploading foods ({current} / {total})",
+      "meals": "Uploading meals ({current} / {total})",
+      "recipes": "Uploading recipes ({current} / {total})",
+      "diary": "Uploading diary entries ({current} / {total})",
+      "generic": "Uploading {stage} ({current} / {total})"
+    },
+    "sync_failed": "Sync failed: {error}",
+    "unknown_error": "Unknown error",
+    "upload_complete": "Upload complete",
+    "upload_issues": "Upload finished with issues",
+    "summary": "{total, plural, one {{success} of # item uploaded successfully.} other {{success} of # items uploaded successfully.}}",
+    "uploaded_to_server": "Uploaded to server:",
+    "errors_count": "{count, plural, one {# error} other {# errors}}",
+    "showing_first_5": "(showing first 5)",
+    "settings_count": "{count, plural, one {setting} other {settings}}",
+    "stage": {
+      "settings": "settings",
+      "foods": "foods",
+      "meals": "meals",
+      "recipes": "recipes",
+      "diary": "diary"
+    }
   },
   "settings_color": {
     "saturation": "Saturation",
     "lightness": "Lightness",
     "hex_code": "Hex Code",
-    "apply_color": "Apply Color"
+    "apply_color": "Apply Color",
+    "hue": "Hue"
   },
   "time_picker": {
     "hour": "Hour",
@@ -1257,20 +1977,61 @@
   "nutrition_facts": {
     "title": "Nutrition Facts",
     "serving_size": "Serving Size",
-    "amount_per": "Amount Per Serving"
+    "amount_per": "Amount Per Serving",
+    "servings_per_container": "{n} servings per container",
+    "one_of": "1 of {servings}",
+    "one_of_yield": "1 of {servings} ({yield})",
+    "dv_header": "% Daily Value*",
+    "includes": "Includes {amount} {label}",
+    "derived_from_salt": "Derived from salt",
+    "derived_from_sodium": "Derived from sodium",
+    "footnote": "* The % Daily Value (DV) tells you how much a nutrient in a serving of food contributes to a daily diet. 2,000 calories a day is used for general nutrition advice."
   },
   "fasting_insights": {
     "title": "Fasting",
     "avg_duration": "Avg Duration",
     "longest": "Longest",
     "current_streak": "Current Streak",
-    "longest_streak": "Longest Streak"
+    "longest_streak": "Longest Streak",
+    "remove_title": "Remove this fast?",
+    "remove_message": "{hours}h fast on {day} will be deleted from your history. This can't be undone.",
+    "remove_aria": "Remove this fast",
+    "unit_hours": "h",
+    "unit_days": "d",
+    "last_14_days": "Last 14 days · {count, plural, one {# fast} other {# fasts}} logged",
+    "show_recent": "Show Recent Fasts",
+    "hide_recent": "Hide Recent Fasts",
+    "goal": "Goal {hours}h"
   },
   "bulk_import": {
     "download_template": "Download Template",
     "clear": "Clear",
     "will_import": "Will Import",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "title": "Bulk Import Foods",
+    "hint": "Paste or upload a {format} file. Each row needs at minimum a <code>name</code> and <code>calories</code>; other nutrients are optional.",
+    "csv_note": "CSV files don't paste cleanly. Use the upload button.",
+    "loaded": "Loaded: {name}",
+    "pasted": "pasted",
+    "upload_file": "Upload file",
+    "n_ready": "{count} ready",
+    "n_duplicates": "{count, plural, one {# duplicate barcode} other {# duplicate barcodes}}",
+    "n_errors": "{count, plural, one {# error} other {# errors}}",
+    "skipped_heading": "Skipped (barcode already in your catalog)",
+    "barcode_value": "barcode {barcode}",
+    "errors_heading": "Errors (fix or remove these rows before importing)",
+    "row_error": "Row {row}: {message}",
+    "import": "Import",
+    "import_n": "Import {count}",
+    "errors": {
+      "missing_name": "Missing required field: name",
+      "invalid_calories": "Missing or invalid calories",
+      "invalid_json": "Invalid JSON: {error}",
+      "expected_array": "Expected an array of foods or '{ foods: [...] }'",
+      "row_not_object": "Row is not an object",
+      "csv_too_short": "CSV must have a header row plus at least one data row",
+      "csv_header": "CSV header must include \"name\" and \"calories\" (got: {columns})"
+    }
   },
   "meal_editor_deep": {
     "readonly_recipe": "Tap Save to My Catalog to bring this recipe into your catalog and edit it.",
@@ -1285,7 +2046,10 @@
     "optional_macros": "Optional Macros",
     "protein": "Protein",
     "carbs": "Carbs",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "errors": {
+      "positive_kcal": "Enter a calorie value above zero."
+    }
   },
   "fasting": {
     "start_fasting": "Start Fasting",
@@ -1293,7 +2057,53 @@
     "name_ph": "Name (optional)",
     "start": "Start",
     "end_fast": "End Fast",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "notify_title": "Fast goal reached",
+    "notify_body": "You've hit your {hours}h fast goal.",
+    "duration_hm": "{h}h {m}m",
+    "hours_short": "{h}h",
+    "tomorrow_at": "Tomorrow {time}",
+    "yesterday_at": "Yesterday {time}",
+    "ago": {
+      "just_now": "just now",
+      "minutes": "{n}m ago",
+      "hours": "{n}h ago",
+      "yesterday": "yesterday",
+      "days": "{n}d ago"
+    },
+    "errors": {
+      "goal_range": "Enter a goal between 1 and 168 hours.",
+      "goal_range_valid": "Enter a valid goal between 1 and 168 hours.",
+      "invalid_datetime": "Invalid date/time",
+      "start_future": "Start time can't be in the future",
+      "start_too_old": "Start time too far in the past (max 7 days ago)",
+      "update_failed": "Could not update"
+    },
+    "end_title": "End your fast?",
+    "end_message": "You've been fasting for {elapsed}.",
+    "preset_saved": "Saved \"{name}\" as a preset",
+    "start_updated": "Start time updated",
+    "last_fast": "Last fast:",
+    "ended_ago": "ended {ago}",
+    "remove_preset_title": "Remove \"{name}\"?",
+    "remove": "Remove",
+    "long_press_remove": "Long-press to remove",
+    "custom": "Custom",
+    "hours_suffix": "hours",
+    "save_preset": "Save as preset",
+    "goal_reached": "Goal Reached",
+    "fasting": "Fasting",
+    "edit_start": "Edit start time",
+    "started": "Started: {time}",
+    "goal_target": "Goal: {hours}h · Target: {time}",
+    "toast": {
+      "started": "Fasting started · goal {hours} h",
+      "start_failed": "Could not start fast",
+      "ended": "Fast ended · {hours} h logged",
+      "end_failed": "Could not end fast",
+      "removed": "Fast removed",
+      "remove_failed": "Could not remove fast"
+    }
   },
   "smart_log": {
     "off_no_values": "Open Food Facts has no values \"as sold\" for this product, so it won't be logged. Swap it or remove it.",
@@ -1303,7 +2113,46 @@
     "badge_recipe": "Recipe",
     "badge_yesterday": "Yesterday",
     "badge_water": "Water",
-    "badge_not_found": "Not Found"
+    "badge_not_found": "Not Found",
+    "hint": "Type or speak what you ate. Mention the meal too — \"for breakfast I had…\"",
+    "examples": "Examples:",
+    "example_1": "for breakfast I had 2 eggs and a slice of toast",
+    "example_2": "lunch was a chicken caesar salad and a coke",
+    "example_3": "snacking on some almonds and a banana",
+    "example_quoted": "\"{text}\"",
+    "voice_failed": "Voice input failed: {error}",
+    "unknown_error": "unknown error",
+    "voice_unavailable": "Voice input not available on this device.",
+    "mic_denied": "Microphone permission denied.",
+    "voice_prompt": "Tell me what you ate",
+    "cant_start_mic": "Could not start mic: {error}",
+    "no_items": "No food items found. Try rephrasing.",
+    "parse_failed": "Parse failed.",
+    "logged": "{count, plural, one {Logged # item} other {Logged # items}}",
+    "nothing_saved": "Nothing was saved. All items missing food data.",
+    "save_failed": "Save failed: {error}",
+    "stop": "Stop",
+    "voice_input": "Voice input",
+    "listening": "Listening… speak now",
+    "parse": "Parse",
+    "parsing": "Parsing \"{text}\"…",
+    "edit": "Edit",
+    "items_count": "{count, plural, one {# item} other {# items}}",
+    "detected": "detected:",
+    "badge_meal": "Meal",
+    "water_meta": "{ml} ml — adds to water log",
+    "expands_to": "Expands to {count, plural, one {# item} other {# items}}",
+    "approx_total": "~{value} {unit} total",
+    "show_items": "Show items ({count})",
+    "no_nutrition": "No nutrition data — remove or add manually",
+    "swap_match": "Swap match ({count})",
+    "amount_ml": "Amount in ml",
+    "remove": "Remove",
+    "add_to_diary": "Add {count} to Diary",
+    "errors": {
+      "ai_not_configured": "AI provider not configured. Set up the AI Assistant in Settings first.",
+      "invalid_json": "The AI returned an answer it could not read. Try rephrasing your input."
+    }
   },
   "foods_deep": {
     "cant_reach_retry_msg": "Could not reach server, ",
@@ -1312,7 +2161,68 @@
     "servings": "Servings",
     "num_servings": "Number of Servings",
     "total_amount": "Total Amount",
-    "total": "Total"
+    "total": "Total",
+    "copy_failed": "Could not copy item: {error}",
+    "recipe_load_failed": "Could not load recipe from {source}",
+    "import_failed": "Failed to import from {source}",
+    "shared_load_failed": "Could not load shared items",
+    "meal_fallback": "meal",
+    "added_meals_to_diary": "{count, plural, one {Added # meal to diary} other {Added # meals to diary}}",
+    "added_items_to_diary": "{count, plural, one {Added # item to diary} other {Added # items to diary}}",
+    "deleted_n": "{count, plural, one {Deleted # item} other {Deleted # items}}",
+    "deleted_partial": "Deleted {ok} of {total}; {fail} failed",
+    "copy_of": "Copy of {name}",
+    "save_to_my_foods": "Save to My Foods",
+    "clone": "Clone",
+    "select_multiple": "Select Multiple",
+    "save_failed": "Could not save: {error}",
+    "barcode_not_in_off": "Not in Open Food Facts — enter the food and contribute it back if you want",
+    "barcode_lookup_failed": "Lookup failed — opening editor so you can enter manually",
+    "added_meal": "Added {name}",
+    "cancel_selection": "Cancel selection",
+    "select_all_visible": "Select all visible",
+    "select_all": "Select all",
+    "select_none": "Select none",
+    "delete_selected": "Delete selected",
+    "no_filters": "No filters available for this tab.",
+    "yesterday_meals": "Yesterday's Meals",
+    "show_items_in": "Show items in {name}",
+    "show_items": "Show items",
+    "add_meal_to_today": "Add {name} to today",
+    "add_to_today": "Add to today",
+    "favorite_mark": "Favorite",
+    "made_in": "Made in {country}",
+    "origin": "Origin: {country}",
+    "off_completeness": "OFF data completeness: {pct}%",
+    "data_completeness": "Data completeness {pct}%",
+    "usda_type_aria": "USDA data type {type}",
+    "by_user": "by {name}",
+    "n_of_total": "{n} of {total}",
+    "empty_foods": "No foods yet",
+    "empty_meals": "No meals yet",
+    "empty_recipes": "No recipes yet",
+    "add_food": "Add Food",
+    "add_meal": "Add Meal",
+    "add_recipe": "Add Recipe",
+    "tier_hidden": "{count, plural, one {# result hidden by the {source} tier filter.} other {# results hidden by the {source} tier filter.}} Widen your selection in the dropdown next to the source chip.",
+    "per_100": "per 100 {basis}",
+    "nutrition_per_100": "Nutrition per 100 {basis}",
+    "macro_protein": "protein",
+    "macro_carbs": "carbs",
+    "macro_fat": "fat",
+    "unit_mismatch_warn": "Nutrition is per 100 {basis}. Converting from {from} uses 1 ml ≈ 1 g, rough for oils, honey, etc. Add a <strong>Density (g/ml)</strong> value to the food for accurate conversion.",
+    "from_grams": "grams",
+    "from_milliliters": "milliliters",
+    "yesterday_title": "Yesterday: {name}",
+    "recipe_title": "Recipe: {name}",
+    "meal_title": "Meal: {name}",
+    "unnamed": "Unnamed",
+    "add_this_meal": "Add this meal",
+    "add_this_recipe": "Add this recipe",
+    "delete_item_title": "Delete item?",
+    "delete_item_msg": "This will permanently delete this item.",
+    "delete_n_title": "{count, plural, one {Delete # item?} other {Delete # items?}}",
+    "bulk_delete_msg": "Diary entries that reference these will keep their nutrition snapshot but lose the link to the source. This can't be undone."
   },
   "settings_main_deep": {
     "search_ph": "Search settings…",
@@ -1390,7 +2300,14 @@
   },
   "settings_custom_nutrient": {
     "name": "Nutrient Name",
-    "add": "Add Nutrient"
+    "add": "Add Nutrient",
+    "visible_heading": "Visible Nutrients",
+    "visible_sub": "Drag to reorder. Toggle off any nutrient you don't want shown in the diary and food editor.",
+    "custom_sub": "Track nutrients not covered by the built-in list (e.g. Omega-3).",
+    "remove": "Remove nutrient",
+    "add_custom": "Add custom nutrient",
+    "sheet_title": "Add Custom Nutrient",
+    "name_placeholder": "e.g. Omega-3"
   },
   "settings_foods_picker": {
     "show_thumbnails": "Show Thumbnails",
@@ -1409,7 +2326,15 @@
     "opt_alpha": "Alphabetical",
     "opt_relevance": "Relevance",
     "sort_heading": "Sort",
-    "sort_heading_sub": "Ordering on each list."
+    "sort_heading_sub": "Ordering on each list.",
+    "row_display_heading": "Food Row Display",
+    "row_display_sub": "Fields shown on each row in the Foods, Meals, and Recipes tabs.",
+    "show_yesterday_meals": "Show Yesterday's Meals",
+    "show_yesterday_meals_desc": "Pin yesterday's meals as quick-add cards in the Meals tab. Tap the info icon to see what's in each one.",
+    "meals_sort_desc": "How items are ordered in the Meals tab.",
+    "recipes_sort_desc": "How items are ordered in the Recipes tab.",
+    "camera_heading": "Camera & Scanning",
+    "camera_sub": "Barcode scanner audio, flashlight, and photo crop preferences."
   },
   "barcode_scanner": {
     "toast": {
@@ -1435,7 +2360,8 @@
       "align": "Point the camera at the barcode",
       "denied": "Camera access denied",
       "no_camera": "No camera found",
-      "error": "Camera error — tap Refresh"
+      "error": "Camera error — tap Refresh",
+      "requesting": "Requesting camera…"
     }
   },
   "food_editor": {
@@ -1503,7 +2429,55 @@
     "db_copy": {
       "title": "Edit and save to My Foods",
       "note": "Your changes are saved as your own food. The {source} entry stays as it is."
-    }
+    },
+    "title_shared": "Shared by {name}",
+    "title_edit": "Edit Food",
+    "title_add": "Add Food",
+    "favorite": "Favorite",
+    "unfavorite": "Unfavorite",
+    "add_to_favorites": "Add to favorites",
+    "copying": "Copying…",
+    "save_to_catalog": "Save to My Catalog",
+    "readonly_title": "Shared by {name} — read only",
+    "photo_alt": "Food",
+    "photo_camera": "Camera",
+    "photo_upload": "Upload",
+    "photo_url": "URL",
+    "photo_url_get": "Get",
+    "capture": "Capture",
+    "field_name": "Name *",
+    "linked_title": "All fields scale proportionally",
+    "unlinked_title": "Fields are independent",
+    "basis_per_100g": "Per 100 g",
+    "basis_per_100ml": "Per 100 ml",
+    "basis_hint": "Defaults the unit picker when logging to the diary. Leave both off if unknown; math behaves like today's default.",
+    "alt_unit_placeholder": "e.g. slice",
+    "alt_unit_grams_placeholder": "grams",
+    "add_serving_unit": "Add serving unit",
+    "serving_units_hint": "Lets you log \"1 slice\", \"1 cookie\", \"1 bottle\" etc. with the right gram conversion.",
+    "field_density": "Density (g/ml)",
+    "density_hint": "Only used when the picked unit's system (mass vs volume) doesn't match the nutrition basis. Common values: water 1.00, milk 1.03, olive oil 0.91, honey 1.42.",
+    "duplicate_barcode": "You already have a food with this barcode:",
+    "open_existing": "Open existing →",
+    "off_uploading": "Uploading…",
+    "off_submitted": "Submitted!",
+    "off_view": "View on OFF",
+    "off_share": "Share to OFF",
+    "off_loading": "Loading…",
+    "off_refreshed": "Updated!",
+    "off_refresh": "Refresh from OFF",
+    "off_verifying": "Verifying on Open Food Facts…",
+    "off_confirmed": "Confirmed live on Open Food Facts",
+    "off_pending": "Submitted — may take a few minutes to appear",
+    "off_view_full": "View on Open Food Facts",
+    "scan_label_aria": "Scan nutrition label",
+    "scanning": "Scanning…",
+    "scan_label": "Scan Label",
+    "energy": "Energy",
+    "sodium_derived": "Auto-calculated from salt (× 400 mg/g)",
+    "salt_derived": "Auto-calculated from sodium (÷ 400)",
+    "show_less": "Show Less",
+    "show_all_nutrients": "Show All Nutrients"
   },
   "meal_editor": {
     "meal_name_placeholder": "Meal name",
@@ -1549,7 +2523,41 @@
     "errors": {
       "no_ingredients": "Please add at least one ingredient",
       "off_no_values": "Open Food Facts has no values \"as sold\" for {name}. Add it under Foods with the values from the label, then pick it here."
-    }
+    },
+    "picker_tab_foods": "Foods",
+    "picker_tab_meals": "Meals",
+    "picker_tab_recipes": "Recipes",
+    "confirm_unlink": "Unlink this recipe from CookTrace?\n\nThe recipe stays in NutriTrace but stops trying to sync with CookTrace. You can safely delete the CookTrace copy after unlinking.",
+    "confirm_delete": "Delete this recipe from NutriTrace?\n\nThis removes the local copy. Any diary entries referencing it stay logged with their captured nutrition.",
+    "camera_unavailable": "Camera not available",
+    "saved_to_catalog": "Saved to your catalog",
+    "save_to_catalog_failed": "Could not save to catalog: {error}",
+    "scan_off_disabled": "Scan: no local match, and OFF is disabled in Settings.",
+    "scan_not_found": "Scan: barcode not found.",
+    "title_edit_meal": "Edit Meal",
+    "title_edit_recipe": "Edit Recipe",
+    "title_new_meal": "New Meal",
+    "title_new_recipe": "New Recipe",
+    "from_source": "From {source}",
+    "open_original": "Open original",
+    "ingredients_foods": "Foods",
+    "ingredients_foods_recipes": "Foods & Recipes",
+    "energy_total": "{value} {unit} total",
+    "add_short": "+ Add",
+    "no_ingredients_yet": "No ingredients yet. Tap + to add.",
+    "edit_ingredient": "Edit ingredient",
+    "remove_ingredient": "Remove ingredient",
+    "items_count": "{count, plural, one {# item} other {# items}}",
+    "add_selected": "Add selected",
+    "picker_type_to_search": "Type to search {source}.",
+    "picker_no_results_in": "No {source} results for \"{query}\".",
+    "picker_no_shared": "No foods shared with you yet.",
+    "picker_no_results": "No results found",
+    "picker_empty": "No items yet. Add some in the Foods tab first.",
+    "select": "Select",
+    "set_portion": "Set Portion",
+    "qty": "Qty",
+    "add_n_ingredients": "{count, plural, one {Add # Ingredient} other {Add # Ingredients}}"
   },
   "settings_wellness": {
     "master": {
@@ -1612,7 +2620,11 @@
       "register_uri_note": "Register this exact URI in your app settings",
       "consumer_key": "Consumer Key",
       "consumer_key_ph": "Your Garmin Consumer Key",
-      "consumer_secret": "Consumer Secret"
+      "consumer_secret": "Consumer Secret",
+      "unknown_error": "Unknown error",
+      "synced_provider_metrics": "Synced {count, plural, one {# {provider} metric} other {# {provider} metrics}} for {date}",
+      "provider_sync_failed": "{provider} sync failed: {error}",
+      "last_synced_ago": "Last synced {ago}"
     },
     "lifttrace_ovr": {
       "prefer_label": "Prefer Wearable Data Over LiftTrace",
@@ -1628,16 +2640,25 @@
       "setup_link": "Setup guide →",
       "client_id_ph": "From Google Cloud Console → APIs & Services → Credentials",
       "redirect_note": "Add this exact URI to your Google Cloud OAuth client's Authorized redirect URIs list",
-      "redirect_format": "Format:"
+      "redirect_format": "Format:",
+      "fitbit_id": "Fitbit ID: {id}",
+      "google_user": "Google user: {id}",
+      "relink_desc": "Fitbit data now flows through Google's new Health API. NutriTrace is removing the legacy Fitbit Web API code path on <strong>May 31, 2026</strong> (about four months before Google's own cutoff in September) to keep things current. Your existing connection still works until then, but re-link via Google Cloud now to avoid an interruption. No data is lost — your charts and history stay intact."
     },
     "garmin_deep": {
       "server_only": "Requires a server connection for OAuth authentication. In local mode, use Health Connect below to read Garmin data directly from your Android device.",
       "metrics_desc": "Steps, sleep, heart rate, HRV, SpO2, Body Battery, stress. Requires the Garmin Health API partnership.",
-      "authorize_desc": "Authorize NutriTrace to read your Garmin data."
+      "authorize_desc": "Authorize NutriTrace to read your Garmin data.",
+      "account_linked": "Garmin account linked",
+      "long_range_warn_full": "⚠ Garmin's API caps reliable historical data near 6 months. Longer ranges may return incomplete results."
     },
     "withings_deep": {
       "server_only": "Requires a server connection for OAuth authentication. In local mode, use Health Connect below to read Withings data directly from your Android device.",
-      "authorize_desc": "Authorize NutriTrace to read your Withings data."
+      "authorize_desc": "Authorize NutriTrace to read your Withings data.",
+      "user": "User {id}",
+      "account_linked": "Withings account linked",
+      "creds_desc_full": "Create a Withings developer account and a new application of type \"Personal use\" or \"Public Cloud Partner\". Then paste the Client ID + Secret here and add the redirect URI below to your app's authorized list.",
+      "dashboard_link_full": "Withings developer dashboard →"
     },
     "fitbit": {
       "title": "Fitbit",
@@ -1717,12 +2738,97 @@
       "bg_sync_label": "Background Sync",
       "bg_sync_desc": "Runs hourly in the background even when NutriTrace is closed, so today's wearable data is already on the server when you open NutriTrace elsewhere. If syncs stop running, check Android Settings → Apps → NutriTrace → Battery and set it to Unrestricted. Some launchers (Samsung, Xiaomi, OnePlus) also need NutriTrace added to the \"never sleeping apps\" or auto-start whitelist.",
       "synced_count": "Synced {count} Health Connect metric(s) for {date}",
-      "sync_failed": "Health Connect sync failed: "
+      "sync_failed": "Health Connect sync failed: ",
+      "data_types_readable_count": "{count, plural, one {# data type} other {# data types}} readable from Health Connect"
     },
     "lifttrace": {
       "title": "LiftTrace",
       "prefer_wearable": "Prefer Wearable Data Over LiftTrace",
       "prefer_wearable_desc": "When LiftTrace sends a completed workout's estimated calories burned…"
+    },
+    "metric_label": {
+      "active_minutes": "Active Min",
+      "active_zone_minutes": "Active Zone Min",
+      "calories_out": "Calories",
+      "sleep_deep_min": "Deep Sleep",
+      "distance_km": "Distance",
+      "floors": "Floors",
+      "hrv_daily_rmssd": "HRV",
+      "sleep_light_min": "Light Sleep",
+      "sleep_rem_min": "REM Sleep",
+      "respiratory_rate": "Resp. Rate",
+      "resting_hr": "Resting HR",
+      "sleep_duration_min": "Sleep Duration",
+      "sleep_efficiency": "Sleep Efficiency",
+      "skin_temp_variation": "Skin Temp Var.",
+      "sleep_score": "Sleep Score",
+      "spo2_avg": "SpO2",
+      "steps": "Steps",
+      "vo2_max": "Cardio Fitness",
+      "sleep_wake_min": "Wake Time",
+      "body_battery_high": "Battery High",
+      "body_battery_low": "Battery Low",
+      "max_hr": "Max HR",
+      "moderate_intensity_min": "Moderate Intensity",
+      "stress_avg": "Stress",
+      "vigorous_intensity_min": "Vigorous Intensity",
+      "ecg_afib": "AFib",
+      "basal_metabolic_rate": "Basal Metabolic Rate",
+      "body_fat_pct": "Body Fat",
+      "body_water_pct": "Body Water",
+      "bone_mass_kg": "Bone Mass",
+      "eda_feet": "EDA Score",
+      "ecg_heart_rate": "Heart Rate",
+      "extracellular_water_kg": "Extracell. Water",
+      "fat_mass_kg": "Fat Mass",
+      "intracellular_water_kg": "Intracell. Water",
+      "lean_mass_kg": "Lean Mass",
+      "metabolic_age": "Metabolic Age",
+      "muscle_mass_kg": "Muscle Mass",
+      "nerve_health_score": "Nerve Health",
+      "pulse_wave_velocity": "Pulse Wave",
+      "segmental_analysis": "Segmental Analysis",
+      "vascular_age": "Vascular Age",
+      "visceral_fat": "Visceral Fat",
+      "visceral_fat_index": "Visceral Fat Index",
+      "weight_kg": "Weight",
+      "active_calories": "Active Calories",
+      "avg_heart_rate": "Avg Heart Rate",
+      "blood_pressure_systolic": "Blood Pressure (Sys)",
+      "blood_pressure_diastolic": "Blood Pressure (Dia)",
+      "body_temperature": "Body Temperature",
+      "water_ml": "Hydration"
+    },
+    "time": {
+      "never": "Never",
+      "just_now_short": "Just now",
+      "min_ago": "{n} min ago",
+      "hr_ago": "{n} hr ago",
+      "just_now": "just now",
+      "minutes_ago": "{count, plural, one {# minute ago} other {# minutes ago}}",
+      "hours_ago": "{count, plural, one {# hour ago} other {# hours ago}}",
+      "days_ago": "{count, plural, one {# day ago} other {# days ago}}"
+    },
+    "interval_opt": {
+      "every_30_min": "Every 30 min",
+      "every_hour": "Every hour",
+      "every_2_hours": "Every 2 hours",
+      "every_3_hours": "Every 3 hours",
+      "every_6_hours": "Every 6 hours",
+      "every_12_hours": "Every 12 hours",
+      "once_a_day": "Once a day"
+    },
+    "range_opt": {
+      "day_1": "1 day",
+      "week_1": "1 week",
+      "month_1": "1 month",
+      "months_3": "3 months",
+      "months_6": "6 months",
+      "year_1": "1 year"
+    },
+    "mirror": {
+      "label": "Mirror wellness weight to Body Stats",
+      "desc": "Also write scale readings from Health Connect into that day's Body Stats weight so the Weight goal on Goals and the Body Stats widget on Diary reflect your scale. Manual Body Stats entries are never overwritten. Withings applies this by default independently of this toggle."
     }
   },
   "settings_auth": {
@@ -1804,6 +2910,16 @@
       "label": "Allow Password Login",
       "desc": "When off, users sign in only via OIDC. Recovery still works via the RECOVERY_TOKEN env var.",
       "env_locked": "Locked by OIDC_ENABLE_EMAIL_PASSWORD_LOGIN environment variable."
+    },
+    "preset_custom_name": "Custom / Generic OIDC",
+    "preset_help": {
+      "auth0": "Auth0 adds custom claims under a namespaced URL like \"https://nutritrace.app/roles\" — leave the admin claim blank for now and contact your tenant admin to set up a rule that exposes role membership.",
+      "authelia": "Authelia's issuer URL is the root URL where Authelia is served — no path suffix.",
+      "authentik": "Issuer URL is the \"OpenID Configuration Issuer\" shown on the Provider page in Authentik. Make sure your Application uses an OAuth2/OIDC Provider and you've added the redirect URI shown above to its allowed list.",
+      "google": "Google's issuer URL is fixed. Group/role claims are not available with standard scopes — admin role mapping is hidden for this provider; promote Google users manually after first login.",
+      "keycloak": "Add a \"groups\" mapper to your client's default scope so the groups claim is included in the ID token.",
+      "pocket_id": "Pocket ID uses passkeys for primary auth — your users won't need a password at the IdP either. Add the redirect URI shown above to the OIDC client in Pocket ID admin.",
+      "custom": "Any OpenID Connect 1.0 compliant provider that supports Authorization Code Flow + PKCE + Discovery should work here."
     }
   },
   "settings_nutrition_import": {
@@ -1955,6 +3071,12 @@
       "revoke_title": "Revoke \"{name}\"?",
       "revoke_msg": "Apps using this token will immediately stop working. This cannot be undone, you would need to mint a new token and update each connected app.",
       "revoke_confirm": "Revoke"
+    },
+    "mcp": {
+      "status": "MCP on this server:",
+      "read": "read",
+      "write": "write",
+      "destroy": "destroy"
     }
   },
   "settings_webhooks": {
@@ -2044,13 +3166,18 @@
       "export_full_nutrition_csv_desc": "Long-form export with per-item time, meal name, brand, and every built-in and custom nutrient (with units). Best for personal databases and long-term analytics.",
       "export_activity_csv": "Export Activity As CSV",
       "export_activity_csv_desc": "Downloads your full manual activity log (name, calories, duration, distance, MET) as a spreadsheet."
+    },
+    "sections_sub": {
+      "import": "Pull data in: bulk-add foods by barcode list, or restore a NutriTrace JSON export.",
+      "export": "Portable JSON snapshot or CSV of your diary or activity log."
     }
   },
   "settings_trace": {
     "toast": {
       "connected": "Trace AI connected, assistant is ready",
       "test_failed": "Test failed",
-      "empty_response": "Empty response from AI"
+      "empty_response": "Empty response from AI",
+      "fill_required": "Fill in provider, API key, and model first"
     },
     "provider_env_locked": "Environment-locked",
     "env_lock_banner": "Configured via environment variables, changes are disabled.",
@@ -2139,7 +3266,10 @@
       "server_error_prefix": "Server error {status}",
       "all_data_cleared": "All data cleared",
       "all_settings_cleared": "All settings cleared",
-      "clear_failed_prefix": "Clear failed: {error}"
+      "clear_failed_prefix": "Clear failed: {error}",
+      "saved_to_download": "Saved to Download/{filename}",
+      "delete_failed_prefix": "Delete failed: {error}",
+      "unknown_error": "Unknown error"
     },
     "confirm": {
       "restore_local": "Restore \"{name}\"? Existing data is merged, not erased.",
@@ -2156,7 +3286,8 @@
       "restore_complete": "Restore complete — reloading…",
       "uploading": "Uploading backup…",
       "uploading_pct": "Uploading… {percent}%",
-      "restoring_on_server": "Restoring on server…"
+      "restoring_on_server": "Restoring on server…",
+      "starting": "Starting…"
     },
     "sections": {
       "full_backup": "Full Backup",
@@ -2221,12 +3352,23 @@
       "delete_backup_msg": "This backup file will be permanently removed from the server.",
       "delete_backup_confirm": "Delete",
       "cancel": "Cancel"
+    },
+    "size": {
+      "b": "{n} B",
+      "kb": "{n} KB",
+      "mb": "{n} MB"
+    },
+    "sections_sub": {
+      "full_server": "Full server backup (SQLite + uploads) with optional scheduled runs. Admin only.",
+      "full_local": "On-device backup zip saved to Documents/nutritrace-backups. Manual or scheduled.",
+      "danger_zone": "Irreversible actions. Wipe logged data or reset every setting to defaults."
     }
   },
   "settings_notifications": {
     "toast": {
       "test_sent": "Test sent, check your device",
-      "test_failed": "Test failed: {error}"
+      "test_failed": "Test failed: {error}",
+      "unknown_error": "unknown error"
     },
     "sections": {
       "delivery": "Delivery",
@@ -2260,7 +3402,8 @@
       "ntfy_token": "Access Token (Optional, for Private Topics)",
       "ntfy_token_ph": "Bearer token",
       "hide": "Hide",
-      "show": "Show"
+      "show": "Show",
+      "test_body": "Test notification, push service connected"
     },
     "reminders": {
       "water": "Water Reminders",
@@ -2311,13 +3454,20 @@
       "day_thu": "Thu",
       "day_fri": "Fri",
       "day_sat": "Sat"
+    },
+    "sections_sub": {
+      "delivery": "How notifications reach you: on-device pop-ups and optional third-party push service.",
+      "scheduled_reminders": "Recurring reminders at set times of day: water, meals, weigh-in, bedtime.",
+      "alerts_summaries": "Milestone alerts and periodic summary reports."
     }
   },
   "wellness_page": {
     "nav": {
       "prev_day": "Previous day",
       "next_day": "Next day",
-      "jump_to_date": "Jump to date"
+      "jump_to_date": "Jump to date",
+      "today": "Today",
+      "yesterday": "Yesterday"
     },
     "sync": {
       "health_connect": "Sync Health Connect",
@@ -2334,7 +3484,12 @@
       "no_integrations_desc": "Enable Fitbit or Withings in <strong>Settings → Wellness</strong> to start syncing health data.",
       "no_device": "No Device Connected",
       "no_device_native_desc": "Connect to your NutriTrace server in <strong>Settings → Server Connection</strong> and link a wellness device to see your data here.",
-      "no_device_desc": "Connect a wellness device in <strong>Settings → Wellness</strong> to start tracking your health data."
+      "no_device_desc": "Connect a wellness device in <strong>Settings → Wellness</strong> to start tracking your health data.",
+      "no_data_today": "No data for today.",
+      "no_data_for": "No data for {date}.",
+      "no_body_data_today": "No body composition data for today.",
+      "no_body_data_for": "No body composition data for {date}.",
+      "no_body_data_hint": "Sync your scale or fitness tracker to see body stats here."
     },
     "chip": {
       "activity": "Activity",
@@ -2350,7 +3505,8 @@
       "fitbit_title": "Connect Fitbit",
       "fitbit_desc": "Authorize NutriTrace to read your Fitbit data via Google Health. You'll be redirected to Google to approve access, then brought back here.",
       "fitbit_button": "Connect Fitbit",
-      "connecting": "Connecting…"
+      "connecting": "Connecting…",
+      "withings_desc": "Sync body composition from your Withings scale. Weight, body fat %, muscle mass, bone mass, and more — automatically filled into your diary."
     },
     "metric_group": {
       "sleep_stages": "Sleep Stages",
@@ -2362,10 +3518,266 @@
       "sleep": "Sleep",
       "physical_calmness": "Physical Calmness",
       "activity_balance": "Activity Balance",
-      "sleep_patterns": "Sleep Patterns"
+      "sleep_patterns": "Sleep Patterns",
+      "sleep_quality": "Sleep Quality"
     },
     "hint": {
       "tap_sync": "Tap Sync to pull the latest data from your connected device."
+    },
+    "metric": {
+      "steps": "Steps",
+      "distance_km": "Distance",
+      "floors": "Floors Climbed",
+      "active_minutes": "Active Minutes",
+      "calories_out": "Calories Burned",
+      "active_zone_minutes": "Active Zone Min",
+      "moderate_intensity_min": "Moderate Intensity",
+      "vigorous_intensity_min": "Vigorous Intensity",
+      "sleep_duration_min": "Sleep Duration",
+      "sleep_deep_min": "Deep Sleep",
+      "sleep_light_min": "Light Sleep",
+      "sleep_rem_min": "REM Sleep",
+      "sleep_wake_min": "Awake",
+      "sleep_efficiency": "Sleep Efficiency",
+      "sleep_score": "Sleep Score",
+      "sleep_time_to_fall_asleep_min": "Time to Sound Sleep",
+      "sleep_sound_sleep_min": "Sound Sleep",
+      "sleep_restlessness_min": "Restlessness",
+      "sleep_interruptions_min": "Interruptions",
+      "sleep_full_awakenings": "Full Awakenings",
+      "resting_hr": "Resting Heart Rate",
+      "avg_heart_rate": "Average Heart Rate",
+      "spo2_avg": "SpO2",
+      "respiratory_rate": "Respiratory Rate",
+      "hrv_daily_rmssd": "HRV (RMSSD)",
+      "skin_temp_variation": "Skin Temp Var.",
+      "vo2_max": "Cardio Fitness",
+      "max_hr": "Max Heart Rate",
+      "weight_kg": "Weight",
+      "body_fat_pct": "Body Fat",
+      "muscle_mass_kg": "Muscle Mass",
+      "bone_mass_kg": "Bone Mass",
+      "body_water_pct": "Body Water",
+      "lean_mass_kg": "Lean Mass",
+      "fat_mass_kg": "Fat Mass",
+      "visceral_fat": "Visceral Fat",
+      "visceral_fat_index": "Visceral Fat Index",
+      "extracellular_water_kg": "Extracellular Water",
+      "intracellular_water_kg": "Intracellular Water",
+      "vascular_age": "Vascular Age",
+      "metabolic_age": "Metabolic Age",
+      "basal_metabolic_rate": "Basal Metabolic Rate",
+      "nerve_health_score": "Nerve Health Score",
+      "eda_feet": "EDA (Daily)",
+      "pulse_wave_velocity": "Pulse Wave Vel.",
+      "ecg_heart_rate": "Heart Rate",
+      "ecg_afib": "AFib Detection",
+      "body_battery_high": "Body Battery (Peak)",
+      "body_battery_low": "Body Battery (Low)",
+      "stress_avg": "Avg Stress"
+    },
+    "metric_desc": {
+      "steps": "Total steps taken today.",
+      "distance_km": "Total distance covered today.",
+      "floors": "Floors climbed based on elevation gain detected by your device.",
+      "active_minutes": "Time spent at a moderate or higher activity level.",
+      "calories_out": "Total calories burned including your resting metabolic rate.",
+      "active_zone_minutes": "Minutes spent in Fat Burn, Cardio, or Peak heart rate zones — counts double for Cardio and Peak.",
+      "moderate_intensity_min": "Time at moderate intensity (brisk walking, light cycling). WHO recommends 150–300 min/week.",
+      "vigorous_intensity_min": "Time at high intensity (running, hard effort). Counts double toward weekly activity targets.",
+      "sleep_duration_min": "Total time asleep last night. Adults generally need 7–9 hours.",
+      "sleep_deep_min": "Deep (slow-wave) sleep — the most restorative stage. Critical for physical recovery and immune function.",
+      "sleep_light_min": "Light sleep is the transition between wakefulness and deeper stages. Makes up the majority of most sleep cycles.",
+      "sleep_rem_min": "REM sleep supports memory consolidation, learning, and emotional regulation. Increases in later sleep cycles.",
+      "sleep_wake_min": "Time spent awake or restless during the night. Brief awakenings are normal; frequent ones may signal poor sleep quality.",
+      "sleep_efficiency": "Percentage of time in bed actually spent asleep. Above 85% is generally considered good.",
+      "sleep_score": "Overall sleep quality score out of 100. Factors in duration, sleep stage balance, SpO2, and HRV.",
+      "sleep_time_to_fall_asleep_min": "How long it took to settle into deep sleep after first falling asleep. Lower is generally better.",
+      "sleep_sound_sleep_min": "Longest stretch of uninterrupted sleep (LIGHT, DEEP, and REM with no wake events). Approximation of Fitbit's Sound Sleep metric — Fitbit's exact algorithm is proprietary and may use motion data the API does not expose.",
+      "sleep_restlessness_min": "Brief stirring during the night — short AWAKE segments under 5 minutes. Approximation of Fitbit's Restlessness metric, which also incorporates motion data the API does not expose.",
+      "sleep_interruptions_min": "Wake events of 5 minutes or longer that you're likely to remember. Card shows total minutes and the count of awakenings.",
+      "sleep_full_awakenings": "Number of distinct wake events of 5 minutes or longer. Shown alongside Interruptions on the same card.",
+      "resting_hr": "Heart rate when fully at rest. Lower is generally better — a downward trend over time reflects improving cardiovascular fitness.",
+      "avg_heart_rate": "Average heart rate across the day from your wearable. Rises with activity, stress, and elevated body temperature; useful for spotting an unusually high or low day at a glance.",
+      "spo2_avg": "Blood oxygen saturation measured overnight. Healthy range is typically 95–100%. Dips below 90% may indicate sleep apnea.",
+      "respiratory_rate": "Average breaths per minute during sleep. Normal adult range is 12–20 breaths/min. Elevated values may signal illness or stress.",
+      "hrv_daily_rmssd": "Heart rate variability — the variation between heartbeats. Higher values indicate better recovery and autonomic nervous system balance.",
+      "skin_temp_variation": "Nightly skin temperature variation from your personal baseline. Elevated readings can indicate illness or hormonal changes.",
+      "vo2_max": "Estimated VO₂ Max — the maximum oxygen your body can use during exercise. Fitbit shows this as a range (e.g. 39–43 mL/kg/min). A key indicator of long-term cardiovascular health.",
+      "max_hr": "Highest heart rate recorded during the day. Useful for tracking workout intensity and your true max effort.",
+      "weight_kg": "Current body weight from your scale.",
+      "body_fat_pct": "Percentage of total body weight that is fat tissue. Healthy ranges vary by age and sex.",
+      "muscle_mass_kg": "Total skeletal muscle mass. Higher values indicate better strength and metabolic health.",
+      "bone_mass_kg": "Estimated bone mineral content. Stable values are normal; significant drops may warrant discussion with your doctor.",
+      "body_water_pct": "Total body water as a percentage of weight. Normal range is 45–65% depending on age and sex.",
+      "lean_mass_kg": "Everything except fat — includes muscle, bone, organs, and water.",
+      "fat_mass_kg": "Total fat tissue weight. Tracking trends is more useful than individual readings.",
+      "visceral_fat": "Fat stored around internal organs. Higher levels are linked to increased metabolic and cardiovascular risk.",
+      "visceral_fat_index": "Indexed rating of visceral fat. Lower is better — a score under 13 is generally considered healthy.",
+      "extracellular_water_kg": "Water outside cells (blood, lymph, interstitial fluid). Elevated levels may indicate inflammation or fluid retention.",
+      "intracellular_water_kg": "Water inside cells. Reflects hydration at the cellular level — higher relative to extracellular is generally healthier.",
+      "vascular_age": "Estimated age of your arteries based on pulse wave velocity. Lower than your actual age indicates healthier blood vessels.",
+      "metabolic_age": "Your body's metabolic efficiency compared to age norms. Lower than your actual age means your metabolism is performing well.",
+      "basal_metabolic_rate": "Calories your body burns at complete rest over 24 hours. Influenced by muscle mass, age, and body composition.",
+      "nerve_health_score": "Monthly nerve health score from your Withings scale. Calculated from daily EDA readings over the month. Above 50 = Normal, below 50 = Low. Final score confirmed at month-end.",
+      "eda_feet": "Daily electrodermal activity reading from your Withings scale. Measures sweat gland nerve conductance in your feet. These daily readings feed into the monthly Nerve Health Score.",
+      "pulse_wave_velocity": "Speed of blood pressure pulse along arteries. Lower values indicate more elastic, healthier blood vessels.",
+      "ecg_heart_rate": "Heart rate measured during ECG recording on your scale. More accurate than optical wrist sensors.",
+      "ecg_afib": "Atrial fibrillation screening from ECG recording. \"Normal\" means no irregular rhythm detected during this reading.",
+      "body_battery_high": "Highest Body Battery level today (0–100). Charges during rest and sleep, drains during activity and stress.",
+      "body_battery_low": "Lowest Body Battery level today. If it drops below 20, your body may need rest or recovery.",
+      "stress_avg": "Average stress level from Garmin (0–100). Measured via heart rate variability throughout the day. Lower is calmer."
+    },
+    "unit": {
+      "steps": "steps",
+      "floors": "floors",
+      "min": "min",
+      "bpm": "bpm",
+      "brpm": "brpm",
+      "ms": "ms",
+      "yrs": "yrs",
+      "per_day": "{unit}/day",
+      "h": "{h}h",
+      "m": "{m}m",
+      "h_m": "{h}h {m}m"
+    },
+    "time_ago": {
+      "just_now": "just now",
+      "seconds": "{n}s ago",
+      "minutes": "{n}m ago",
+      "hours": "{n}h ago",
+      "yesterday": "yesterday",
+      "days": "{n}d ago"
+    },
+    "toast": {
+      "synced_days_from": "Synced {count, plural, one {# day} other {# days}} from {provider}",
+      "synced_days": "Synced {count, plural, one {# day} other {# days}}",
+      "synced_days_rate_limited": "Synced {count, plural, one {# day} other {# days}} (rate limited — try again later for the rest)",
+      "disconnected_reconnect": "{provider} disconnected — reconnect in Settings → Wellness",
+      "sync_failed": "{provider} sync failed: {error}",
+      "auth_start_failed": "Could not start {provider} authorization",
+      "disconnected_from": "Disconnected from {provider}",
+      "connected": "{provider} connected!",
+      "auth_error": "{provider}: {error}",
+      "auth_failed": "Authorization failed",
+      "hc_synced": "Health Connect synced"
+    },
+    "chronotype": {
+      "early_bird": "Early Bird",
+      "early_bird_desc": "You naturally wake early and feel most energized in the morning. Your body clock runs ahead of most — mornings are your prime time.",
+      "morning": "Morning Type",
+      "morning_desc": "You do your best work in the first half of the day and tend to wake up feeling refreshed. Most schedules suit you well.",
+      "intermediate": "Intermediate",
+      "intermediate_desc": "Your body clock is well-aligned with typical schedules — you adapt easily between early mornings and late evenings.",
+      "evening": "Evening Type",
+      "evening_desc": "You come alive in the afternoon and evening. Mornings can be a challenge — your peak energy arrives later in the day.",
+      "night_owl": "Night Owl",
+      "night_owl_desc": "Your body clock runs late. You're at your sharpest in the evening and may struggle with early alarms. Late nights feel natural.",
+      "tooltip": "Chronotype — your natural sleep timing preference, derived from your average sleep midpoint over all available nights. This is a long-term trait that updates as more nights are synced — it always reflects your full history, not the specific date you're viewing.",
+      "building": "Building Profile…",
+      "avg_midpoint": "Avg sleep midpoint: {time} · {count, plural, one {# night} other {# nights}}",
+      "nights_collected": "{count}/{needed} nights collected",
+      "unlock_hint": "Syncing more nights will unlock your chronotype. Once {needed} nights of sleep timing are available your profile will appear here."
+    },
+    "readiness": {
+      "band_optimal": "Optimal",
+      "band_good": "Good",
+      "band_fair": "Fair",
+      "band_low": "Low",
+      "band_poor": "Poor",
+      "lead_optimal": "You're well-recovered today.",
+      "lead_good": "Solid recovery — you can train normally.",
+      "lead_fair": "Moderate recovery — go lighter than usual today.",
+      "lead_low": "Recovery is low. Treat this as a deload day.",
+      "driver_penalty": "Yesterday's activity load is the main drag (penalty −{penalty}) — your body's still paying it back from a hard effort.",
+      "driver_hrv_low": "Your HRV ({today}ms) is well below your {baseline}ms baseline — recovery is the priority. Hydrate, eat enough, and prioritize sleep tonight.",
+      "driver_rhr_low": "Resting HR is elevated ({today} vs {baseline} baseline) — possible early sign of illness or under-recovery.",
+      "driver_sleep_low": "Last night's sleep ({score}) is dragging this down. Cap caffeine after noon and aim for an earlier bedtime.",
+      "driver_hrv_mid": "HRV ({today}ms) is below your {baseline}ms baseline — the dominant signal here. Light activity will help recovery more than a hard session.",
+      "driver_rhr_mid": "Resting HR ({today}) is up from your {baseline} baseline. Watch for early illness signs and keep intensity in check.",
+      "driver_sleep_mid": "Sleep ({score}) is the weakest signal today. An earlier bedtime tonight will pay back tomorrow.",
+      "driver_strong": "Every component is strong. Good day for harder training, longer sessions, or a PR attempt.",
+      "driver_healthy": "All signals are healthy — train as planned.",
+      "driver_cumulative": "Components look fine individually — likely cumulative fatigue from the week. A lighter session today still makes sense.",
+      "tooltip": "Daily Readiness — how recovered and prepared your body is for today, scored 1–100. Calculated from today's HRV and RHR compared to your 30-day personal baseline, plus last night's sleep score. Always reflects today's data — not the date you're viewing.",
+      "calibrating": "Calibrating… {days}/{needed} nights with HRV data",
+      "needs": "Needs {needed} nights where your device recorded HRV during sleep. Fitbit only captures HRV on nights with a clean optical reading — wearing the device snugly helps.",
+      "baseline": "HRV baseline {hrv} ms · {days, plural, one {# day} other {# days}}",
+      "baseline_with_rhr": "HRV baseline {hrv} ms · RHR baseline {rhr} bpm · {days, plural, one {# day} other {# days}}",
+      "based_on": "Based on {days, plural, one {# day} other {# days}} — accuracy improves as more data is collected."
+    },
+    "resilience": {
+      "band_optimal": "Optimal",
+      "band_balanced": "Balanced",
+      "band_low": "Low",
+      "text_optimal": "Your body is showing strong signs of recovery and balance. A great day to take on what matters to you.",
+      "text_balanced": "Your body is in a steady state today. A good day to maintain your routine and stay consistent.",
+      "text_low": "Your body is asking for a bit more rest today. Taking it easier is a kind way to help yourself recharge.",
+      "tooltip": "Resilience — how your body is handling daily stress, classified as Optimal, Balanced, or Low. Combines physical calmness (HRV + resting heart rate), activity balance (step + active-minute target adherence), and sleep patterns (last night plus 7-day reservoir).",
+      "score": "Score: {score} / 100"
+    },
+    "stage": {
+      "deep": "Deep",
+      "rem": "REM",
+      "light": "Light",
+      "awake": "Awake"
+    },
+    "workout": {
+      "start": "Start",
+      "finish": "Finish",
+      "today_title": "Today's Workouts",
+      "gps_available": "GPS route available",
+      "hr_avg": "{avg} avg bpm",
+      "hr_avg_peak": "{avg} avg · {max} peak bpm",
+      "sessions": "{count, plural, one {# session} other {# sessions}}",
+      "loading_route": "Loading route…"
+    },
+    "rail": {
+      "providers": "Providers",
+      "sync_all": "Sync All",
+      "manage_providers": "Manage Providers",
+      "readiness_tooltip": "Daily Readiness — how recovered and prepared your body is for today. Tap for details.",
+      "todays_readiness": "Today's Readiness",
+      "insights": "Insights"
+    },
+    "trend": {
+      "view": "View trend",
+      "view_in_stats": "View trend in Statistics"
+    },
+    "sleep": {
+      "moments": "{count, plural, one {# moment} other {# moments}}"
+    },
+    "sleep_debt": {
+      "tooltip": "Sleep Debt — the total sleep you've missed relative to your goal over the selected window. Calculated as a rolling total from today backwards — always reflects the most recent nights, not the date you're viewing.",
+      "last_nights": "Last {count, plural, one {# night} other {# nights}}",
+      "on_track": "On track",
+      "short_of": "You're {debt} short of your {goal} sleep goal across the last {count, plural, one {# night} other {# nights}}.",
+      "advice_high": "Prioritize early bedtimes this week to recover.",
+      "advice_low": "A consistent schedule should close the gap quickly.",
+      "meeting_goal": "You're meeting your sleep goal. Keep it up!",
+      "days_chip": "{n}d"
+    },
+    "body": {
+      "lean": "Lean",
+      "left_arm": "Left Arm",
+      "right_arm": "Right Arm",
+      "torso": "Torso",
+      "left_leg": "Left Leg",
+      "right_leg": "Right Leg",
+      "chip_body_fat_pct": "Body Fat %",
+      "chip_ecg_afib": "ECG & AFib",
+      "afib_detected": "Detected",
+      "afib_normal": "Normal"
+    },
+    "week": {
+      "tooltip": "7-day activity totals from your synced data.",
+      "title": "This Week",
+      "last_7_days": "Last 7 days",
+      "total_steps": "Total steps",
+      "daily_avg": "Daily avg",
+      "goal_days": "≥ 10k days",
+      "active_min": "Active min",
+      "burned": "Burned <strong>{amount} kcal</strong> total this week."
     }
   },
   "statistics_page": {
@@ -2390,9 +3802,84 @@
       "no_data": "No data for this period",
       "hint_food_metric": "Log food in your diary to see trends here",
       "hint_wellness": "Connect a fitness tracker in Settings → Wellness",
-      "hint_other": "No entries found — try a different date range"
+      "hint_other": "No entries found — try a different date range",
+      "alts_try": "Try",
+      "alts_or": "or",
+      "alts_suffix": "You may have data there."
     },
-    "history_heading": "History"
+    "history_heading": "History",
+    "metric": {
+      "steps": "Steps",
+      "active_min": "Active Min.",
+      "active_minutes": "Active Minutes",
+      "sleep": "Sleep",
+      "resting_hr": "Resting HR",
+      "hrv": "HRV",
+      "spo2": "SpO2",
+      "muscle_mass": "Muscle Mass",
+      "weight": "Weight",
+      "neck": "Neck",
+      "waist": "Waist",
+      "hips": "Hips",
+      "chest": "Chest",
+      "thighs": "Thighs",
+      "biceps": "Biceps",
+      "calves": "Calves",
+      "body_fat": "Body Fat",
+      "body_water": "Body Water",
+      "body_fat_pct": "Body Fat %",
+      "body_water_pct": "Body Water %",
+      "water": "Water"
+    },
+    "unit": {
+      "hr": "hr"
+    },
+    "range_short": {
+      "w1": "1W",
+      "w2": "2W",
+      "m1": "1M",
+      "m3": "3M",
+      "m6": "6M",
+      "y1": "1Y",
+      "all": "All",
+      "custom": "Custom"
+    },
+    "overlay": {
+      "average": "Average",
+      "goal": "Goal",
+      "base_goal": "Base Goal",
+      "trend": "Trend"
+    },
+    "group": {
+      "nutrition": "Nutrition",
+      "body": "Body",
+      "water": "Water",
+      "wellness": "Wellness"
+    },
+    "cal": {
+      "pick_date": "Pick date",
+      "from_date": "From date",
+      "to_date": "To date",
+      "prev_month": "Previous month",
+      "next_month": "Next month"
+    },
+    "rail": {
+      "metrics": "Metrics",
+      "filter_ph": "Filter metrics…",
+      "summary": "Summary",
+      "marked_complete": "Marked complete",
+      "marked_complete_tooltip": "Days marked complete over the viewed range. Purely how consistently you closed the day, not whether goals were hit.",
+      "weekly_trend": "Weekly trend",
+      "weekly_trend_tooltip": "Last 7-day average vs the previous 7 days. Deep trend analysis lives on the chart itself — this is the quick pulse.",
+      "overlays": "Overlays"
+    },
+    "toggle_chart_type": "Toggle chart type",
+    "history": {
+      "open_day_wellness": "Open this day in Wellness",
+      "open_day_diary": "Open this day in Diary",
+      "open_wellness_for": "Open Wellness for {date}",
+      "open_diary_for": "Open Diary for {date}"
+    }
   },
   "accept_invite": {
     "title": "Create Account",
@@ -2434,6 +3921,449 @@
       "exported": "Exported {n} entries",
       "saved_downloads": "Saved to Downloads/{file}",
       "failed": "Export failed: {error}"
+    },
+    "csv": {
+      "date": "Date",
+      "meal": "Meal",
+      "food": "Food",
+      "brand": "Brand",
+      "amount": "Amount",
+      "unit": "Unit",
+      "meal_n": "Meal {n}"
     }
+  },
+  "ui": {
+    "dialog": {
+      "ok": "OK"
+    },
+    "date_input": {
+      "open_calendar": "Open calendar",
+      "pick_date": "Pick a date"
+    },
+    "date_picker": {
+      "prev_month": "Previous month",
+      "next_month": "Next month",
+      "pick_month": "Pick month",
+      "pick_year": "Pick year"
+    },
+    "food_detail": {
+      "clear_preview_aria": "Clear detail preview",
+      "clear_preview": "Clear preview",
+      "empty": "Pick a food from the list to preview."
+    },
+    "image_cropper": {
+      "title": "Crop Photo",
+      "hint": "Drag to reposition; drag the corner to resize",
+      "confirm": "Crop & Use",
+      "move_aria": "Drag to reposition crop",
+      "resize_aria": "Drag to resize crop"
+    },
+    "password_strength": {
+      "very_weak": "Very weak",
+      "weak": "Weak",
+      "fair": "Fair",
+      "strong": "Strong",
+      "very_strong": "Very strong",
+      "below_min": "below required strength"
+    },
+    "unit_picker": {
+      "placeholder": "unit",
+      "no_matches": "No matches. Add custom units in Settings → Foods → Custom Units."
+    }
+  },
+  "settings_connection_status": {
+    "connected": "Connected",
+    "test": "Test",
+    "testing": "Testing…",
+    "testing_connection": "Testing connection…",
+    "not_connected": "Not connected",
+    "not_connected_error": "Not connected: {error}"
+  },
+  "activity_categories": {
+    "running": "Running",
+    "bicycling": "Bicycling",
+    "walking": "Walking",
+    "water": "Water",
+    "winter": "Winter",
+    "sports": "Sports",
+    "conditioning": "Conditioning",
+    "dancing": "Dancing",
+    "home": "Home",
+    "occupation": "Occupation"
+  },
+  "ai_models": {
+    "openai_compatible": "OpenAI Compatible",
+    "custom": "Custom…",
+    "tags": {
+      "fast_cheapest": "fast, cheapest",
+      "cheapest": "cheapest",
+      "cheap": "cheap",
+      "fast": "fast",
+      "balanced": "balanced",
+      "smarter": "smarter",
+      "most_capable": "most capable",
+      "previous": "previous"
+    },
+    "errors": {
+      "no_api_key": "No API key configured. Add one in Settings → AI Assistant.",
+      "needs_base_url": "The OpenAI Compatible provider needs a Base URL. Set one in Settings → AI Assistant.",
+      "needs_model": "The OpenAI Compatible provider needs a model name. Set one in Settings → AI Assistant.",
+      "not_signed_in": "Not signed in. Sign in again to use AI features."
+    }
+  },
+  "biometric": {
+    "prompt": "Sign in to NutriTrace",
+    "use_password": "Use Password"
+  },
+  "boot": {
+    "db_error_title": "Database Error",
+    "db_error_body": "Could not open the local database. Try closing other tabs or clearing site data.",
+    "retry": "Retry"
+  },
+  "clipboard": {
+    "unavailable": "Copying is not available in this browser"
+  },
+  "connected_services": {
+    "empty_response": "Empty response",
+    "cooktrace_missing_scope": "The token is valid but lacks the read:recipes scope. Create a new token in CookTrace with that scope ticked.",
+    "connection_failed": "Connection failed",
+    "recipe_fallback_name": "Recipe",
+    "unnamed_recipe": "Unnamed Recipe"
+  },
+  "image_embed": {
+    "unreadable": "Could not read that photo.",
+    "needs_connection": "That picture needs a connection. Try again once you are back online.",
+    "animation_too_large": "That animation is too large to keep until you are back online.",
+    "too_large": "That picture is too large to keep until you are back online. Take it again once you have a connection."
+  },
+  "offline": {
+    "needs_connection": "This needs a connection."
+  },
+  "off_contribute": {
+    "name_barcode_required": "Name and barcode are required",
+    "disabled_air_gap": "Contributing to Open Food Facts is turned off on this server (air-gap mode)."
+  },
+  "local_backup": {
+    "progress": {
+      "reading_data": "Reading data…",
+      "packing_data": "Packing data…",
+      "packing_images": "Packing images ({done}/{total})…",
+      "writing_json": "Writing JSON…",
+      "compressing": "Compressing…",
+      "done": "Done",
+      "reading_backup": "Reading backup…",
+      "extracting_images": "Extracting images…",
+      "importing_data": "Importing data…"
+    },
+    "unsupported_version": "Unsupported backup version {version}"
+  },
+  "meal_names": {
+    "breakfast": "Breakfast",
+    "lunch": "Lunch",
+    "dinner": "Dinner",
+    "snacks": "Snacks"
+  },
+  "water_containers": {
+    "small_bottle": "Small Bottle",
+    "standard_bottle": "Standard Bottle",
+    "large_bottle": "Large Bottle",
+    "gallon_jug": "Gallon Jug"
+  },
+  "notify": {
+    "channel_description": "NutriTrace notifications",
+    "updates_channel_name": "App updates",
+    "updates_channel_description": "Notifies you when a new app version is available.",
+    "water_title": "Hydration Reminder",
+    "water_body": "Time to drink some water! Stay hydrated.",
+    "meal_title": "Meal Reminder",
+    "meal_body": "Time to log your meal: {meal}",
+    "meal_body_generic": "Time to log your meal!",
+    "goal_title": "Goal Reached!",
+    "goal_body": "Goal reached — {label}: {value} {unit} (target: {target})",
+    "calorie_title": "Calorie Target Reached",
+    "calorie_body": "You've hit {value} kcal — your daily target is {target} kcal",
+    "steps_title": "Step Goal Reached!",
+    "steps_body": "You've walked {steps} steps — goal was {goal}!",
+    "steps_progress_title": "Step Goal Progress",
+    "steps_progress_body": "You're at {steps} steps — {remaining} to go!",
+    "gotify_test": "Test notification — Gotify is connected!",
+    "weigh_in_title": "Weigh-in Reminder",
+    "weigh_in_body": "Time to step on the scale!",
+    "update_title": "NutriTrace update available",
+    "update_body": "{version} is ready. Tap to install.",
+    "units": {
+      "steps": "steps",
+      "min": "min"
+    },
+    "goal_labels": {
+      "calories": "Calories",
+      "proteins": "Protein",
+      "carbohydrates": "Carbs",
+      "fat": "Fat",
+      "fiber": "Fiber",
+      "sodium": "Sodium",
+      "sugars": "Sugar",
+      "saturated_fat": "Saturated Fat",
+      "cholesterol": "Cholesterol",
+      "potassium": "Potassium",
+      "calcium": "Calcium",
+      "iron": "Iron",
+      "vitamin_c": "Vitamin C",
+      "vitamin_a": "Vitamin A",
+      "vitamin_d": "Vitamin D",
+      "water_ml": "Water",
+      "sleep_duration_min": "Sleep",
+      "steps": "Steps",
+      "active_minutes": "Active Minutes",
+      "distance_km": "Distance",
+      "calories_out": "Calories Burned"
+    }
+  },
+  "nutrients": {
+    "calories": "Calories",
+    "energy": "Energy",
+    "kilojoules": "Kilojoules",
+    "fat": "Fat",
+    "saturated-fat": "Saturated Fat",
+    "trans-fat": "Trans Fat",
+    "polyunsaturated-fat": "Polyunsaturated Fat",
+    "monounsaturated-fat": "Monounsaturated Fat",
+    "cholesterol": "Cholesterol",
+    "sodium": "Sodium",
+    "salt": "Salt",
+    "carbohydrates": "Carbs",
+    "fiber": "Fiber",
+    "sugars": "Sugars",
+    "added-sugars": "Added Sugars",
+    "proteins": "Protein",
+    "vitamin-d": "Vitamin D",
+    "calcium": "Calcium",
+    "iron": "Iron",
+    "potassium": "Potassium",
+    "vitamin-a": "Vitamin A",
+    "vitamin-c": "Vitamin C",
+    "vitamin-e": "Vitamin E",
+    "vitamin-k": "Vitamin K",
+    "b1": "Vitamin B1",
+    "b2": "Vitamin B2",
+    "b3": "Vitamin B3",
+    "b6": "Vitamin B6",
+    "b9": "Folate (B9)",
+    "b12": "Vitamin B12",
+    "magnesium": "Magnesium",
+    "zinc": "Zinc",
+    "phosphorus": "Phosphorus",
+    "caffeine": "Caffeine",
+    "alcohol": "Alcohol"
+  },
+  "units": {
+    "groups": {
+      "mass_metric": "Mass — Metric",
+      "mass_us": "Mass — US",
+      "volume_metric": "Volume — Metric",
+      "volume_us": "Volume — US",
+      "count": "Count",
+      "custom": "Custom"
+    },
+    "names": {
+      "g": "gram",
+      "mg": "milligram",
+      "kg": "kilogram",
+      "oz": "ounce",
+      "lb": "pound",
+      "ml": "milliliter",
+      "l": "liter",
+      "tsp": "teaspoon",
+      "tbsp": "tablespoon",
+      "fl_oz": "fluid ounce",
+      "cup": "cup",
+      "piece": "piece",
+      "slice": "slice"
+    }
+  },
+  "password": {
+    "rules": {
+      "min_length": "Password must be at least 8 characters",
+      "needs_lowercase": "Password must include a lowercase letter",
+      "needs_uppercase": "Password must include an uppercase letter",
+      "needs_number": "Password must include a number",
+      "needs_special": "Password must include a special character"
+    },
+    "strength": {
+      "too_weak": "Too weak",
+      "weak": "Weak",
+      "fair": "Fair",
+      "strong": "Strong",
+      "very_strong": "Very strong"
+    },
+    "zxcvbn": {
+      "default_tip": "Use a longer, less predictable password",
+      "warnings": {
+        "straight_row": "Straight rows of keys on your keyboard are easy to guess.",
+        "key_pattern": "Short keyboard patterns are easy to guess.",
+        "simple_repeat": "Repeated characters like \"aaa\" are easy to guess.",
+        "extended_repeat": "Repeated character patterns like \"abcabcabc\" are easy to guess.",
+        "sequences": "Common character sequences like \"abc\" are easy to guess.",
+        "recent_years": "Recent years are easy to guess.",
+        "dates": "Dates are easy to guess.",
+        "top_ten": "This is a heavily used password.",
+        "top_hundred": "This is a frequently used password.",
+        "common": "This is a commonly used password.",
+        "similar_to_common": "This is similar to a commonly used password.",
+        "word_by_itself": "Single words are easy to guess.",
+        "names_by_themselves": "Single names or surnames are easy to guess.",
+        "common_names": "Common names and surnames are easy to guess.",
+        "user_inputs": "There should not be any personal or page related data.",
+        "pwned": "Your password was exposed by a data breach on the Internet."
+      },
+      "suggestions": {
+        "l33t": "Avoid predictable letter substitutions like '@' for 'a'.",
+        "reverse_words": "Avoid reversed spellings of common words.",
+        "all_uppercase": "Capitalize some, but not all letters.",
+        "capitalization": "Capitalize more than the first letter.",
+        "dates": "Avoid dates and years that are associated with you.",
+        "recent_years": "Avoid recent years.",
+        "associated_years": "Avoid years that are associated with you.",
+        "sequences": "Avoid common character sequences.",
+        "repeated": "Avoid repeated words and characters.",
+        "longer_keyboard_pattern": "Use longer keyboard patterns and change typing direction multiple times.",
+        "another_word": "Add more words that are less common.",
+        "use_words": "Use multiple words, but avoid common phrases.",
+        "no_need": "You can create strong passwords without using symbols, numbers, or uppercase letters.",
+        "pwned": "If you use this password elsewhere, you should change it."
+      }
+    }
+  },
+  "server_errors": {
+    "not_signed_in": "You are not signed in.",
+    "admin_only": "Only an admin can do this.",
+    "forbidden": "You don't have access to this.",
+    "invalid_csrf": "Your session has expired. Reload the page and try again.",
+    "setup_required": "Finish setting up the app first.",
+    "body_too_large": "The request is too large.",
+    "internal": "Something went wrong on the server.",
+    "not_found": "Not found.",
+    "server_unreachable": "Server not reachable",
+    "login_failed": "Login failed",
+    "rate_limited": "Too many requests. Try again in {seconds} s.",
+    "invalid_credentials": "Invalid username or password",
+    "username_password_required": "Username and password are required",
+    "too_many_logins_account": "Too many login attempts for this account. Try again later.",
+    "too_many_logins": "Too many login attempts. Try again in a few minutes.",
+    "password_login_disabled": "Password login is disabled. Use Single Sign-On instead.",
+    "already_signed_in": "You are already signed in. Use Settings to disable user management.",
+    "sign_in_expired": "Sign-in expired. Please try again.",
+    "sign_in_failed": "Sign-in failed",
+    "oidc_callback_failed": "Single sign-on failed. Try again.",
+    "oidc_link_failed": "Could not link this account.",
+    "unlink_failed": "Could not unlink",
+    "oidc_no_account": "No NutriTrace account is linked to this identity. Ask your admin to enable Auto-register new users on this provider, or have them invite you first.",
+    "oidc_already_linked": "This provider identity is already linked to a different NutriTrace account.",
+    "oidc_last_method": "Cannot unlink your last sign-in method. Set a password first, or link another provider.",
+    "oidc_account_exists": "Your {provider} account matches an existing NutriTrace user. Sign in the usual way once, then link this provider from Profile → Linked Accounts. After that, SSO will sign you in directly.",
+    "oidc_provider_disabled": "Sign-in provider {provider} is disabled",
+    "oidc_provider_not_found": "Provider not found",
+    "oidc_provider_env_locked": "This provider is configured via environment variables and cannot be edited from the UI.",
+    "oidc_password_login_env_locked": "This setting is locked by the OIDC_ENABLE_EMAIL_PASSWORD_LOGIN environment variable and cannot be changed from the admin UI.",
+    "oidc_discovery_failed": "Could not read the provider configuration (discovery failed)",
+    "password_too_weak": "Password is too weak: {tip}",
+    "current_password_incorrect": "Current password is incorrect",
+    "current_password_required": "Enter your current password",
+    "new_password_required": "Enter a new password",
+    "reset_fields_required": "Reset link and new password are required",
+    "reset_link_invalid": "Invalid or expired reset link",
+    "reset_link_expired": "Reset link has expired",
+    "link_invalid": "Invalid or expired link",
+    "recovery_token_invalid": "Invalid recovery token.",
+    "recovery_unavailable": "Recovery not available. Set the RECOVERY_TOKEN environment variable.",
+    "public_url_unknown": "The app's address is unknown. Set PUBLIC_URL, then try again.",
+    "invite_invalid": "Invalid or already used invite link",
+    "invite_expired": "Invite link has expired",
+    "invite_not_found": "Invite not found",
+    "email_exists_sign_in": "An account with this email already exists. Sign in instead.",
+    "email_exists_user": "An account with that email already exists (username: {username}). They can sign in directly or use Forgot Password.",
+    "user_not_found": "User not found",
+    "cannot_delete_self": "You cannot delete yourself",
+    "cannot_delete_only_admin": "Cannot delete the only admin account.",
+    "cannot_delete_only_admin_transfer": "Cannot delete the only admin account. Transfer admin to another user first.",
+    "cannot_demote_only_admin": "Cannot demote the only admin. Promote another user to admin first.",
+    "cannot_change_own_role": "You cannot change your own role",
+    "invalid_role": "Invalid role",
+    "username_taken": "This username is already taken.",
+    "email_taken": "This email is already used by another account.",
+    "email_not_configured": "Email is not configured. Ask your admin to set up SMTP in Settings.",
+    "email_no_recipient": "No recipient. Fill in a From address (or make sure your account has an email set).",
+    "smtp_test_failed": "SMTP test failed",
+    "smtp_env_locked": "SMTP is configured via environment variables and cannot be changed here.",
+    "ai_env_locked": "AI is configured via environment variables and cannot be changed here.",
+    "ai_not_configured": "AI is not configured on the server. Set AI_API_KEY in the environment.",
+    "ai_too_many_messages": "Too many messages in the conversation (max {max})",
+    "gotify_required_save": "Gotify URL and token are required. Save the settings first.",
+    "gotify_required": "Gotify URL and token are required",
+    "ntfy_topic_required": "ntfy topic is required",
+    "apprise_url_required": "Apprise URL is required",
+    "backup_schedule_locked": "The backup schedule is locked by an environment variable",
+    "backup_time_format": "Backup time must be HH:MM",
+    "backup_retention_range": "Keep between 1 and 99 backups",
+    "backup_too_many_images": "The backup contains too many images (more than {max})",
+    "backup_unsafe_path": "The backup contains an unsafe file path: {path}",
+    "backup_too_large": "The backup is too large to restore",
+    "no_file": "No file uploaded",
+    "unsupported_image": "File is not a supported image (JPEG, PNG, WebP, GIF, HEIC, AVIF, BMP).",
+    "not_an_image": "That address is not an image",
+    "service_unreachable": "Could not reach that service",
+    "unsupported_source": "Unsupported import source",
+    "no_rows": "No rows found in the file",
+    "empty_file": "The file is empty",
+    "zip_unreadable": "Could not read the ZIP file: {error}",
+    "zip_no_meal_csv": "No meal-nutrition CSV found in the ZIP. Expected a file named \"Nutritional Information.csv\" or \"Meal Level Nutrition Details.csv\"",
+    "zip_mfp_only": "ZIP uploads are only supported for MyFitnessPal. Extract the CSV first.",
+    "parse_failed": "Could not read the file: {error}",
+    "import_failed": "Import failed: {error}",
+    "cronometer_no_nutrition": "This Food & Recipe Entries export lists your foods but has no nutrition columns, which is how Cronometer now exports it on some accounts. Use Export Daily Nutrition instead, with \"Include diary group rows\" ticked, to bring your totals per meal.",
+    "cronometer_no_energy": "This Daily Nutrition export has no Energy (kcal) column, so there are no numbers to import.",
+    "cronometer_unrecognized": "This doesn't look like a Cronometer export. Expected either Day and Food Name columns (Export Food & Recipe Entries) or a Date column with nutrients (Export Daily Nutrition), but found: {found}.",
+    "loseit_unrecognized": "This doesn't look like a LoseIt food log export. Expected Date, Name, Type and Calories columns.",
+    "mfp_unrecognized": "This doesn't look like a MyFitnessPal export. Expected Date, Meal and Calories columns, found: {columns}",
+    "spreadsheet_missing_columns": "Missing required columns: need Date, a name (Name/Food/Item) and energy (Calories/kcal/Energy)",
+    "name_required": "Name is required",
+    "already_yours": "This is already yours",
+    "invalid_visibility": "Invalid visibility",
+    "sharing_disabled": "Sharing is not enabled on this server.",
+    "invalid_date": "Invalid date",
+    "activity_name_date_required": "Name and date are required",
+    "fast_in_progress": "A fast is already in progress. End it before starting a new one.",
+    "fast_not_found": "Fast not found",
+    "fast_already_ended": "This fast has already ended",
+    "food_not_found": "Food not found",
+    "meal_not_found": "Meal not found",
+    "mealie_not_configured": "No Mealie URL configured. Set it in Settings → Connected Services first.",
+    "cooktrace_not_configured": "No CookTrace URL configured. Set it in Settings → Connected Services first.",
+    "mealie_url_mismatch": "The Mealie URL must match the one saved in Settings.",
+    "cooktrace_url_mismatch": "The CookTrace URL must match the one saved in Settings.",
+    "mealie_unreachable": "Could not reach Mealie",
+    "cooktrace_unreachable": "Could not reach CookTrace",
+    "cooktrace_failed": "The CookTrace request failed",
+    "service_status": "{service} returned an error ({status})",
+    "wearable_not_configured": "{service} client_id and redirect_uri must be set in Settings → Wellness.",
+    "garmin_not_configured": "Garmin consumer key, secret and redirect URI must be set in Settings → Wellness.",
+    "google_health_not_configured": "Google Health is not configured",
+    "invalid_date_range": "Invalid date range",
+    "range_too_long": "The range cannot be longer than 365 days",
+    "workout_not_found": "Workout not found",
+    "api_tokens_need_account": "API tokens require a signed-in account. Enable user management and sign in as an admin first.",
+    "webhooks_need_account": "Webhooks require a signed-in account. Enable user management and sign in as an admin first.",
+    "url_required": "URL is required",
+    "scope_required": "Choose at least one valid scope",
+    "event_required": "Choose at least one valid event",
+    "webhook_not_found": "Webhook not found",
+    "invalid_url": "Invalid URL",
+    "url_http_only": "Only http and https URLs are allowed",
+    "host_unresolved": "Could not resolve the host",
+    "url_link_local": "Link-local and cloud metadata addresses are not allowed",
+    "url_private_blocked": "Private and loopback addresses are blocked. Set {env}=1 to allow LAN targets.",
+    "update_checks_off": "Update checks are turned off by UPDATE_CHECK in the environment",
+    "github_unreachable": "GitHub is unreachable and there is no cached version.",
+    "api_error": "Server error ({status})"
   }
 }

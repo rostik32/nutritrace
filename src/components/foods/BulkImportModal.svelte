@@ -96,13 +96,12 @@
   }
 </script>
 
-<Sheet bind:open height="full" title="Bulk Import Foods" on:close={close}>
+<Sheet bind:open height="full" title={$_('bulk_import.title')} on:close={close}>
   <div class="wrap">
     <Tabs {tabs} bind:active={activeTab} />
 
     <div class="hint">
-      Paste or upload a {activeTab === 0 ? 'JSON' : 'CSV'} file. Each row needs at minimum
-      a <code>name</code> and <code>calories</code>; other nutrients are optional.
+      {@html $_('bulk_import.hint', { values: { format: activeTab === 0 ? 'JSON' : 'CSV' } })}
       <button class="link-btn" type="button" on:click={downloadTemplate}>{$_('bulk_import.download_template')}</button>
     </div>
 
@@ -115,9 +114,9 @@
       ></textarea>
     {:else}
       <div class="upload-area">
-        <p class="upload-note">CSV files don't paste cleanly. Use the upload button.</p>
+        <p class="upload-note">{$_('bulk_import.csv_note')}</p>
         {#if csvText}
-          <p class="filename">Loaded: {_fileName || 'pasted'}</p>
+          <p class="filename">{$_('bulk_import.loaded', { values: { name: _fileName || $_('bulk_import.pasted') } })}</p>
         {/if}
       </div>
     {/if}
@@ -125,7 +124,7 @@
     <div class="row-actions">
       <button class="btn btn-secondary" type="button" on:click={pickFile}>
         <span class="material-symbols-rounded" style="font-size:18px">upload_file</span>
-        Upload file
+        {$_('bulk_import.upload_file')}
       </button>
       {#if currentText}
         <button class="btn btn-secondary" type="button" on:click={clearInput}>{$_('bulk_import.clear')}</button>
@@ -136,12 +135,12 @@
     {#if currentText}
       <div class="preview">
         <div class="preview-summary">
-          <span class="chip ok">{results.valid.length} ready</span>
+          <span class="chip ok">{$_('bulk_import.n_ready', { values: { count: results.valid.length } })}</span>
           {#if results.duplicates.length > 0}
-            <span class="chip warn">{results.duplicates.length} duplicate barcode{results.duplicates.length === 1 ? '' : 's'}</span>
+            <span class="chip warn">{$_('bulk_import.n_duplicates', { values: { count: results.duplicates.length } })}</span>
           {/if}
           {#if parsed.errors.length > 0}
-            <span class="chip err">{parsed.errors.length} error{parsed.errors.length === 1 ? '' : 's'}</span>
+            <span class="chip err">{$_('bulk_import.n_errors', { values: { count: parsed.errors.length } })}</span>
           {/if}
         </div>
 
@@ -160,22 +159,22 @@
         {/if}
 
         {#if results.duplicates.length > 0}
-          <p class="preview-section-label warn">Skipped (barcode already in your catalog)</p>
+          <p class="preview-section-label warn">{$_('bulk_import.skipped_heading')}</p>
           <ul class="preview-list">
             {#each results.duplicates as f}
               <li>
                 <span class="food-name">{f.name}</span>
-                <span class="food-meta">barcode {f.barcode}</span>
+                <span class="food-meta">{$_('bulk_import.barcode_value', { values: { barcode: f.barcode } })}</span>
               </li>
             {/each}
           </ul>
         {/if}
 
         {#if parsed.errors.length > 0}
-          <p class="preview-section-label err">Errors (fix or remove these rows before importing)</p>
+          <p class="preview-section-label err">{$_('bulk_import.errors_heading')}</p>
           <ul class="preview-list err-list">
             {#each parsed.errors as e}
-              <li>Row {e.row}: {e.message}</li>
+              <li>{$_('bulk_import.row_error', { values: { row: e.row, message: e.message } })}</li>
             {/each}
           </ul>
         {/if}
@@ -185,7 +184,7 @@
     <div class="footer">
       <button class="btn btn-secondary" type="button" on:click={close}>{$_('bulk_import.cancel')}</button>
       <button class="btn btn-primary" type="button" on:click={commit} disabled={!canCommit}>
-        Import {results.valid.length || ''}
+        {results.valid.length ? $_('bulk_import.import_n', { values: { count: results.valid.length } }) : $_('bulk_import.import')}
       </button>
     </div>
   </div>

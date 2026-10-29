@@ -12,8 +12,8 @@
 <div class="section-body">
 
   <!-- Group: Food Row Display — what shows on each row in the Foods / Meals list -->
-  <p class="settings-group-heading">Food Row Display</p>
-  <p class="settings-group-sub">Fields shown on each row in the Foods, Meals, and Recipes tabs.</p>
+  <p class="settings-group-heading">{$_('settings_foods_picker.row_display_heading')}</p>
+  <p class="settings-group-sub">{$_('settings_foods_picker.row_display_sub')}</p>
   <div class="card settings-card">
     <div class="setting-row">
       <div><span class="setting-label">{$_('settings_foods_picker.show_thumbnails')}</span><div class="setting-desc">{$_('settings_foods_picker.show_thumbnails_desc')}</div></div>
@@ -36,7 +36,7 @@
     </div>
     <div class="setting-divider"></div>
     <div class="setting-row">
-      <div><span class="setting-label">Show Yesterday's Meals</span><div class="setting-desc">Pin yesterday's meals as quick-add cards in the Meals tab. Tap the info icon to see what's in each one.</div></div>
+      <div><span class="setting-label">{$_('settings_foods_picker.show_yesterday_meals')}</span><div class="setting-desc">{$_('settings_foods_picker.show_yesterday_meals_desc')}</div></div>
       <Toggle checked={$foodsShowYesterdayMeals} on:change={e => foodsShowYesterdayMeals.set(e.detail)} />
     </div>
   </div>
@@ -63,7 +63,7 @@
     <div class="setting-row">
       <div>
         <span class="setting-label">{$_('settings_foods_picker.meals_sort')}</span>
-        <div class="setting-desc">How items are ordered in the Meals tab.</div>
+        <div class="setting-desc">{$_('settings_foods_picker.meals_sort_desc')}</div>
       </div>
       <div class="select-wrap" style="width:160px">
         <select class="select sel-sm" value={$mealsSort} on:change={e => mealsSort.set(e.target.value)}>
@@ -77,7 +77,7 @@
     <div class="setting-row">
       <div>
         <span class="setting-label">{$_('settings_scanner.recipes_sort')}</span>
-        <div class="setting-desc">How items are ordered in the Recipes tab.</div>
+        <div class="setting-desc">{$_('settings_foods_picker.recipes_sort_desc')}</div>
       </div>
       <div class="select-wrap" style="width:160px">
         <select class="select sel-sm" value={$recipesSort} on:change={e => recipesSort.set(e.target.value)}>
@@ -90,8 +90,8 @@
   </div>
 
   <!-- Group: Camera & Scanning — barcode scanner UX -->
-  <p class="settings-group-heading">Camera &amp; Scanning</p>
-  <p class="settings-group-sub">Barcode scanner audio, flashlight, and photo crop preferences.</p>
+  <p class="settings-group-heading">{$_('settings_foods_picker.camera_heading')}</p>
+  <p class="settings-group-sub">{$_('settings_foods_picker.camera_sub')}</p>
   <div class="card settings-card">
     <div class="setting-row"><span class="setting-label">{$_('settings_scanner.beep_on_scan')}</span><Toggle checked={$barcodeBeep} on:change={e => barcodeBeep.set(e.detail)} /></div>
     {#if isNative}

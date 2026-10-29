@@ -24,10 +24,15 @@ import './styles/fold.css';
 import App from './App.svelte';
 import { DB } from './lib/db.js';
 import { initI18n } from './i18n/index.js';
+import { setNutritionTranslator } from './lib/nutrition.js';
+import { t } from './lib/i18n-t.js';
 
 // Pick browser-detected locale for first paint; the App-level subscription to
 // the `language` store flips it to the user's saved preference once that loads.
 initI18n();
+// Nutrient names follow the app language (nutrition.js can't import
+// svelte-i18n itself: the server shares that file).
+setNutritionTranslator((key, english) => t(key, null, english));
 
 // Sync system theme changes when appearance = 'system'
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
@@ -51,20 +56,25 @@ DB.init()
     }
     mount(App, { target: document.getElementById('app') });
   })
-  .catch(err => {
+  .catch(async err => {
     console.error('DB init failed:', err);
+    // Messages load asynchronously; give them a moment, English otherwise.
+    try {
+      const { waitLocale } = await import('svelte-i18n');
+      await Promise.race([waitLocale(), new Promise(r => setTimeout(r, 1500))]);
+    } catch { /* English fallback below */ }
     document.getElementById('app').innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
                   height:100dvh;padding:32px;text-align:center;gap:16px;font-family:sans-serif;">
         <span style="font-size:48px">⚠️</span>
-        <h2 style="color:#F0F2F8">Database Error</h2>
+        <h2 style="color:#F0F2F8">${t('boot.db_error_title', null, 'Database Error')}</h2>
         <p style="color:rgba(240,242,248,0.6);max-width:300px">
-          Could not open the local database. Try closing other tabs or clearing site data.
+          ${t('boot.db_error_body', null, 'Could not open the local database. Try closing other tabs or clearing site data.')}
         </p>
         <button onclick="location.reload()"
           style="padding:12px 24px;border-radius:12px;background:#4FFFB0;
                  color:#0A0B0F;font-weight:600;border:none;cursor:pointer;font-size:15px;">
-          Retry
+          ${t('boot.retry', null, 'Retry')}
         </button>
       </div>`;
   });

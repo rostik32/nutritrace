@@ -7,6 +7,7 @@
 
 import { Capacitor } from '@capacitor/core';
 import { originalUrlForCachedImage } from './image-cache-map.js';
+import { t } from './i18n-t.js';
 
 /**
  * True when running inside the Capacitor native shell (Android / iOS).
@@ -138,14 +139,14 @@ export function explainConnectError(rawError, serverUrl) {
     msg.includes('err_cleartext') ||
     (isNative && isHttp && (msg.includes('network') || msg.includes('not reachable') || msg.includes('failed to fetch')));
   if (isHttp && looksLikeCleartextBlock) {
-    return 'This build only allows HTTPS connections. Set up a reverse proxy (Caddy, Tailscale, Cloudflare Tunnel) or install a debug APK. See DEPLOY.md → Connecting from Android.';
+    return t('sync.connection.https_only', null, 'This build only allows HTTPS connections. Set up a reverse proxy (Caddy, Tailscale, Cloudflare Tunnel) or install a debug APK. See DEPLOY.md → Connecting from Android.');
   }
   if (isHttp && isNative) {
     // Plain http on native — even if it succeeded, surface the warning so
     // users on debug builds know release builds will reject this URL.
-    return rawError?.message || 'Could not reach server';
+    return rawError?.message || t('common.errors.cant_reach_server', null, 'Could not reach server');
   }
-  return rawError?.message || 'Could not reach server';
+  return rawError?.message || t('common.errors.cant_reach_server', null, 'Could not reach server');
 }
 
 /**

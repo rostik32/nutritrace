@@ -16,6 +16,7 @@
   import { reloadSettingStores } from './stores/settings.js';
   import { navStyle, applyAccentColor, accentColor, applyAppearance, appearance, disableAnimations, sidebarPersistent, language, pageBanners, bannerStyle, bannerAnimation, forceMobileLayout } from './stores/settings.js';
   import { locale, _ } from 'svelte-i18n';
+  import { localizeError } from './lib/server-errors.js';
   import { currentUser, userMgmtActive, setupRequired, loadAuthState, handleOidcCallback } from './stores/auth.js';
   import { needsNativeSetup, isNative, getNativeMode, getServerUrl, apiUrl, getAuthToken } from './lib/platform.js';
   import { describeConnectionIssue } from './lib/connection-message.js';
@@ -47,7 +48,7 @@
   $: _syncBannerCopy = $syncState.showErrorBanner && _connectionCopy
     ? { ..._connectionCopy, icon: _connectionCopy.tone === 'wait' ? 'cloud_off' : 'cloud_alert' }
     : ($syncState.showErrorBanner && $syncState.error
-    ? { title: $_('sync.error_title'), detail: $syncState.error, icon: 'error', tone: 'bad' }
+    ? { title: $_('sync.error_title'), detail: localizeError($syncState.error), icon: 'error', tone: 'bad' }
     : null);
   let _retryingConnection = false;
   const PULL_SYNC_SLOP = 10;
@@ -482,14 +483,14 @@
                   idTokenHint = data.id_token_hint || null;
                   providerId = data.provider_id != null ? String(data.provider_id) : null;
                 } catch (e) {
-                  import('./stores/toast.js').then(({ showError }) => showError(e?.message || 'Sign-in failed'));
+                  import('./stores/toast.js').then(({ showError }) => showError(e?.message ? localizeError(e.message) : $_('login.errors.failed')));
                   return;
                 }
               }
               if (errMsg) {
-                import('./stores/toast.js').then(({ showError }) => showError(decodeURIComponent(errMsg)));
+                import('./stores/toast.js').then(({ showError }) => showError(localizeError(decodeURIComponent(errMsg))));
               } else if (linked) {
-                import('./stores/toast.js').then(({ showSuccess }) => showSuccess('Linked'));
+                import('./stores/toast.js').then(({ showSuccess }) => showSuccess($_('common.linked')));
                 await loadAuthState();
               } else if (token) {
                 const { setAuthToken } = await import('./lib/platform.js');
@@ -507,7 +508,7 @@
                     }));
                   } catch {}
                 }
-                import('./stores/toast.js').then(({ showSuccess }) => showSuccess('Signed in'));
+                import('./stores/toast.js').then(({ showSuccess }) => showSuccess($_('common.signed_in')));
                 await loadAuthState();
                 // Re-evaluate the NativeSetup gate. Without this the user
                 // completes OIDC from NativeSetup, gets a valid token, and
@@ -532,7 +533,7 @@
                 params.get('withings')      ? 'withings' : 'garmin';
               const label = provider === 'google_health' ? 'Google Health' :
                             provider.charAt(0).toUpperCase() + provider.slice(1);
-              import('./stores/toast.js').then(({ showSuccess }) => showSuccess(`${label} connected!`));
+              import('./stores/toast.js').then(({ showSuccess }) => showSuccess($_('common.provider_connected', { values: { provider: label } })));
               // Navigate to Wellness page to pick up new connection
               window.location.hash = '#/wellness';
             } else if (
@@ -541,8 +542,8 @@
               params.get('withings')      === 'error' ||
               params.get('garmin')        === 'error'
             ) {
-              const msg = params.get('msg') || 'Authorization failed';
-              import('./stores/toast.js').then(({ showError }) => showError(msg));
+              const msg = params.get('msg');
+              import('./stores/toast.js').then(({ showError }) => showError(msg ? localizeError(msg) : $_('common.errors.authorization_failed')));
               window.location.hash = '#/wellness';
             }
           } catch (e) {
@@ -896,7 +897,7 @@
     <button
       class="hamburger"
       on:click={() => sidebarOpen = !sidebarOpen}
-      aria-label="Open menu"
+      aria-label={$_('nav.open_menu')}
     >
       <span class="material-symbols-rounded">menu</span>
       {#if (_syncModeActive && !_serverReachable) || _webOffline}

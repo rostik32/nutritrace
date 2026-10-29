@@ -12,7 +12,9 @@
    * Rendered only inside .diary-right-col which is ≥1280px only.
    */
   import { slide } from 'svelte/transition';
+  import { _ } from 'svelte-i18n';
   import { decimalInput, parseDecimal } from '../../lib/decimal-input.js';
+  import { displayContainerName } from '../../lib/default-names.js';
 
   export let logs         = [];
   export let totalMl      = 0;
@@ -82,10 +84,10 @@
 <section class="water-widget card">
   <header class="ww-header">
     <span class="material-symbols-rounded ww-icon">water_drop</span>
-    <span class="ww-title">Water</span>
-    <span class="ww-total">{displayTotal} <span class="ww-of">of {displayGoal}</span></span>
+    <span class="ww-title">{$_('diary_deep.water')}</span>
+    <span class="ww-total">{displayTotal} <span class="ww-of">{$_('diary.water.of_goal', { values: { goal: displayGoal } })}</span></span>
     {#if onOpen}
-      <button class="ww-open" on:click={onOpen} title="Open water sheet" aria-label="Open water sheet">
+      <button class="ww-open" on:click={onOpen} title={$_('diary.water.open_sheet')} aria-label={$_('diary.water.open_sheet')}>
         <span class="material-symbols-rounded">open_in_full</span>
       </button>
     {/if}
@@ -99,12 +101,12 @@
 
   <div class="ww-buttons">
     {#each containers as cont (cont.id ?? cont.volumeMl)}
-      <button class="ww-btn" on:click={() => onQuickAdd(cont.volumeMl)} title={cont.name}>
+      <button class="ww-btn" on:click={() => onQuickAdd(cont.volumeMl)} title={($_, displayContainerName(cont.name))}>
         {displayContainer(cont)}
       </button>
     {/each}
     <button class="ww-btn ww-btn-ghost ww-btn-full" on:click={openCustom} class:active={customOpen}>
-      + Custom
+      + {$_('diary.water.custom')}
     </button>
   </div>
 
@@ -120,7 +122,7 @@
         placeholder={unit === 'ml' ? 'ml' : unit === 'oz' ? 'fl oz' : unit}
         class="input ww-custom-input"
       />
-      <button class="ww-custom-save btn btn-primary" on:click={commitCustom}>Add</button>
+      <button class="ww-custom-save btn btn-primary" on:click={commitCustom}>{$_('diary.water.add')}</button>
     </div>
   {/if}
 
@@ -133,8 +135,8 @@
           <button
             class="ww-log-remove"
             on:click={() => onRemove(i)}
-            title="Remove this entry"
-            aria-label="Remove entry"
+            title={$_('diary.water.remove_entry_title')}
+            aria-label={$_('diary.water.remove_entry')}
           >
             <span class="material-symbols-rounded">close</span>
           </button>

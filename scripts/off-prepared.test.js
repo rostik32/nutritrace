@@ -158,7 +158,7 @@ test('every place an OFF product enters NutriTrace checks it', () => {
   assert.match(ql, /if \(m\.source === 'off' && !food\.id && offNutritionStatus\(food, API\.offNutritionInfo\(food\.barcode\)\) !== 'ok'\) continue;/);
   assert.match(read('../src/components/diary/SmartLogModal.svelte'), /smart_log\.off_no_values/);
   const modal = read('../src/components/diary/SmartLogModal.svelte');
-  assert.match(modal, /Add \{matchedItems\.filter\(_loggable\)\.length\} to Diary/, 'the Add button counts only what will be logged');
+  assert.match(modal, /smart_log\.add_to_diary', \{ values: \{ count: matchedItems\.filter\(_loggable\)\.length \} \}/, 'the Add button counts only what will be logged');
 });
 
 test('Trace is told what no_nutrition means and not to force the food in', () => {

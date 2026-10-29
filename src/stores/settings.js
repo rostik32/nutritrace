@@ -1,5 +1,7 @@
 import { writable, get, derived } from 'svelte/store';
 import { DB } from '../lib/db.js';
+import { locale } from 'svelte-i18n';
+import { displayMealName, DEFAULT_MEAL_NAMES } from '../lib/default-names.js';
 
 // Verbose settings sync logs gated on dev OR opt-in verbose mode
 // (Settings → Diagnostics → Verbose diagnostic logging).
@@ -515,6 +517,11 @@ export const appearance       = createSettingStore('appearance',       'system')
 export const language          = createSettingStore('language',          'en');
 export const energyUnit        = createSettingStore('energyUnit',       'kcal');
 export const mealNames         = createSettingStore('mealNames',        ['Breakfast','Lunch','Dinner','Snacks']);
+// Display names follow the app language while they are still the English
+// defaults; see lib/default-names.js.
+/** mealNames for display (re-derives when the app language changes). */
+export const displayMealNames = derived([mealNames, locale], ([$names]) =>
+  (Array.isArray($names) && $names.length ? $names : DEFAULT_MEAL_NAMES).map(displayMealName));
 export const goals             = createSettingStore('goals',            {});
 export const goalTemplates     = createSettingStore('goalTemplates',    []);
 export const calorieGoalMode   = createSettingStore('calorieGoalMode',   'fixed');  // 'fixed' | 'dynamic' | 'adaptive'

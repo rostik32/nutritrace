@@ -6,6 +6,7 @@ import { rankOFFResults } from './off-rank.js';
 import { offProductName } from './off-name.js';
 import { parseOffLanguages, serializeOffLanguages, offSearchLangs } from './off-languages.js';
 import { asSoldNutriments } from './off-nutrition-sets.js';
+import { t } from './i18n-t.js';
 
 // In native mode, call external APIs directly (no CORS in WebView).
 // In web mode, go through the server proxy to avoid CORS.
@@ -381,7 +382,7 @@ const API = {
 
   async contributeToOFF(food, settings) {
     const { name, barcode, brand, portion, unit, nutrition, imgUrl } = food;
-    if (!name || !barcode) throw new Error("Name and barcode required");
+    if (!name || !barcode) throw new Error(t('off_contribute.name_barcode_required'));
     // Air-gap honor: if the server has OFF_LOCAL_ONLY set, the admin
     // explicitly opted into never calling out to OFF — refuse the upload
     // instead of silently slipping through to the public API. (The lookup
@@ -391,10 +392,12 @@ const API = {
       const { get } = await import('svelte/store');
       const { envLocks } = await import('../stores/settings.js');
       if (get(envLocks)?.off_local_only) {
-        throw new Error('OFF contributions are disabled on this server (air-gap mode).');
+        const err = new Error(t('off_contribute.disabled_air_gap'));
+        err.offDisabled = true;
+        throw err;
       }
     } catch (e) {
-      if (e.message?.startsWith('OFF contributions are disabled')) throw e;
+      if (e.offDisabled) throw e;
       // Store/import lookup failed for some unrelated reason — don't block
       // the upload over an envLocks fetch glitch.
     }
@@ -442,7 +445,7 @@ const API = {
     }
     const res = await fetch("https://world.openfoodfacts.org/cgi/product_jqm2.pl?" + params);
     const json = await res.json();
-    if (json.status !== 1) throw new Error(json.status_verbose || "Upload failed");
+    if (json.status !== 1) throw new Error(json.status_verbose || t('common.errors.upload_failed'));
 
     // Best-effort image upload as a separate multipart POST. Failure here
     // doesn't roll back the data upload — the product record is already

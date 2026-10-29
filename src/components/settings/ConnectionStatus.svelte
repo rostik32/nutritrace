@@ -29,11 +29,13 @@
    * BEFORE the first .setting-row so the existing .setting-divider chain
    * still works for the rows below.
    */
+  import { _ } from 'svelte-i18n';
+  import { localizeError } from '../../lib/server-errors.js';
   export let status = '';
   /** Label shown in the badge chip after "Connected" on the ok branch. */
   export let connectedAs = '';
   /** Optional override for the "Connected" label (e.g. "Linked", "Permission granted"). */
-  export let okLabel = 'Connected';
+  export let okLabel = '';
   /** Optional sub-line below the main row (e.g. "last sync 2h ago"). */
   export let subtext = '';
   /** Error string shown on the fail branch. */
@@ -43,18 +45,18 @@
   /** Disable the default Test button (use during in-flight tests/saves). */
   export let retestDisabled = false;
   /** Button label override. Default "Test". */
-  export let retestLabel = 'Test';
+  export let retestLabel = '';
   /** Label override for the testing branch (default "Testing connection…").
    *  Used by callers whose "in-flight" state isn't a connection test —
    *  e.g. the OFF mirror banner shows "Syncing" during a refresh. */
-  export let testingLabel = 'Testing connection…';
+  export let testingLabel = '';
 </script>
 
 {#if status === 'ok'}
   <div class="status-pill ok">
     <div class="status-main">
       <span class="material-symbols-rounded">check_circle</span>
-      <span>{okLabel}</span>
+      <span>{okLabel || $_('settings_connection_status.connected')}</span>
       {#if connectedAs}
         <span class="status-badge">{connectedAs}</span>
       {/if}
@@ -62,7 +64,7 @@
         <slot name="action">
           {#if onRetest}
             <button class="status-retest" on:click={onRetest} disabled={retestDisabled}>
-              {retestDisabled ? 'Testing…' : retestLabel}
+              {retestDisabled ? $_('settings_connection_status.testing') : (retestLabel || $_('settings_connection_status.test'))}
             </button>
           {/if}
         </slot>
@@ -76,7 +78,7 @@
   <div class="status-pill warn">
     <div class="status-main">
       <span class="material-symbols-rounded">warning</span>
-      <span>{okLabel}</span>
+      <span>{okLabel || $_('settings_connection_status.connected')}</span>
       {#if connectedAs}
         <span class="status-badge">{connectedAs}</span>
       {/if}
@@ -84,7 +86,7 @@
         <slot name="action">
           {#if onRetest}
             <button class="status-retest" on:click={onRetest} disabled={retestDisabled}>
-              {retestDisabled ? 'Testing…' : retestLabel}
+              {retestDisabled ? $_('settings_connection_status.testing') : (retestLabel || $_('settings_connection_status.test'))}
             </button>
           {/if}
         </slot>
@@ -98,12 +100,12 @@
   <div class="status-pill fail">
     <div class="status-main">
       <span class="material-symbols-rounded">error</span>
-      <span>Not connected{error ? `: ${error}` : ''}</span>
+      <span>{error ? $_('settings_connection_status.not_connected_error', { values: { error: localizeError(error) } }) : $_('settings_connection_status.not_connected')}</span>
       <div class="status-actions">
         <slot name="action">
           {#if onRetest}
             <button class="status-retest" on:click={onRetest} disabled={retestDisabled}>
-              {retestDisabled ? 'Testing…' : retestLabel}
+              {retestDisabled ? $_('settings_connection_status.testing') : (retestLabel || $_('settings_connection_status.test'))}
             </button>
           {/if}
         </slot>
@@ -117,12 +119,12 @@
   <div class="status-pill testing">
     <div class="status-main">
       <span class="material-symbols-rounded spin">progress_activity</span>
-      <span>{testingLabel}</span>
+      <span>{testingLabel || $_('settings_connection_status.testing_connection')}</span>
       <div class="status-actions">
         <slot name="action">
           {#if onRetest}
             <button class="status-retest" on:click={onRetest} disabled={true}>
-              {retestLabel}
+              {retestLabel || $_('settings_connection_status.test')}
             </button>
           {/if}
         </slot>

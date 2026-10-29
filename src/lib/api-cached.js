@@ -23,6 +23,7 @@ import {
   apiUrl,
 } from './platform.js';
 import { schedulePush, flushCompletionOps } from './sync.js';
+import { t } from './i18n-t.js';
 
 function _headers() {
   const h = { 'Content-Type': 'application/json' };
@@ -371,7 +372,7 @@ export const NtApiCached = {
       headers: { 'Authorization': `Bearer ${getAuthToken()}` },
       body: form,
     });
-    if (!res.ok) throw new Error('Upload failed');
+    if (!res.ok) throw new Error(t('common.errors.upload_failed'));
     const data = await res.json();
     return data.url;
   },

@@ -11,6 +11,23 @@
   } from '../../lib/platform.js';
   import { currentUser, userMgmtActive } from '../../stores/auth.js';
   import { showSuccess, showError } from '../../stores/toast.js';
+  import { localizeError } from '../../lib/server-errors.js';
+
+  // Upload stages reported by migrate.js → their i18n keys.
+  const MERGE_PROGRESS_KEYS = {
+    settings: 'settings_merge.progress.settings',
+    foods: 'settings_merge.progress.foods',
+    meals: 'settings_merge.progress.meals',
+    recipes: 'settings_merge.progress.recipes',
+    diary: 'settings_merge.progress.diary',
+  };
+  const MERGE_STAGE_KEYS = {
+    settings: 'settings_merge.stage.settings',
+    foods: 'settings_merge.stage.foods',
+    meals: 'settings_merge.stage.meals',
+    recipes: 'settings_merge.stage.recipes',
+    diary: 'settings_merge.stage.diary',
+  };
 
   // ── Sync state + manual trigger ────────────────────────────────────────
   // Native server mode only. lastSyncAt comes from sync_meta on mount and is
@@ -77,8 +94,8 @@
   let migrationSummary = null;  // { success, errors, totalSuccess, total } | null
 
   async function connectServer() {
-    if (!serverUrlInput.trim()) { showError('Enter a server URL'); return; }
-    if (!serverUsername.trim() || !serverPassword.trim()) { showError('Enter credentials'); return; }
+    if (!serverUrlInput.trim()) { showError($_('native_setup.errors.server_url_required')); return; }
+    if (!serverUsername.trim() || !serverPassword.trim()) { showError($_('native_setup.errors.credentials_required')); return; }
     const url = serverUrlInput.trim().replace(/\/$/, '');
     serverConnecting = true;
     try {
@@ -125,7 +142,12 @@
         _finalizeConnect();
       }
     } catch (e) {
-      showError(explainConnectError(e, url));
+      // 'Server not reachable' / 'Login failed' are thrown above in English
+      // (explainConnectError matches on them), so translate at display time.
+      const msg = explainConnectError(e, url);
+      showError(msg === 'Server not reachable' ? $_('settings_integrations.server.not_reachable')
+        : msg === 'Login failed' ? $_('native_setup.errors.login_failed')
+        : localizeError(msg));
     } finally {
       serverConnecting = false;
     }
@@ -145,19 +167,14 @@
     try {
       if (mode === 'upload' || mode === 'merge') {
         const { uploadLocalToServer } = await import('../../lib/migrate.js');
-        const stageLabels = {
-          settings: 'settings',
-          foods:    'foods',
-          meals:    'meals',
-          recipes:  'recipes',
-          diary:    'diary entries',
-        };
         migrationSummary = await uploadLocalToServer({
           serverUrl: url,
           authToken: token,
           onProgress: (stage, current, total) => {
-            mergeStage = stageLabels[stage] || stage;
-            mergeProgress = `Uploading ${mergeStage} (${current + 1} / ${total})`;
+            mergeStage = stage;
+            mergeProgress = MERGE_PROGRESS_KEYS[stage]
+              ? $_(MERGE_PROGRESS_KEYS[stage], { values: { current: current + 1, total } })
+              : $_('settings_merge.progress.generic', { values: { stage, current: current + 1, total } });
             mergeProgressPct = total > 0 ? Math.round(((current + 1) / total) * 100) : 0;
           },
         });
@@ -177,7 +194,7 @@
       }
     } catch (e) {
       mergeStep = null;
-      showError('Sync failed: ' + (e.message || 'Unknown error'));
+      showError($_('settings_merge.sync_failed', { values: { error: e.message ? localizeError(e.message) : $_('settings_merge.unknown_error') } }));
     }
   }
 
@@ -201,7 +218,7 @@
     DB.setSetting('setupComplete', true);
     serverMode = 'server';
     mergeStep = null;
-    showSuccess('Connected to server');
+    showSuccess($_('native_setup.errors.connected'));
     setTimeout(() => window.location.reload(), 600);
   }
 
@@ -245,7 +262,7 @@
     serverUsername = '';
     serverPassword = '';
 
-    showSuccess('Disconnected — using local storage');
+    showSuccess($_('settings_integrations.server.disconnected'));
     setTimeout(() => window.location.reload(), 600);
   }
 
@@ -320,11 +337,11 @@
       <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">
         <button class="btn btn-ghost w-full" on:click={logoutServer}>
           <span class="material-symbols-rounded" style="font-size:18px">logout</span>
-          Log Out
+          {$_('common.log_out')}
         </button>
         <button class="btn btn-ghost w-full" style="color:var(--danger)" on:click={disconnectServer}>
           <span class="material-symbols-rounded" style="font-size:18px">link_off</span>
-          Disconnect &amp; Use Locally
+          {$_('settings_integrations.server.disconnect')}
         </button>
       </div>
     {:else}
@@ -359,7 +376,7 @@
           </div>
         </div>
         <button class="btn btn-primary w-full" on:click={connectServer} disabled={serverConnecting}>
-          {serverConnecting ? 'Connecting…' : 'Connect to Server'}
+          {serverConnecting ? $_('settings_integrations.server.connecting') : $_('native_setup.connect_to_server')}
         </button>
       </div>
     {/if}
@@ -372,17 +389,17 @@
     <div class="merge-dialog">
       <h3 style="margin:0 0 6px;font-size:18px;color:var(--text-1)">{$_('settings_merge.title')}</h3>
       <p style="font-size:13px;color:var(--text-3);margin:0 0 12px;line-height:1.5">
-        You have data on this phone. How should it be handled when connecting?
+        {$_('settings_merge.intro')}
       </p>
       {#if localCounts && localCounts.total > 0}
         <div class="merge-counts" style="margin:0 0 16px">
-          <div class="merge-counts-title">On this phone:</div>
+          <div class="merge-counts-title">{$_('settings_merge.on_this_phone')}</div>
           <div class="merge-counts-grid">
-            {#if localCounts.foods    > 0}<div><strong>{localCounts.foods}</strong> {localCounts.foods === 1 ? 'food' : 'foods'}</div>{/if}
-            {#if localCounts.meals    > 0}<div><strong>{localCounts.meals}</strong> {localCounts.meals === 1 ? 'meal' : 'meals'}</div>{/if}
-            {#if localCounts.recipes  > 0}<div><strong>{localCounts.recipes}</strong> {localCounts.recipes === 1 ? 'recipe' : 'recipes'}</div>{/if}
-            {#if localCounts.diary    > 0}<div><strong>{localCounts.diary}</strong> diary {localCounts.diary === 1 ? 'day' : 'days'}</div>{/if}
-            {#if localCounts.settings > 0}<div><strong>{localCounts.settings}</strong> settings</div>{/if}
+            {#if localCounts.foods    > 0}<div><strong>{localCounts.foods}</strong> {$_('settings.users.delete_dialog.foods', { values: { count: localCounts.foods } })}</div>{/if}
+            {#if localCounts.meals    > 0}<div><strong>{localCounts.meals}</strong> {$_('settings.users.delete_dialog.meals', { values: { count: localCounts.meals } })}</div>{/if}
+            {#if localCounts.recipes  > 0}<div><strong>{localCounts.recipes}</strong> {$_('settings.users.delete_dialog.recipes', { values: { count: localCounts.recipes } })}</div>{/if}
+            {#if localCounts.diary    > 0}<div><strong>{localCounts.diary}</strong> {$_('settings.users.delete_dialog.diary_days', { values: { count: localCounts.diary } })}</div>{/if}
+            {#if localCounts.settings > 0}<div><strong>{localCounts.settings}</strong> {$_('settings_merge.settings_count', { values: { count: localCounts.settings } })}</div>{/if}
           </div>
         </div>
       {/if}
@@ -391,21 +408,21 @@
           <span class="material-symbols-rounded" style="font-size:22px;color:var(--accent)">cloud_upload</span>
           <div>
             <div class="merge-option-title">{$_('settings_merge.upload')}</div>
-            <div class="merge-option-desc">Send this phone's foods, diary, and settings to the server. Existing server data stays.</div>
+            <div class="merge-option-desc">{$_('settings_merge.upload_desc')}</div>
           </div>
         </button>
         <button class="merge-option" on:click={() => _mergeAndConnect('download')}>
           <span class="material-symbols-rounded" style="font-size:22px;color:var(--accent)">cloud_download</span>
           <div>
             <div class="merge-option-title">{$_('settings_merge.download')}</div>
-            <div class="merge-option-desc">Replace this phone's data with everything from the server. Local data is discarded.</div>
+            <div class="merge-option-desc">{$_('settings_merge.download_desc')}</div>
           </div>
         </button>
         <button class="merge-option" on:click={() => _mergeAndConnect('merge')}>
           <span class="material-symbols-rounded" style="font-size:22px;color:var(--accent)">sync</span>
           <div>
             <div class="merge-option-title">{$_('settings_merge.merge')}</div>
-            <div class="merge-option-desc">Upload phone data to the server AND download server data. Nothing is lost, but duplicates are possible.</div>
+            <div class="merge-option-desc">{$_('settings_merge.merge_desc')}</div>
           </div>
         </button>
         <button class="btn btn-ghost w-full" style="color:var(--text-3);margin-top:4px" on:click={cancelMerge}>{$_('settings_merge.cancel')}</button>
@@ -416,8 +433,8 @@
   <div class="merge-overlay" use:portal transition:fade={{ duration: 150 }} use:closeOnBack={() => {}}>
     <div class="merge-dialog" style="text-align:center">
       <span class="material-symbols-rounded" style="font-size:36px;color:var(--accent);animation:spin 1.2s linear infinite">autorenew</span>
-      <p style="font-size:15px;color:var(--text-1);margin:12px 0 4px;font-weight:600">Syncing…</p>
-      <p style="font-size:13px;color:var(--text-3);margin:0">{mergeProgress || 'Preparing…'}</p>
+      <p style="font-size:15px;color:var(--text-1);margin:12px 0 4px;font-weight:600">{$_('sync.syncing')}</p>
+      <p style="font-size:13px;color:var(--text-3);margin:0">{mergeProgress || $_('settings_merge.preparing')}</p>
       {#if mergeProgressPct > 0}
         <div class="merge-progress-bar" style="margin-top:14px">
           <div class="merge-progress-fill" style="width:{mergeProgressPct}%"></div>
@@ -429,30 +446,30 @@
   <div class="merge-overlay" use:portal transition:fade={{ duration: 150 }} use:closeOnBack={() => {}}>
     <div class="merge-dialog">
       <h3 style="margin:0 0 6px;font-size:18px;color:var(--text-1)">
-        {migrationSummary.errors.length === 0 ? 'Upload complete' : 'Upload finished with issues'}
+        {migrationSummary.errors.length === 0 ? $_('settings_merge.upload_complete') : $_('settings_merge.upload_issues')}
       </h3>
       <p style="font-size:13px;color:var(--text-3);margin:0 0 14px;line-height:1.5">
-        {migrationSummary.totalSuccess} of {migrationSummary.total} {migrationSummary.total === 1 ? 'item' : 'items'} uploaded successfully.
+        {$_('settings_merge.summary', { values: { success: migrationSummary.totalSuccess, total: migrationSummary.total } })}
       </p>
       <div class="merge-counts" style="margin:0 0 14px">
-        <div class="merge-counts-title">Uploaded to server:</div>
+        <div class="merge-counts-title">{$_('settings_merge.uploaded_to_server')}</div>
         <div class="merge-counts-grid">
-          {#if migrationSummary.success.foods    > 0}<div><strong>{migrationSummary.success.foods}</strong> {migrationSummary.success.foods === 1 ? 'food' : 'foods'}</div>{/if}
-          {#if migrationSummary.success.meals    > 0}<div><strong>{migrationSummary.success.meals}</strong> {migrationSummary.success.meals === 1 ? 'meal' : 'meals'}</div>{/if}
-          {#if migrationSummary.success.recipes  > 0}<div><strong>{migrationSummary.success.recipes}</strong> {migrationSummary.success.recipes === 1 ? 'recipe' : 'recipes'}</div>{/if}
-          {#if migrationSummary.success.diary    > 0}<div><strong>{migrationSummary.success.diary}</strong> diary {migrationSummary.success.diary === 1 ? 'day' : 'days'}</div>{/if}
-          {#if migrationSummary.success.settings > 0}<div><strong>{migrationSummary.success.settings}</strong> settings</div>{/if}
+          {#if migrationSummary.success.foods    > 0}<div><strong>{migrationSummary.success.foods}</strong> {$_('settings.users.delete_dialog.foods', { values: { count: migrationSummary.success.foods } })}</div>{/if}
+          {#if migrationSummary.success.meals    > 0}<div><strong>{migrationSummary.success.meals}</strong> {$_('settings.users.delete_dialog.meals', { values: { count: migrationSummary.success.meals } })}</div>{/if}
+          {#if migrationSummary.success.recipes  > 0}<div><strong>{migrationSummary.success.recipes}</strong> {$_('settings.users.delete_dialog.recipes', { values: { count: migrationSummary.success.recipes } })}</div>{/if}
+          {#if migrationSummary.success.diary    > 0}<div><strong>{migrationSummary.success.diary}</strong> {$_('settings.users.delete_dialog.diary_days', { values: { count: migrationSummary.success.diary } })}</div>{/if}
+          {#if migrationSummary.success.settings > 0}<div><strong>{migrationSummary.success.settings}</strong> {$_('settings_merge.settings_count', { values: { count: migrationSummary.success.settings } })}</div>{/if}
         </div>
       </div>
       {#if migrationSummary.errors.length > 0}
         <div style="margin:0 0 14px">
           <div class="merge-counts-title" style="color:var(--danger,#e57373)">
-            {migrationSummary.errors.length} {migrationSummary.errors.length === 1 ? 'error' : 'errors'}
-            {#if migrationSummary.errors.length > 5}(showing first 5){/if}
+            {$_('settings_merge.errors_count', { values: { count: migrationSummary.errors.length } })}
+            {#if migrationSummary.errors.length > 5}{$_('settings_merge.showing_first_5')}{/if}
           </div>
           <ul style="font-size:12px;color:var(--text-3);padding-left:18px;margin:6px 0 0;line-height:1.5">
             {#each migrationSummary.errors.slice(0, 5) as err}
-              <li><strong>{err.stage}</strong> · {err.name}: {err.message}</li>
+              <li><strong>{MERGE_STAGE_KEYS[err.stage] ? $_(MERGE_STAGE_KEYS[err.stage]) : err.stage}</strong> · {err.name}: {localizeError(err.message)}</li>
             {/each}
           </ul>
         </div>

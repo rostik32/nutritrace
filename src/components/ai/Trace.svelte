@@ -6,6 +6,8 @@
   import { fly, fade } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { _ } from 'svelte-i18n';
+  import { intlLocale } from '../../i18n/index.js';
+  import { localizeError } from '../../lib/server-errors.js';
   import TraceFace from './TraceFace.svelte';
   import { NtApi }     from '../../lib/api.js';
   import { confirmDialog } from '../../stores/confirmDialog.js';
@@ -18,7 +20,7 @@
   import NutritionFactsBox from '../ui/NutritionFactsBox.svelte';
   import { readBodyStat, LENGTH_KEYS } from '../../lib/body-stats-unit.js';
   import { callAI, callAIProxy, TOOLS, setToolHandler } from '../../lib/aiChat.js';
-  import { aiEnabled, aiEffectivelyEnabled, envLocks, aiKeyVerified, aiAssistantName, aiApiKey, aiProvider, aiModel, aiBaseUrl, goals, mealNames, energyUnit, dateFormat, timeFormat, tempUnit, quickLogEnabled, aiGoalInsights, healthConnectEnabled, smartLogVoiceLang } from '../../stores/settings.js';
+  import { aiEnabled, aiEffectivelyEnabled, envLocks, aiKeyVerified, aiAssistantName, aiApiKey, aiProvider, aiModel, aiBaseUrl, goals, mealNames, displayMealNames, energyUnit, dateFormat, timeFormat, tempUnit, quickLogEnabled, aiGoalInsights, healthConnectEnabled, smartLogVoiceLang } from '../../stores/settings.js';
 
   // Resolve the configured voice-input language. Shared with SmartLogModal:
   // 'auto' (default) means use device locale; explicit BCP-47 tags override.
@@ -916,7 +918,7 @@
   function _fmtCreatedAt(iso) {
     if (!iso) return fmtTime();
     const d       = new Date(iso + 'Z');
-    const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: $timeFormat !== '24h' });
+    const timeStr = d.toLocaleTimeString(intlLocale(), { hour: 'numeric', minute: '2-digit', hour12: $timeFormat !== '24h' });
     // Compare date portion in local time
     const msgDate = d.toLocaleDateString('sv-SE'); // reliable YYYY-MM-DD in local tz
     if (msgDate === localDateStr()) return timeStr;
@@ -1099,7 +1101,7 @@
           const req = await SpeechRecognition.requestPermissions();
           if (req.speechRecognition !== 'granted') {
             recordingMode = false;
-            showError('Microphone permission denied — Smart Log voice needs mic access');
+            showError($_('trace.voice.mic_denied'));
             return;
           }
         }
@@ -1111,7 +1113,7 @@
           maxResults: 1,
           partialResults: false,
           popup: false,
-          prompt: 'Tell me what you ate',
+          prompt: $_('trace.voice.prompt'),
         }).then(async (result) => {
           // Result returns when stop() is called OR speech ends naturally.
           // Skip processing if the user cancelled by sliding off the FAB.
@@ -1120,16 +1122,16 @@
           if (transcript) {
             await _processTranscript(transcript);
           } else {
-            showError("Didn't catch that — try again");
+            showError($_('trace.voice.not_caught'));
           }
         }).catch((e) => {
           console.warn('[trace-hold] native voice failed:', e?.message);
-          showError('Voice recognition failed: ' + (e?.message || 'unknown error'));
+          showError($_('trace.voice.failed', { values: { error: e?.message || $_('trace.voice.unknown_error') } }));
         });
       } catch (e) {
         console.warn('[trace-hold] plugin unavailable:', e?.message);
         recordingMode = false;
-        showError('Voice plugin unavailable');
+        showError($_('trace.voice.unavailable'));
       }
     } else {
       // PWA: Web Speech API
@@ -1150,12 +1152,12 @@
           if (transcript) {
             await _processTranscript(transcript);
           } else {
-            showError("Didn't catch that — try again");
+            showError($_('trace.voice.not_caught'));
           }
         };
         rec.onerror = (e) => {
           console.warn('[trace-hold] web voice error:', e.error);
-          if (_commitNextTranscript) showError('Voice error: ' + (e.error || 'unknown'));
+          if (_commitNextTranscript) showError($_('trace.voice.error', { values: { error: e.error || $_('trace.voice.unknown_error') } }));
         };
         rec.onend = () => {
           // Fired even on success — but if we never got a result and
@@ -1171,7 +1173,7 @@
       } catch (e) {
         console.warn('[trace-hold] web speech start failed:', e.message);
         recordingMode = false;
-        showError($_('common.errors.cant_start_mic') + ': ' + e.message);
+        showError($_('trace.voice.cant_start_mic', { values: { error: e.message } }));
       }
     }
   }
@@ -1201,7 +1203,7 @@
 
   async function _processTranscript(text) {
     if (!text || !text.trim()) {
-      showError("Didn't catch that — try again");
+      showError($_('trace.voice.not_caught'));
       return;
     }
     smartLogText = text;
@@ -1213,7 +1215,7 @@
       const parsed = await parseInput(text, names || ['Breakfast','Lunch','Dinner','Snacks']);
       if (!parsed.items || parsed.items.length === 0) {
         console.warn('[trace-hold] no items parsed from:', text);
-        showError(`Couldn't find any food in "${text}"`);
+        showError($_('trace.voice.no_food_found', { values: { text } }));
         return;
       }
       const matches = await matchItems(parsed.items);
@@ -1222,7 +1224,7 @@
       showSmartLog = true;
     } catch (e) {
       console.error('[trace-hold] parse failed:', e);
-      showError('Smart Log parse failed: ' + (e.message || 'unknown error'));
+      showError($_('trace.voice.parse_failed', { values: { error: e.message || $_('trace.voice.unknown_error') } }));
     }
   }
 
@@ -1736,7 +1738,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
   }
 
   function fmtTime() {
-    return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: $timeFormat !== '24h' });
+    return new Date().toLocaleTimeString(intlLocale(), { hour: 'numeric', minute: '2-digit', hour12: $timeFormat !== '24h' });
   }
 
   async function send() {
@@ -1752,7 +1754,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
     // OpenAI-compatible endpoints (Ollama etc.) don't need an API key —
     // skip the key gate for that provider only.
     if (!aiEnvLocked && !key && provider !== 'oai-compat') {
-      showError('Add your API key in Settings → AI Assistant'); return;
+      showError($_('trace.add_api_key')); return;
     }
 
     const image = attachedImage;
@@ -1805,7 +1807,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
         const imgProvider = (aiEnvLocked || provider === 'oai-compat') ? 'openai' : provider;
         apiMessages[lastIdx] = _buildImageMessage(imgProvider, content || 'What is this?', image);
       }
-      const onToolCall = (toolName) => { _toolStatus = `Fetching ${toolName.replace(/_/g, ' ')}…`; };
+      const onToolCall = (toolName) => { _toolStatus = $_('trace.fetching_tool', { values: { tool: toolName.replace(/_/g, ' ') } }); };
       // Photo turn: REMOVE the silent-write tool (log_quick_calories) so
       // the photo path is forced through propose_quick_calories /
       // propose_food, which both surface a review card. Mini-class
@@ -1844,7 +1846,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
       // toast: coming back to the app later, you still see why there's no reply.
       const note = signal.aborted
         ? { role: 'stopped', content: 'stopped' }
-        : { role: 'error', content: e?.message || 'AI request failed' };
+        : { role: 'error', content: e?.message || $_('trace.request_failed') };
       messages = [...messages, { ...note, time: fmtTime() }];
       NtApi.post('/api/ai/history', note).catch(() => {});
     } finally {
@@ -1944,7 +1946,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
     const p = _pendingProposal;
     const kcal = Math.max(0, Math.round(Number(p.nutrition?.calories) || 0));
     if (!kcal) {
-      showError('Cannot log: estimated calories is 0.');
+      showError($_('trace.proposal.zero_kcal'));
       return;
     }
     const optMacro = v => {
@@ -1966,7 +1968,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
       _proposalCommittedKcal = kcal;
       _proposalCommitted = true;
     } catch (e) {
-      showError($_('common.errors.save_failed') + ': ' + (e?.message || String(e)));
+      showError($_('trace.save_failed_with', { values: { error: e?.message ? localizeError(e.message) : String(e) } }));
     }
   }
 
@@ -1991,7 +1993,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
       _foodProposalCommittedKind = 'catalog';
       _foodProposalCommitted = true;
     } catch (e) {
-      showError($_('common.errors.save_failed') + ': ' + (e?.message || String(e)));
+      showError($_('trace.save_failed_with', { values: { error: e?.message ? localizeError(e.message) : String(e) } }));
     }
   }
 
@@ -2016,7 +2018,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
       _foodProposalCommittedKind = 'logged';
       _foodProposalCommitted = true;
     } catch (e) {
-      showError($_('common.errors.save_failed') + ': ' + (e?.message || String(e)));
+      showError($_('trace.save_failed_with', { values: { error: e?.message ? localizeError(e.message) : String(e) } }));
     }
   }
 
@@ -2090,9 +2092,9 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
       style={fabPos ? `left:${fabPos.x + 30}px; top:${fabPos.y - 44}px; right:auto; transform:translateX(-50%);` : ''}
     >
       {#if cancelPreview}
-        ✕ Release to cancel
+        ✕ {$_('trace.fab.release_to_cancel')}
       {:else}
-        ● Listening… release to log
+        ● {$_('trace.fab.listening_hint')}
       {/if}
     </div>
   {/if}
@@ -2126,7 +2128,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
           </div>
           <div>
             <div class="ai-header-name">{assistantName}</div>
-            <div class="ai-header-sub">Your AI Health & Nutrition Coach</div>
+            <div class="ai-header-sub">{$_('trace.header_sub')}</div>
           </div>
         </div>
         <div class="ai-header-actions">
@@ -2164,20 +2166,20 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
             <div class="ai-welcome-avatar">
               <TraceFace size={48} />
             </div>
-            <p class="ai-welcome-name">Hi, I'm {assistantName}!</p>
-            <p class="ai-welcome-desc">Ask me anything — nutrition, sleep, activity, recovery, hydration, body composition. I have access to all your data from today.</p>
+            <p class="ai-welcome-name">{$_('trace.welcome.greeting', { values: { name: assistantName } })}</p>
+            <p class="ai-welcome-desc">{$_('trace.welcome.desc')}</p>
             <div class="ai-quick-chips">
-              <button class="ai-chip" on:click={() => quickAsk("How am I doing today?")}>
-                How am I doing today?
+              <button class="ai-chip" on:click={() => quickAsk($_('trace.chips.today'))}>
+                {$_('trace.chips.today')}
               </button>
-              <button class="ai-chip" on:click={() => quickAsk("What should I eat for my next meal?")}>
-                Meal suggestion
+              <button class="ai-chip" on:click={() => quickAsk($_('trace.chips.meal_question'))}>
+                {$_('trace.chips.meal')}
               </button>
-              <button class="ai-chip" on:click={() => quickAsk("How was my sleep and recovery?")}>
-                Sleep & recovery
+              <button class="ai-chip" on:click={() => quickAsk($_('trace.chips.sleep_question'))}>
+                {$_('trace.chips.sleep')}
               </button>
-              <button class="ai-chip" on:click={() => quickAsk("Am I on track with my goals?")}>
-                Goal progress
+              <button class="ai-chip" on:click={() => quickAsk($_('trace.chips.goals_question'))}>
+                {$_('trace.chips.goals')}
               </button>
             </div>
           </div>
@@ -2207,7 +2209,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
               {/if}
               <div class="ai-msg-body">
                 {#if msg.image}
-                  <img src={msg.image} alt="Attached" class="ai-msg-image" />
+                  <img src={msg.image} alt={$_('trace.attached_image_alt')} class="ai-msg-image" />
                 {/if}
                 <div class="ai-bubble">{msg.content}</div>
                 {#if msg.time}
@@ -2254,13 +2256,13 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
                   </div>
                   <NutritionFactsBox
                     nutrition={_pendingProposal.nutrition}
-                    servingDescription={_pendingProposal.serving_grams ? `${_pendingProposal.serving_grams} g${_pendingProposal.serving_size ? ' (' + _pendingProposal.serving_size + ')' : ''}` : (_pendingProposal.serving_size || 'per serving')}
+                    servingDescription={_pendingProposal.serving_grams ? `${_pendingProposal.serving_grams} g${_pendingProposal.serving_size ? ' (' + _pendingProposal.serving_size + ')' : ''}` : (_pendingProposal.serving_size || $_('trace.proposal.per_serving'))}
                     forceShowAll={true} />
                   <div class="proposal-meal-picker">
                     <label>
-                      Meal
+                      {$_('trace.proposal.meal')}
                       <select bind:value={_pendingProposal.meal}>
-                        {#each (mealNames.get() || ['Breakfast','Lunch','Dinner','Snacks']) as mn, mi}
+                        {#each $displayMealNames as mn, mi}
                           <option value={mi}>{mn}</option>
                         {/each}
                       </select>
@@ -2268,17 +2270,17 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
                   </div>
                   <div class="proposal-actions">
                     <button class="btn btn-secondary btn-sm" on:click={_discardProposal}>
-                      Discard
+                      {$_('trace.proposal.discard')}
                     </button>
                     <button class="btn btn-primary btn-sm" on:click={_commitProposal}>
                       <span class="material-symbols-rounded" style="font-size:16px">add</span>
-                      Add to Diary
+                      {$_('trace.proposal.add_to_diary')}
                     </button>
                   </div>
                 {:else}
                   <div class="proposal-committed">
                     <span class="material-symbols-rounded" style="font-size:18px;color:var(--accent)">check_circle</span>
-                    Logged {_proposalCommittedKcal} kcal to {(mealNames.get() || ['Breakfast','Lunch','Dinner','Snacks'])[_pendingProposal.meal] || 'meal'}
+                    {$_('trace.proposal.logged', { values: { kcal: _proposalCommittedKcal, meal: $displayMealNames[_pendingProposal.meal] || $_('trace.proposal.meal_fallback') } })}
                   </div>
                 {/if}
               </div>
@@ -2300,7 +2302,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
                       {_pendingFoodProposal.name}{#if _pendingFoodProposal.brand} <span class="proposal-brand">— {_pendingFoodProposal.brand}</span>{/if}
                     </div>
                     <div class="proposal-serving">
-                      Per {_pendingFoodProposal.portion} {_pendingFoodProposal.unit}
+                      {$_('trace.proposal.per_portion', { values: { portion: _pendingFoodProposal.portion, unit: _pendingFoodProposal.unit } })}
                     </div>
                   </div>
                   <NutritionFactsBox
@@ -2312,7 +2314,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
                       {$_('trace.food_card.log_to')}
                       <select bind:value={_foodProposalCommittedMealIdx}>
                         <option value={null}>{$_('trace.food_card.dont_log')}</option>
-                        {#each (mealNames.get() || ['Breakfast','Lunch','Dinner','Snacks']) as mn, mi}
+                        {#each $displayMealNames as mn, mi}
                           <option value={mi}>{mn}</option>
                         {/each}
                       </select>
@@ -2320,25 +2322,25 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
                   </div>
                   <div class="proposal-actions proposal-actions-wide">
                     <button class="btn btn-secondary btn-sm" on:click={_discardFoodProposal}>
-                      Discard
+                      {$_('trace.proposal.discard')}
                     </button>
                     <button class="btn btn-secondary btn-sm" on:click={_commitFoodCatalogOnly}>
                       <span class="material-symbols-rounded" style="font-size:16px">bookmark_add</span>
-                      Save to Foods
+                      {$_('trace.proposal.save_to_foods')}
                     </button>
                     <button class="btn btn-primary btn-sm" on:click={_commitFoodAndLog}
                       disabled={_foodProposalCommittedMealIdx == null}>
                       <span class="material-symbols-rounded" style="font-size:16px">add</span>
-                      Save & Add to Diary
+                      {$_('trace.proposal.save_and_log')}
                     </button>
                   </div>
                 {:else}
                   <div class="proposal-committed">
                     <span class="material-symbols-rounded" style="font-size:18px;color:var(--accent)">check_circle</span>
                     {#if _foodProposalCommittedKind === 'logged'}
-                      Saved {_pendingFoodProposal.name} to your foods + logged to {(mealNames.get() || ['Breakfast','Lunch','Dinner','Snacks'])[_foodProposalCommittedMealIdx] || 'meal'}
+                      {$_('trace.proposal.saved_and_logged', { values: { name: _pendingFoodProposal.name, meal: $displayMealNames[_foodProposalCommittedMealIdx] || $_('trace.proposal.meal_fallback') } })}
                     {:else}
-                      Saved {_pendingFoodProposal.name} to your food catalog
+                      {$_('trace.proposal.saved_catalog', { values: { name: _pendingFoodProposal.name } })}
                     {/if}
                   </div>
                 {/if}
@@ -2372,7 +2374,7 @@ Diary logging streak: ${ctx.streakText || '(unknown)'}`
       <!-- Input bar -->
       {#if attachedImage}
         <div class="ai-image-preview">
-          <img src={attachedImage.preview} alt="Attached" />
+          <img src={attachedImage.preview} alt={$_('trace.attached_image_alt')} />
           <button class="ai-image-remove" on:click={_removeImage}>
             <span class="material-symbols-rounded" style="font-size:16px">close</span>
           </button>

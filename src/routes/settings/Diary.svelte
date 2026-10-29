@@ -1,9 +1,11 @@
 <script>
-  import { _ } from 'svelte-i18n';
+  import { _, locale } from 'svelte-i18n';
+  import { intlLocale } from '../../i18n/index.js';
   import Toggle from '../../components/settings/Toggle.svelte';
   import SettingRow from '../../components/settings/SettingRow.svelte';
   import { DB } from '../../lib/db.js';
   import { mealIcon } from '../../lib/mealIcon.js';
+  import { displayMealName } from '../../lib/default-names.js';
   import {
     mealNames,
     diaryShowBrands, diaryShowTimestamps, diaryShowThumbnails, diaryShowAllNutrients,
@@ -24,8 +26,12 @@
   // Same rule the parent shell derives.
   $: isNativeLocal = isNative && !getServerUrl();
 
+  // One-letter weekday labels, Sunday first (2024-01-07 was a Sunday).
+  $: weekdayLetters = ($locale, Array.from({ length: 7 }, (_d, i) =>
+    new Date(2024, 0, 7 + i).toLocaleDateString(intlLocale(), { weekday: 'narrow' })));
+
   // ── Meal names ─────────────────────────────────────────────────────────────
-  let meals = [...(DB.getSetting('mealNames', ['Breakfast','Lunch','Dinner','Snacks']))];
+  let meals = DB.getSetting('mealNames', ['Breakfast','Lunch','Dinner','Snacks']).map(displayMealName);
 
   function autoSaveMeals() {
     const toSave = meals.filter(m => m.trim());
@@ -78,8 +84,8 @@
 <div class="section-body">
 
   <!-- Group: Food Row Display — what shows on each logged food row -->
-  <p class="settings-group-heading">Food Row Display</p>
-  <p class="settings-group-sub">Fields shown beneath each food entry in the diary.</p>
+  <p class="settings-group-heading">{$_('settings_diary.group_food_row')}</p>
+  <p class="settings-group-sub">{$_('settings_diary.group_food_row_sub')}</p>
   <div class="card settings-card">
     <SettingRow label={$_('settings_diary.show_brand')} desc={$_('settings_diary.show_brand_desc')} divider={false}>
       <Toggle checked={$diaryShowBrands} on:change={e => diaryShowBrands.set(e.detail)} />
@@ -102,8 +108,8 @@
   </div>
 
   <!-- Group: Meal Card Layout — controls on the meal card itself -->
-  <p class="settings-group-heading">Meal Card Layout</p>
-  <p class="settings-group-sub">Header, footer, and interaction on each meal card.</p>
+  <p class="settings-group-heading">{$_('settings_diary.group_meal_card')}</p>
+  <p class="settings-group-sub">{$_('settings_diary.group_meal_card_sub')}</p>
   <div class="card settings-card">
     <SettingRow label={$_('settings_diary.show_macro_summary')} desc={$_('settings_diary.show_macro_summary_desc')} divider={false}>
       <Toggle checked={$diaryShowMacroSummary} on:change={e => diaryShowMacroSummary.set(e.detail)} />
@@ -131,8 +137,8 @@
   </div>
 
   <!-- Group: Nutrition Units — advanced serving/basis controls -->
-  <p class="settings-group-heading">Nutrition Units</p>
-  <p class="settings-group-sub">Off by default. Turn on if you log Open Food Facts liquids in grams or use custom serving units.</p>
+  <p class="settings-group-heading">{$_('settings_diary.group_units')}</p>
+  <p class="settings-group-sub">{$_('settings_diary.group_units_sub')}</p>
   <div class="card settings-card">
     <SettingRow label={$_('settings_diary.unit_metadata')} desc={$_('settings_diary.unit_metadata_desc')} divider={false}>
       <Toggle checked={$showUnitMetadata} on:change={e => showUnitMetadata.set(e.detail)} />
@@ -143,29 +149,29 @@
   </div>
 
   <!-- Group: Rail Widgets — ≥1280px only -->
-  <p class="settings-group-heading">Rail Widgets</p>
-  <p class="settings-group-sub">Widgets in the right column on wide screens (≥1280px). Hidden widgets don't render at all; they don't take space.</p>
+  <p class="settings-group-heading">{$_('settings_diary.group_rail')}</p>
+  <p class="settings-group-sub">{$_('settings_diary.group_rail_sub')}</p>
   <div class="card settings-card">
-    <SettingRow label="Day Summary" desc="Calorie ring + macro cards." divider={false}>
+    <SettingRow label={$_('settings_diary.rail_day_summary')} desc={$_('settings_diary.rail_day_summary_desc')} divider={false}>
       <Toggle checked={$diaryRailShowSummary} on:change={e => diaryRailShowSummary.set(e.detail)} />
     </SettingRow>
-    <SettingRow label="Water">
+    <SettingRow label={$_('diary_deep.water')}>
       <Toggle checked={$diaryRailShowWater} on:change={e => diaryRailShowWater.set(e.detail)} />
     </SettingRow>
-    <SettingRow label="Body Stats" desc="Weight + measurements in one card.">
+    <SettingRow label={$_('diary_deep.body_stats')} desc={$_('settings_diary.rail_body_stats_desc')}>
       <Toggle checked={$diaryRailShowBodyStats} on:change={e => diaryRailShowBodyStats.set(e.detail)} />
     </SettingRow>
-    <SettingRow label="Activity Impact" desc="Only renders when a wearable is connected.">
+    <SettingRow label={$_('settings_diary.rail_activity')} desc={$_('settings_diary.rail_activity_desc')}>
       <Toggle checked={$diaryRailShowActivityWidget} on:change={e => diaryRailShowActivityWidget.set(e.detail)} />
     </SettingRow>
-    <SettingRow label="Day Notes" desc="Puts the notes card in the rail instead of at the bottom of the meal list.">
+    <SettingRow label={$_('diary_deep.day_notes')} desc={$_('settings_diary.rail_notes_desc')}>
       <Toggle checked={$diaryRailShowNotes} on:change={e => diaryRailShowNotes.set(e.detail)} />
     </SettingRow>
   </div>
 
   <!-- Group: Quick Calories -->
-  <p class="settings-group-heading">Quick Calories</p>
-  <p class="settings-group-sub">One-tap calorie entries when you don't want a full food row.</p>
+  <p class="settings-group-heading">{$_('diary.quick_calories.title')}</p>
+  <p class="settings-group-sub">{$_('settings_diary.group_quick_cals_sub')}</p>
   <div class="card settings-card">
     <SettingRow label={$_('settings_diary.show_quick_cals')} desc={$_('settings_diary.show_quick_cals_desc')} divider={false}>
       <Toggle checked={$showQuickCalories} on:change={e => showQuickCalories.set(e.detail)} />
@@ -185,8 +191,8 @@
   </div>
 
   <!-- Group: Activity Section — manual activity logging & policy -->
-  <p class="settings-group-heading">Activity Section</p>
-  <p class="settings-group-sub">Manual workout logging shown as its own section under meals.</p>
+  <p class="settings-group-heading">{$_('settings_diary.group_activity')}</p>
+  <p class="settings-group-sub">{$_('settings_diary.group_activity_sub')}</p>
   <div class="card settings-card">
     <SettingRow label={$_('settings_diary.show_activity')} desc={$_('settings_diary.show_activity_desc')} divider={false}>
       <Toggle checked={$diaryShowActivity} on:change={e => diaryShowActivity.set(e.detail)} />
@@ -200,8 +206,8 @@
       <div class="setting-divider"></div>
       <div class="setting-row">
         <div style="flex:1">
-          <span class="setting-label">When Wearable + Manual Entries Both Exist</span>
-          <div class="setting-desc">{isNativeLocal ? 'How to combine your manually-logged activity with Health Connect active calories on days you have both.' : 'How to combine your manually-logged activity with calories from Fitbit / Garmin / Withings / Health Connect on days you have both.'}</div>
+          <span class="setting-label">{$_('settings_diary.policy_title')}</span>
+          <div class="setting-desc">{isNativeLocal ? $_('settings_diary.policy_desc_native') : $_('settings_diary.policy_desc')}</div>
           <div style="margin-top:8px; display:flex; flex-direction:column; gap:6px;">
             <label style="display:flex; gap:8px; align-items:flex-start;">
               <input type="radio" name="activityPolicy" value="wearable_wins" checked={$manualActivityPolicy === 'wearable_wins'} on:change={() => manualActivityPolicy.set('wearable_wins')} />
@@ -216,15 +222,15 @@
               <span><strong>{$_('settings_diary.policy_add')}</strong> <span class="setting-desc">{$_('settings_diary.policy_add_desc')}</span></span>
             </label>
           </div>
-          <div class="setting-desc" style="margin-top:8px">When no wearable data exists for a day, manual entries always count regardless of this setting.</div>
+          <div class="setting-desc" style="margin-top:8px">{$_('settings_diary.policy_no_wearable_note')}</div>
         </div>
       </div>
     {/if}
   </div>
 
   <!-- Group: Fasting -->
-  <p class="settings-group-heading">Fasting</p>
-  <p class="settings-group-sub">Intermittent fasting section with an optional recurring schedule.</p>
+  <p class="settings-group-heading">{$_('fasting_insights.title')}</p>
+  <p class="settings-group-sub">{$_('settings_diary.group_fasting_sub')}</p>
   <div class="card settings-card">
     <SettingRow label={$_('settings_diary.show_fasting')} desc={$_('settings_diary.show_fasting_desc')} divider={false}>
       <Toggle checked={$fastingEnabled} on:change={e => fastingEnabled.set(e.detail)} />
@@ -250,7 +256,7 @@
       <div class="setting-row">
         <div>
           <span class="setting-label">{$_('settings_diary.recurring_schedule')}</span>
-          <div class="setting-desc">Auto-start a fast at a fixed time each day. The schedule fires once per scheduled day; manually started fasts still work normally.</div>
+          <div class="setting-desc">{$_('settings_diary.schedule_desc')}</div>
         </div>
         <Toggle checked={$fastingScheduleEnabled} on:change={e => fastingScheduleEnabled.set(e.detail)} />
       </div>
@@ -266,7 +272,7 @@
         <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:8px">
           <span class="setting-label">{$_('settings_diary.repeat_on')}</span>
           <div class="seg-control multi" style="width:100%;--seg-count:7">
-            {#each ['S','M','T','W','T','F','S'] as label, idx}
+            {#each weekdayLetters as label, idx}
               <button class="seg-opt" type="button"
                 class:seg-active={$fastingScheduleDays?.includes(idx)}
                 on:click={() => {
@@ -277,7 +283,7 @@
             {/each}
           </div>
           <div class="setting-desc" style="margin:0">
-            Tap a day to toggle. Sunday → Saturday.
+            {$_('settings_diary.repeat_on_hint')}
           </div>
         </div>
         <div class="setting-divider"></div>
@@ -294,7 +300,7 @@
 
   <!-- Group: Meal Names — reorderable list of meal slots -->
   <p class="settings-group-heading">{$_('settings_diary.meal_names')}</p>
-  <p class="settings-group-sub">Drag to reorder. Order sets the sequence meals appear in the diary.</p>
+  <p class="settings-group-sub">{$_('settings_diary.meal_names_sub')}</p>
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="card settings-card drag-list"
     on:pointermove={onMealDragMove}
@@ -316,7 +322,7 @@
         <input class="input" style="flex:1;height:36px;min-width:0" placeholder={$_('settings_main_deep.meal_placeholder', { values: { n: i+1 } })} bind:value={meals[i]} on:blur={autoSaveMeals} />
         {#if meals.length > 1}
           <button class="btn-icon" style="width:32px;height:32px;color:var(--danger);flex-shrink:0"
-            on:click={() => { meals = meals.filter((_,j) => j !== i); autoSaveMeals(); }} title="Remove meal">
+            on:click={() => { meals = meals.filter((_,j) => j !== i); autoSaveMeals(); }} title={$_('settings_diary.remove_meal')}>
             <span class="material-symbols-rounded" style="font-size:16px">remove</span>
           </button>
         {/if}
@@ -325,7 +331,7 @@
     <div style="padding:8px 16px 14px">
       <button class="btn btn-secondary" style="height:36px;font-size:13px;width:100%;display:flex;align-items:center;justify-content:center;gap:4px"
         on:click={() => meals = [...meals.filter(m => m.trim()), '']}>
-        <span class="material-symbols-rounded" style="font-size:16px">add</span> Add Meal
+        <span class="material-symbols-rounded" style="font-size:16px">add</span> {$_('settings_diary.add_meal')}
       </button>
     </div>
   </div>

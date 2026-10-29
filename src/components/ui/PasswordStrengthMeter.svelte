@@ -11,7 +11,11 @@
   so the bundle hit only happens when a user actually starts typing a password.
 -->
 <script>
-  import { estimate, STRENGTH_LABELS, STRENGTH_COLORS } from '../../lib/password-strength.js';
+  import { _ } from 'svelte-i18n';
+  import { estimate, STRENGTH_COLORS } from '../../lib/password-strength.js';
+
+  // Same order as STRENGTH_LABELS in password-strength.js (zxcvbn score 0..4).
+  const STRENGTH_KEYS = ['very_weak', 'weak', 'fair', 'strong', 'very_strong'];
 
   export let password = '';
   export let userInputs = [];
@@ -35,7 +39,7 @@
   }
 
   $: _score    = _result?.score ?? 0;
-  $: _label    = password ? STRENGTH_LABELS[_score] : '';
+  $: _label    = password ? $_(`ui.password_strength.${STRENGTH_KEYS[_score]}`) : '';
   $: _color    = STRENGTH_COLORS[_score];
   $: _belowMin = password && _score < minScore;
   $: _warning  = _result?.feedback?.warning || '';
@@ -52,7 +56,7 @@
     <div class="strength-row">
       <span class="strength-label" style="color:{_color}">{_label}</span>
       {#if _belowMin}
-        <span class="strength-min">· below required strength</span>
+        <span class="strength-min">· {$_('ui.password_strength.below_min')}</span>
       {/if}
     </div>
     {#if _warning || _suggest.length > 0}

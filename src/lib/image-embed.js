@@ -15,6 +15,7 @@
  *    keep, so an image with any see-through pixel is written as a PNG.
  */
 
+import { t } from './i18n-t.js';
 const MAX_DIM = 1600;
 const QUALITY = 0.82;
 // A photo travels inside an ordinary request, and a server will not read an
@@ -37,14 +38,14 @@ const KNOWN = /^image\/(jpeg|png|webp|gif|avif)$/i;
 const _readAsDataUrl = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onload = () => resolve(String(reader.result || ''));
-  reader.onerror = () => reject(new Error('Could not read that photo.'));
+  reader.onerror = () => reject(new Error(t('image_embed.unreadable')));
   reader.readAsDataURL(file);
 });
 
 const _load = (dataUrl) => new Promise((resolve, reject) => {
   const img = new Image();
   img.onload = () => resolve(img);
-  img.onerror = () => reject(new Error('Could not read that photo.'));
+  img.onerror = () => reject(new Error(t('image_embed.unreadable')));
   img.src = dataUrl;
 });
 
@@ -83,7 +84,7 @@ export async function embeddableDataUrl(file) {
   } catch {
     // A picture this browser cannot open. Embedding it would mean the server
     // quietly refusing it later, so say so now while it can be retaken.
-    throw _needsConnection('That picture needs a connection. Try again once you are back online.');
+    throw _needsConnection(t('image_embed.needs_connection'));
   }
 
   const { naturalWidth: w, naturalHeight: h } = img;
@@ -92,7 +93,7 @@ export async function embeddableDataUrl(file) {
   // first, so it travels as it is or not at all.
   if (/^image\/gif$/i.test(declared)) {
     if (original.length > MAX_EMBEDDED_BYTES) {
-      throw _needsConnection('That animation is too large to keep until you are back online.');
+      throw _needsConnection(t('image_embed.animation_too_large'));
     }
     return original;
   }
@@ -118,7 +119,7 @@ export async function embeddableDataUrl(file) {
     if (out.length <= MAX_EMBEDDED_BYTES) return out;
   }
 
-  throw _needsConnection('That picture is too large to keep until you are back online. Take it again once you have a connection.');
+  throw _needsConnection(t('image_embed.too_large'));
 }
 
 /** Is this an image kept in a row rather than a path to one? */

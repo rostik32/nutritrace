@@ -12,6 +12,7 @@
    */
   import { onMount, tick } from 'svelte';
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../../lib/server-errors.js';
   import Toggle from './Toggle.svelte';
   import ConnectionStatus from './ConnectionStatus.svelte';
   import { showSuccess, showError } from '../../stores/toast.js';
@@ -159,12 +160,12 @@
       } else {
         smtpTestStatus = 'fail';
         let detail = $_('settings_email.toast.http_prefix', { values: { status: res.status } });
-        try { const j = await res.json(); if (j?.error) detail = j.error; } catch {}
+        try { const j = await res.json(); if (j?.error) detail = localizeError(j.error); } catch {}
         showError($_('settings_email.toast.test_failed_prefix', { values: { detail } }));
       }
     } catch (e) {
       smtpTestStatus = 'fail';
-      showError($_('settings_email.toast.test_failed_prefix', { values: { detail: e?.message || $_('settings_email.toast.network_error') } }));
+      showError($_('settings_email.toast.test_failed_prefix', { values: { detail: localizeError(e?.message) || $_('settings_email.toast.network_error') } }));
     }
   }
 

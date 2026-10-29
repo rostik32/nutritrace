@@ -2,6 +2,8 @@
   import { tick } from 'svelte';
   import { slide } from 'svelte/transition';
   import { _ } from 'svelte-i18n';
+  import { intlLocale } from '../../i18n/index.js';
+  import { localizeError } from '../../lib/server-errors.js';
   import Dialog from '../ui/Dialog.svelte';
   import TimePicker from '../ui/TimePicker.svelte';
   import { showSuccess, showError } from '../../stores/toast.js';
@@ -44,7 +46,7 @@
       reader.readAsDataURL(blob);
     });
     await Filesystem.writeFile({ path: `Download/${filename}`, data: base64, directory: Directory.ExternalStorage, recursive: true });
-    showSuccess(`Saved to Download/${filename}`);
+    showSuccess($_('settings_backup.toast.saved_to_download', { values: { filename } }));
   }
 
   function _downloadBlob(blob, filename) {
@@ -87,11 +89,11 @@
   async function exportLocalZip() {
     if (localZipBusy || !isNativeLocal) return;
     localZipBusy = true;
-    localZipStatus = 'Starting…';
+    localZipStatus = $_('settings_backup.progress.starting');
     try {
       const { exportLocalBackup } = await import('../../lib/local-backup.js');
       const blob = await exportLocalBackup({
-        onProgress: (pct, label) => { localZipStatus = `${Math.round(pct)}% — ${label}`; },
+        onProgress: (pct, label) => { localZipStatus = $_('settings_backup.progress.percent_label', { values: { percent: Math.round(pct), label } }); },
       });
       const filename = `nutritrace-backup-${new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)}.zip`;
       const arrayBuffer = await blob.arrayBuffer();
@@ -115,7 +117,7 @@
     } catch (e) {
       console.error('[backup] export failed:', e);
       localZipStatus = '';
-      showError($_('settings_backup.toast.backup_failed_prefix', { values: { error: e.message } }));
+      showError($_('settings_backup.toast.backup_failed_prefix', { values: { error: localizeError(e.message) } }));
     } finally {
       localZipBusy = false;
     }
@@ -151,7 +153,7 @@
       await _runImport(new Blob([bytes], { type: 'application/zip' }));
     } catch (e) {
       console.error('[backup] restore failed:', e);
-      showError($_('settings_backup.toast.restore_failed_prefix', { values: { error: e.message } }));
+      showError($_('settings_backup.toast.restore_failed_prefix', { values: { error: localizeError(e.message) } }));
     }
   }
 
@@ -178,7 +180,7 @@
     } catch (e) {
       console.error('[backup] import failed:', e);
       localZipStatus = '';
-      showError($_('settings_backup.toast.restore_failed_prefix', { values: { error: e.message } }));
+      showError($_('settings_backup.toast.restore_failed_prefix', { values: { error: localizeError(e.message) } }));
     } finally {
       localZipBusy = false;
     }
@@ -197,7 +199,7 @@
       await loadLocalBackups();
     } catch (e) {
       console.error('[backup] delete failed:', e);
-      showError($_('common.errors.delete_failed') + ': ' + e.message);
+      showError($_('settings_backup.toast.delete_failed_prefix', { values: { error: localizeError(e.message) } }));
     }
   }
 
@@ -221,7 +223,7 @@
       }
     } catch (e) {
       console.error('[backup] share failed:', e);
-      showError($_('settings_backup.toast.share_failed_prefix', { values: { error: e.message } }));
+      showError($_('settings_backup.toast.share_failed_prefix', { values: { error: localizeError(e.message) } }));
     }
   }
 
@@ -267,13 +269,13 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showError(data.error || $_('common.errors.save_failed'));
+        showError(localizeError(data.error) || $_('common.errors.save_failed'));
         await loadSchedule(); // re-sync so the UI reflects what's actually stored
         return;
       }
       scheduleCfg = data;
     } catch (e) {
-      showError(e?.message || $_('common.errors.save_failed'));
+      showError(localizeError(e?.message) || $_('common.errors.save_failed'));
     } finally {
       scheduleBusy = false;
     }
@@ -337,7 +339,7 @@
     } else if (next.getTime() <= now.getTime()) {
       next = new Date(next.getFullYear(), next.getMonth(), next.getDate() + 1, hh, mm, 0);
     }
-    return next.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return next.toLocaleString(intlLocale(), { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
 
   async function _scrollToProgress() {
@@ -355,12 +357,12 @@
         // catch block previously swallowed both fetch errors AND non-2xx
         // responses, leaving the user with a silent empty list.
         const body = await res.json().catch(() => ({}));
-        showError(body?.error || $_('settings_backup.toast.cant_load_backups', { values: { status: res.status } }));
+        showError(localizeError(body?.error) || $_('settings_backup.toast.cant_load_backups', { values: { status: res.status } }));
         return;
       }
       fullBackups = await res.json();
     } catch (e) {
-      showError(e?.message || $_('common.errors.cant_reach_server'));
+      showError(localizeError(e?.message) || $_('common.errors.cant_reach_server'));
     }
   }
 
@@ -369,7 +371,7 @@
     try {
       const res  = await fetch(apiUrl('/api/full-backup'), { method: 'POST', ..._fetchOpts() });
       const data = await res.json();
-      if (!res.ok) { showError(data.error || $_('settings_backup.toast.backup_failed')); return; }
+      if (!res.ok) { showError(localizeError(data.error) || $_('settings_backup.toast.backup_failed')); return; }
       showSuccess($_('settings_backup.toast.full_backup_created'));
       await loadFullBackups();
     } catch { showError($_('settings_backup.toast.backup_failed')); }
@@ -394,10 +396,10 @@
     try {
       const res  = await fetch(apiUrl(`/api/full-backup/${encodeURIComponent(filename)}/restore`), { method: 'POST', ..._fetchOpts() });
       const data = await res.json();
-      if (!res.ok) { showError(data.error || $_('settings_backup.toast.restore_failed')); restoreStatus = null; return; }
+      if (!res.ok) { showError(localizeError(data.error) || $_('settings_backup.toast.restore_failed')); restoreStatus = null; return; }
       restoreStatus = { phase: 'restoring', percent: 100, label: $_('settings_backup.progress.restore_complete') };
       setTimeout(() => location.reload(), 1500);
-    } catch (err) { showError($_('settings_backup.toast.restore_failed_prefix', { values: { error: err.message || 'Unknown error' } })); restoreStatus = null; }
+    } catch (err) { showError($_('settings_backup.toast.restore_failed_prefix', { values: { error: err.message ? localizeError(err.message) : $_('settings_backup.toast.unknown_error') } })); restoreStatus = null; }
     finally   { fullBackupBusy = false; }
   }
 
@@ -414,9 +416,9 @@
   }
 
   function fmtBytes(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return $_('settings_backup.size.b', { values: { n: bytes } });
+    if (bytes < 1024 * 1024) return $_('settings_backup.size.kb', { values: { n: (bytes / 1024).toFixed(1) } });
+    return $_('settings_backup.size.mb', { values: { n: (bytes / (1024 * 1024)).toFixed(1) } });
   }
 
   let showUploadRestoreDialog = false;
@@ -462,7 +464,7 @@
       if (xhr.status >= 200 && xhr.status < 300) {
         let err = null;
         try { const d = JSON.parse(xhr.responseText); if (d.error) err = d.error; } catch {}
-        if (err) { showError($_('settings_backup.toast.restore_failed_prefix', { values: { error: err } })); restoreStatus = null; return; }
+        if (err) { showError($_('settings_backup.toast.restore_failed_prefix', { values: { error: localizeError(err) } })); restoreStatus = null; return; }
         restoreStatus = { phase: 'restoring', percent: 95, label: $_('settings_backup.progress.restoring_on_server') };
         setTimeout(() => {
           restoreStatus = { phase: 'restoring', percent: 100, label: $_('settings_backup.progress.restore_complete') };
@@ -474,7 +476,7 @@
       } else {
         let msg = $_('settings_backup.toast.server_error_prefix', { values: { status: xhr.status } });
         try { const d = JSON.parse(xhr.responseText); if (d.error) msg = d.error; } catch {}
-        showError($_('settings_backup.toast.restore_failed_prefix', { values: { error: msg } }));
+        showError($_('settings_backup.toast.restore_failed_prefix', { values: { error: localizeError(msg) } }));
         restoreStatus = null;
       }
     };
@@ -498,7 +500,7 @@
       showSuccess($_('settings_backup.toast.all_data_cleared'));
       const { loadAuthState } = await import('../../stores/auth.js');
       await loadAuthState();
-    } catch(e) { showError($_('settings_backup.toast.clear_failed_prefix', { values: { error: e.message } })); }
+    } catch(e) { showError($_('settings_backup.toast.clear_failed_prefix', { values: { error: localizeError(e.message) } })); }
   }
 
   async function clearAllSettings() {
@@ -515,7 +517,7 @@
       DB.setSetting('setupComplete', true);
       showSuccess($_('settings_backup.toast.all_settings_cleared'));
       setTimeout(() => location.reload(), 800);
-    } catch(e) { showError($_('settings_backup.toast.clear_failed_prefix', { values: { error: e.message } })); }
+    } catch(e) { showError($_('settings_backup.toast.clear_failed_prefix', { values: { error: localizeError(e.message) } })); }
   }
 </script>
 
@@ -524,7 +526,7 @@
   <!-- Full backup (admin only, server mode only — files stored on server) -->
   {#if $currentUser?.role === 'admin' && !isNativeLocal}
   <p class="settings-group-heading">{$_('settings_backup.sections.full_backup')}</p>
-  <p class="settings-group-sub">Full server backup (SQLite + uploads) with optional scheduled runs. Admin only.</p>
+  <p class="settings-group-sub">{$_('settings_backup.sections_sub.full_server')}</p>
   <div class="card settings-card">
     <div style="padding:12px 16px 4px">
       <p class="setting-desc" style="margin:0 0 12px">{$_('settings_backup.full_backup.desc_server')}</p>
@@ -575,7 +577,7 @@
               {#if scheduleCfg.lastAutoError}
                 <div class="auto-bk-status-row error">
                   <span class="material-symbols-rounded" style="font-size:16px">error</span>
-                  <span>{$_('settings_backup.full_backup.last_failed', { values: { error: scheduleCfg.lastAutoError } })}</span>
+                  <span>{$_('settings_backup.full_backup.last_failed', { values: { error: localizeError(scheduleCfg.lastAutoError) } })}</span>
                 </div>
               {/if}
               {#if scheduleCfg.lastAutoRun}
@@ -643,7 +645,7 @@
         {#if i > 0}<div class="setting-divider"></div>{/if}
         <div class="backup-row">
           <span class="backup-name">{bk.filename}</span>
-          <span class="backup-col-date">{new Date(bk.createdAt).toLocaleDateString()}</span>
+          <span class="backup-col-date">{new Date(bk.createdAt).toLocaleDateString(intlLocale())}</span>
           <span class="backup-col-size">{fmtBytes(bk.size)}</span>
           <div class="backup-actions">
             <button class="btn btn-secondary backup-action-btn"
@@ -670,7 +672,7 @@
 
   {#if isNativeLocal}
   <p class="settings-group-heading">{$_('settings_backup.sections.full_backup')}</p>
-  <p class="settings-group-sub">On-device backup zip saved to Documents/nutritrace-backups. Manual or scheduled.</p>
+  <p class="settings-group-sub">{$_('settings_backup.sections_sub.full_local')}</p>
   <div class="card settings-card">
     <div style="padding:12px 16px 4px">
       <p class="setting-desc" style="margin:0 0 12px">{$_('settings_backup.full_backup.desc_local')}</p>
@@ -718,7 +720,7 @@
               {#if localScheduleCfg.lastAutoError}
                 <div class="auto-bk-status-row error">
                   <span class="material-symbols-rounded" style="font-size:16px">error</span>
-                  <span>{$_('settings_backup.full_backup.last_failed', { values: { error: localScheduleCfg.lastAutoError } })}</span>
+                  <span>{$_('settings_backup.full_backup.last_failed', { values: { error: localizeError(localScheduleCfg.lastAutoError) } })}</span>
                 </div>
               {/if}
               {#if localScheduleCfg.lastAutoRun}
@@ -781,7 +783,7 @@
         {#if i > 0}<div class="setting-divider"></div>{/if}
         <div class="backup-row">
           <span class="backup-name">{bk.filename}</span>
-          <span class="backup-col-date">{new Date(bk.createdAt).toLocaleDateString()}</span>
+          <span class="backup-col-date">{new Date(bk.createdAt).toLocaleDateString(intlLocale())}</span>
           <span class="backup-col-size">{fmtBytes(bk.size)}</span>
           <div class="backup-actions">
             <button class="btn btn-secondary backup-action-btn"
@@ -807,7 +809,7 @@
   {/if}
   <!-- Danger zone -->
   <p class="settings-group-heading danger-zone-label">{$_('settings_backup.sections.danger_zone')}</p>
-  <p class="settings-group-sub">Irreversible actions. Wipe logged data or reset every setting to defaults.</p>
+  <p class="settings-group-sub">{$_('settings_backup.sections_sub.danger_zone')}</p>
   <div class="card settings-card danger-zone-card">
     <button class="setting-row setting-action danger" on:click={() => showClearDialog = true}>
       <span class="material-symbols-rounded si" style="color:var(--danger)">delete_forever</span>

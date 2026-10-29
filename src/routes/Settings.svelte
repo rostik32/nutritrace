@@ -346,6 +346,10 @@
     // makes the rail feel like it lost their place — the active
     // item vanishes even though they're still ON that page.
     if (key === currentSection) return true;
+    // The section's title in the app language matches too, so search works
+    // for people who don't type the English keywords below.
+    const titleKey = SECTION_META[key]?.titleKey;
+    if (titleKey && foldText($_(titleKey)).includes(query)) return true;
     return (SECTION_KEYWORDS[key] || []).some(kw => kw.includes(query));
   };
   // Rail "no matches" placeholder — set to true when the query is
@@ -381,17 +385,17 @@
   $: _onboardingCards = (() => {
     const cards = [];
     if (isNative && !getServerUrl()) {
-      cards.push({ key: 'serverConnection', icon: 'cloud_sync', label: 'Connect a Server', desc: 'Sync your diary across devices.' });
+      cards.push({ key: 'serverConnection', icon: 'cloud_sync', label: $_('settings_main.onboarding.server_label'), desc: $_('settings_main.onboarding.server_desc') });
     }
     const _g = $goalsStore || {};
     if (!_g.calories) {
-      cards.push({ key: 'goals', icon: 'flag', label: 'Set Your Goals', desc: 'Calorie + macro targets to track against.' });
+      cards.push({ key: 'goals', icon: 'flag', label: $_('settings_main.onboarding.goals_label'), desc: $_('settings_main.onboarding.goals_desc') });
     }
     if (!$wellnessEnabled) {
-      cards.push({ key: 'wellness', icon: 'favorite', label: 'Set Up Wellness', desc: 'Connect Fitbit, Garmin, or Health Connect.' });
+      cards.push({ key: 'wellness', icon: 'favorite', label: $_('settings_main.onboarding.wellness_label'), desc: $_('settings_main.onboarding.wellness_desc') });
     }
     if ($appearanceStore === 'system') {
-      cards.push({ key: 'appearance', icon: 'contrast', label: 'Choose a Theme', desc: 'Pick a light / dark preference and accent color.' });
+      cards.push({ key: 'appearance', icon: 'contrast', label: $_('settings_main.onboarding.theme_label'), desc: $_('settings_main.onboarding.theme_desc') });
     }
     return cards.filter(c => !_onboardingDismissed.has(c.key));
   })();
@@ -552,7 +556,7 @@
     <span class="material-symbols-rounded chevron">expand_more</span>
   </button>
 
-  <p class="settings-group-label">Data &amp; Tracking</p>
+  <p class="settings-group-label">{$_('settings_main.group_data')}</p>
   <button class="section-toggle" class:hidden={!sectionVisible(settingsQuery, 'goals')} class:active={currentSection === 'goals'} aria-current={currentSection === 'goals' ? 'page' : undefined} on:click={() => toggleSection('goals')}>
     <span class="material-symbols-rounded si">flag</span>
     <span>{$_('settings.goals.section')}</span>
@@ -601,7 +605,7 @@
     <span class="material-symbols-rounded chevron">expand_more</span>
   </button>
 
-  <p class="settings-group-label">App</p>
+  <p class="settings-group-label">{$_('settings_main.group_app')}</p>
   {#if isNative}
     <button class="section-toggle" class:hidden={!sectionVisible(settingsQuery, 'serverConnection')} class:active={currentSection === 'serverConnection'} aria-current={currentSection === 'serverConnection' ? 'page' : undefined} on:click={() => toggleSection('serverConnection')}>
       <span class="material-symbols-rounded si">cloud_sync</span>
@@ -744,7 +748,7 @@
         bind:value={settingsSearch}
         on:input={_onSearchInput} />
       {#if settingsSearch}
-        <button class="settings-search-clear btn-icon" on:click={() => settingsSearch = ''} title="Clear search">
+        <button class="settings-search-clear btn-icon" on:click={() => settingsSearch = ''} title={$_('settings_main.clear_search')} aria-label={$_('settings_main.clear_search')}>
           <span class="material-symbols-rounded" style="font-size:18px">close</span>
         </button>
       {/if}
@@ -777,10 +781,10 @@
                blank column. -->
           <div class="settings-nav-empty">
             <span class="material-symbols-rounded">search_off</span>
-            <p>No sections match "{settingsSearch}"</p>
+            <p>{$_('settings_main.no_sections_match', { values: { query: settingsSearch } })}</p>
             <button type="button" class="settings-nav-clear"
               on:click={() => settingsSearch = ''}>
-              Clear search
+              {$_('settings_main.clear_search')}
             </button>
           </div>
         {/if}
@@ -910,7 +914,7 @@
                  clean welcome, new users get one-click nudges. -->
             {#if !currentSection && _onboardingCards.length > 0}
               <div class="settings-onboarding">
-                <p class="settings-onboarding-heading">Get Set Up</p>
+                <p class="settings-onboarding-heading">{$_('settings_main.onboarding.heading')}</p>
                 <div class="settings-onboarding-grid">
                   {#each _onboardingCards as card (card.key)}
                     <div class="settings-onboarding-card-wrap">
@@ -924,8 +928,8 @@
                       </button>
                       <button type="button" class="settings-onboarding-dismiss"
                         on:click|stopPropagation={() => _dismissOnboarding(card.key)}
-                        aria-label="Dismiss {card.label}"
-                        title="Dismiss">
+                        aria-label={$_('settings_main.onboarding.dismiss_aria', { values: { label: card.label } })}
+                        title={$_('settings_main.onboarding.dismiss')}>
                         <span class="material-symbols-rounded">close</span>
                       </button>
                     </div>

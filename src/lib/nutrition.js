@@ -54,6 +54,23 @@ const NUTRIMENTS = [
   { id: 'alcohol',       label: 'Alcohol',       unit: 'g',    category: 'other',   default: false, bold: false, dv: null },
 ];
 
+// `label` reads the app language each time it is used (nutrients.<id>).
+// The server imports this file too (see Dockerfile) and has no svelte-i18n,
+// so nothing here imports it: main.js registers the translator, and until
+// then (server, node tests) labels stay English.
+let _translate = (key, english) => english;
+export function setNutritionTranslator(fn) {
+  if (typeof fn === 'function') _translate = fn;
+}
+for (const n of NUTRIMENTS) {
+  const en = n.label;
+  Object.defineProperty(n, 'label', {
+    get() { return _translate(`nutrients.${n.id}`, en); },
+    enumerable: true,
+    configurable: true,
+  });
+}
+
 // Default visible set — matches NUTRIMENTS rows flagged default:true.
 // Used by the NutritionFactsBox component when the user hasn't customized
 // their visibleNutriments setting yet.
@@ -81,7 +98,7 @@ export function isDerived(nutrition, id) {
 /** "Calories" or "Energy" — the row label used in the Nutrition Facts
  *  box. EU/AU users on kJ see "Energy". */
 export function energyLabel(unit) {
-  return unit === 'kJ' ? 'Energy' : 'Calories';
+  return unit === 'kJ' ? _translate('nutrients.energy', 'Energy') : _translate('nutrients.calories', 'Calories');
 }
 
 /** "kcal" or "kJ" — the unit suffix shown next to the value. */

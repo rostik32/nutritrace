@@ -1,17 +1,22 @@
 <script>
   import { closeOnBack } from '../../lib/back-stack.js';
   import { createEventDispatcher } from 'svelte';
+  import { _ } from 'svelte-i18n';
   import { portal } from '../../lib/portal.js';
   import { centeredSquareCrop, moveSquareCrop, resizeSquareCrop } from '../../lib/crop-geometry.js';
 
   export let src = '';
-  export let title = 'Crop Photo';
-  export let hint = 'Drag to reposition; drag the corner to resize';
-  export let confirmLabel = 'Crop & Use';
-  export let cancelLabel = 'Cancel';
+  export let title = '';
+  export let hint = '';
+  export let confirmLabel = '';
+  export let cancelLabel = '';
   export let outputSize = null;
 
   const dispatch = createEventDispatcher();
+  $: _title = title || $_('ui.image_cropper.title');
+  $: _hint = hint || $_('ui.image_cropper.hint');
+  $: _confirmLabel = confirmLabel || $_('ui.image_cropper.confirm');
+  $: _cancelLabel = cancelLabel || $_('common.cancel');
   let container;
   let image;
   let imageOffsetX = 0;
@@ -80,12 +85,12 @@
 <div class="crop-overlay" role="dialog" aria-modal="true" use:portal use:closeOnBack={() => dispatch('cancel')}>
   <div class="crop-popup">
     <div class="crop-header">
-      <span class="crop-title">{title}</span>
-      <button class="btn-icon" on:click={() => dispatch('cancel')} aria-label={cancelLabel} title={cancelLabel}>
+      <span class="crop-title">{_title}</span>
+      <button class="btn-icon" on:click={() => dispatch('cancel')} aria-label={_cancelLabel} title={_cancelLabel}>
         <span class="material-symbols-rounded">close</span>
       </button>
     </div>
-    <p class="crop-hint">{hint}</p>
+    <p class="crop-hint">{_hint}</p>
     <div
       class="crop-container"
       bind:this={container}
@@ -93,7 +98,7 @@
       on:pointerup={endInteraction}
       on:pointercancel={endInteraction}
       role="img"
-      aria-label={title}
+      aria-label={_title}
     >
       <img bind:this={image} {src} class="crop-image" alt="" draggable="false" on:load={initializeCrop} />
       {#if crop.size > 0}
@@ -104,20 +109,20 @@
           on:pointerdown={(event) => startInteraction(event, 'move')}
           role="button"
           tabindex="0"
-          aria-label="Drag to reposition crop"
+          aria-label={$_('ui.image_cropper.move_aria')}
           on:keydown={() => {}}
         >
           <button
             type="button"
             class="crop-resize-handle"
             on:pointerdown|stopPropagation={(event) => startInteraction(event, 'resize')}
-            aria-label="Drag to resize crop"
+            aria-label={$_('ui.image_cropper.resize_aria')}
           ></button>
         </div>
       {/if}
     </div>
     <div class="crop-footer">
-      <button class="btn btn-primary" on:click={confirm}>{confirmLabel}</button>
+      <button class="btn btn-primary" on:click={confirm}>{_confirmLabel}</button>
     </div>
   </div>
 </div>

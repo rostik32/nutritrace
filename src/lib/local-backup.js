@@ -25,6 +25,7 @@
 
 import JSZip from 'jszip';
 import { isNative } from './platform.js';
+import { t } from './i18n-t.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ function _imageFilename(prefix, id, ext) {
 export async function exportLocalBackup(opts = {}) {
   const onProgress = opts.onProgress || (() => {});
 
-  onProgress(0, 'Reading data…');
+  onProgress(0, t('local_backup.progress.reading_data'));
 
   // Pull everything from local DB. Use the unified API so PWA + native
   // both work — NtApi auto-routes to native SQLite or server depending on mode.
@@ -155,7 +156,7 @@ export async function exportLocalBackup(opts = {}) {
     if (!userPrefSet || userPrefSet.has(k)) settings[k] = v;
   }
 
-  onProgress(15, 'Packing data…');
+  onProgress(15, t('local_backup.progress.packing_data'));
 
   const zip = new JSZip();
   const manifest = {
@@ -188,7 +189,7 @@ export async function exportLocalBackup(opts = {}) {
     async function embedItem(item, prefix) {
       processed++;
       if (processed % 10 === 0) {
-        onProgress(15 + (processed / totalItems) * 60, `Packing images (${processed}/${totalItems})…`);
+        onProgress(15 + (processed / totalItems) * 60, t('local_backup.progress.packing_images', { done: processed, total: totalItems }));
       }
       const url = item.imgUrl || item.img_url;
       if (!url) return item;
@@ -204,7 +205,7 @@ export async function exportLocalBackup(opts = {}) {
     recipes = await Promise.all(recipes.map(r => embedItem(r, 'recipe')));
   }
 
-  onProgress(80, 'Writing JSON…');
+  onProgress(80, t('local_backup.progress.writing_json'));
 
   zip.file('foods.json',    JSON.stringify(foods,    null, 2));
   zip.file('meals.json',    JSON.stringify(meals,    null, 2));
@@ -216,11 +217,11 @@ export async function exportLocalBackup(opts = {}) {
   zip.file('fasts.json',    JSON.stringify(fasts,    null, 2));
   zip.file('settings.json', JSON.stringify(settings, null, 2));
 
-  onProgress(90, 'Compressing…');
+  onProgress(90, t('local_backup.progress.compressing'));
 
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 
-  onProgress(100, 'Done');
+  onProgress(100, t('local_backup.progress.done'));
   return blob;
 }
 
@@ -237,7 +238,7 @@ export async function exportLocalBackup(opts = {}) {
  */
 export async function importLocalBackup(zipFile, opts = {}) {
   const onProgress = opts.onProgress || (() => {});
-  onProgress(0, 'Reading backup…');
+  onProgress(0, t('local_backup.progress.reading_backup'));
 
   const buf = zipFile instanceof Blob ? await zipFile.arrayBuffer() : zipFile;
   const zip = await JSZip.loadAsync(buf);
@@ -251,7 +252,7 @@ export async function importLocalBackup(zipFile, opts = {}) {
 
   const manifest = await readJson('manifest.json', { version: 1 });
   if (manifest.version !== 1) {
-    throw new Error(`Unsupported backup version ${manifest.version}`);
+    throw new Error(t('local_backup.unsupported_version', { version: manifest.version }));
   }
 
   let foods    = await readJson('foods.json', []);
@@ -264,7 +265,7 @@ export async function importLocalBackup(zipFile, opts = {}) {
   const fasts    = await readJson('fasts.json', []);
   const settings = await readJson('settings.json', {});
 
-  onProgress(20, 'Extracting images…');
+  onProgress(20, t('local_backup.progress.extracting_images'));
 
   // ── Restore images ───────────────────────────────────────────────────────
   // For each item with imgUrl pointing to "images/...", extract the file from
@@ -307,7 +308,7 @@ export async function importLocalBackup(zipFile, opts = {}) {
   meals   = await Promise.all(meals.map(restoreItemImage));
   recipes = await Promise.all(recipes.map(restoreItemImage));
 
-  onProgress(50, 'Importing data…');
+  onProgress(50, t('local_backup.progress.importing_data'));
 
   // ── Write everything to the local DB ─────────────────────────────────────
   const { NtApi } = await import('./api.js');
@@ -428,6 +429,6 @@ export async function importLocalBackup(zipFile, opts = {}) {
     }
   }
 
-  onProgress(100, 'Done');
+  onProgress(100, t('local_backup.progress.done'));
   return { counts, manifest };
 }

@@ -91,7 +91,7 @@ test('offline says why the other sources are empty, rather than showing zero', (
 
 test('a barcode scanned offline does not read as an unknown product', () => {
   const scan = foods.slice(foods.indexOf('foodWithBarcode(localFoods, code)'));
-  assert.ok(scan.indexOf("foods.offline.barcode") < scan.indexOf('Not in Open Food Facts'), 'the offline case is handled before the not-found message');
+  assert.ok(scan.indexOf("foods.offline.barcode") < scan.indexOf('foods_deep.barcode_not_in_off'), 'the offline case is handled before the not-found message');
 });
 
 test('a setting changed offline is queued rather than lost', () => {

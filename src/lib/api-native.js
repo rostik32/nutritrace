@@ -21,6 +21,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 // ── Field mapping helpers (mirror server-side NtApi in api.js) ─────────────
 
 import { resolveAssetUrl } from './platform.js';
+import { t } from './i18n-t.js';
 
 function _foodFromDb(row) {
   if (!row) return null;
@@ -247,7 +248,7 @@ export const NtApiNative = {
       return uri; // native file URI (file:///...)
     } catch (e) {
       console.error('[NtApiNative] uploadImage failed:', e);
-      throw new Error('Image upload failed');
+      throw new Error(t('common.errors.upload_failed'));
     }
   },
 

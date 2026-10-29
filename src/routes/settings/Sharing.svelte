@@ -5,6 +5,7 @@
   import { NtApi } from '../../lib/api.js';
   import { isNative, getServerUrl, apiUrl, getAuthToken } from '../../lib/platform.js';
   import { showSuccess, showError } from '../../stores/toast.js';
+  import { localizeError } from '../../lib/server-errors.js';
   import { currentUser, userMgmtActive } from '../../stores/auth.js';
   import { defaultShareVisibility } from '../../stores/settings.js';
 
@@ -130,8 +131,8 @@
       ]);
       // Persist for next time — the form should remember its last state.
       await _saveBulkState();
-      showSuccess('Sharing updated');
-    } catch(e) { showError('Could not apply: ' + e.message); }
+      showSuccess($_('settings_integrations.sharing.updated'));
+    } catch(e) { showError($_('settings_integrations.sharing.apply_failed', { values: { error: localizeError(e.message) } })); }
     bulkApplying = false;
   }
 
@@ -145,12 +146,12 @@
     {#if $currentUser?.role === 'admin'}
       <!-- Group: Admin -->
       <p class="settings-group-heading">{$_('settings_integrations.admin_section')}</p>
-      <p class="settings-group-sub">Server-wide sharing switch. When off, group members can't share items with each other.</p>
+      <p class="settings-group-sub">{$_('settings_integrations.sharing.admin_sub')}</p>
       <div class="card settings-card">
         <div class="setting-row">
           <div>
             <span class="setting-label">{$_('settings_integrations.enable_sharing')}</span>
-            <span class="setting-desc">Allow group members to share foods, meals, and recipes with each other</span>
+            <span class="setting-desc">{$_('settings_integrations.sharing.enable_desc')}</span>
           </div>
           <Toggle checked={adminSharingEnabled} on:change={e => saveAdminSharingEnabled(e.detail)} />
         </div>
@@ -162,11 +163,11 @@
          authenticated user sees this, not just admins. Server-side
          enforcement in server/lib/default-visibility.js backstops
          the toggle when admin disables sharing globally. -->
-    <p class="settings-group-heading">Auto Share</p>
-    <p class="settings-group-sub">Applied automatically to new foods, meals, and recipes you create. Existing items are left alone; use Bulk Share below to update those.</p>
+    <p class="settings-group-heading">{$_('settings_integrations.sharing.auto_share')}</p>
+    <p class="settings-group-sub">{$_('settings_integrations.sharing.auto_share_sub')}</p>
     <div class="card settings-card">
       <div class="setting-row">
-        <span class="setting-label">Visibility</span>
+        <span class="setting-label">{$_('settings_integrations.sharing.visibility')}</span>
         <div class="select-wrap" style="width:160px">
           <select class="select sel-sm"
             value={$defaultShareVisibility}
@@ -180,12 +181,12 @@
 
     <!-- Group: Bulk Share -->
     <p class="settings-group-heading">{$_('settings_integrations.bulk_share')}</p>
-    <p class="settings-group-sub">Set who can see your existing items. Each category has its own visibility, so changing one doesn't affect the others.</p>
+    <p class="settings-group-sub">{$_('settings_integrations.sharing.bulk_share_sub')}</p>
     <div class="card settings-card" style="gap:0">
       {#each [
-        { key: 'foods',   label: 'Foods'   },
-        { key: 'meals',   label: 'Meals'   },
-        { key: 'recipes', label: 'Recipes' },
+        { key: 'foods',   label: $_('settings_integrations.sharing.cat_foods'),   membersLabel: $_('settings_integrations.sharing.members_foods')   },
+        { key: 'meals',   label: $_('settings_integrations.sharing.cat_meals'),   membersLabel: $_('settings_integrations.sharing.members_meals')   },
+        { key: 'recipes', label: $_('settings_integrations.sharing.cat_recipes'), membersLabel: $_('settings_integrations.sharing.members_recipes') },
       ] as cat, ci}
         {#if ci > 0}<div class="setting-divider"></div>{/if}
         {@const _vis    = cat.key === 'foods' ? bulkVisFoods   : cat.key === 'meals' ? bulkVisMeals   : bulkVisRecipes}
@@ -209,7 +210,7 @@
         </div>
         {#if _vis === 'specific'}
           <div style="padding:0 16px 12px">
-            <div class="setting-desc" style="margin-bottom:8px">Members who can see your {cat.label.toLowerCase()}:</div>
+            <div class="setting-desc" style="margin-bottom:8px">{cat.membersLabel}</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px">
               {#each bulkUsers as u}
                 <button class="chip" class:chip-active={_users.includes(u.id)}
@@ -218,14 +219,14 @@
                   {u.name}
                 </button>
               {/each}
-              {#if !bulkUsersLoaded}<span class="setting-desc">Loading…</span>{/if}
+              {#if !bulkUsersLoaded}<span class="setting-desc">{$_('settings_integrations.sharing.loading')}</span>{/if}
             </div>
           </div>
         {/if}
       {/each}
       <div style="padding:8px 16px 12px">
         <button class="btn btn-secondary w-full" on:click={applyBulkShare} disabled={bulkApplying}>
-          {bulkApplying ? 'Applying…' : 'Apply to Existing Items'}
+          {bulkApplying ? $_('settings_integrations.sharing.applying') : $_('settings_integrations.sharing.apply')}
         </button>
       </div>
     </div>

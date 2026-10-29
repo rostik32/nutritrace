@@ -24,6 +24,7 @@
 import { Capacitor } from '@capacitor/core';
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { isNative, getServerUrl } from './platform.js';
+import { t } from './i18n-t.js';
 
 // NB: The Capacitor plugin import has to be STATIC. Dynamic import
 // (`await import('...')`) silently fails to resolve the native bridge on
@@ -68,13 +69,13 @@ export async function getStatus() {
 }
 
 /** Trigger the OS biometric prompt. Returns true on success, false on cancel/fail. */
-export async function authenticate(reason = 'Sign in to NutriTrace') {
+export async function authenticate(reason = t('biometric.prompt')) {
   const p = _getPlugin();
   if (!p) return false;
   try {
     await p.authenticate({
       reason,
-      cancelTitle: 'Use Password',
+      cancelTitle: t('biometric.use_password'),
       androidTitle: 'NutriTrace',
       androidSubtitle: reason,
       androidConfirmationRequired: false,

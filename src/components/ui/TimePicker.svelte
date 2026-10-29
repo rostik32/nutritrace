@@ -1,7 +1,8 @@
 <script>
   import { closeOnBack } from '../../lib/back-stack.js';
   import { createEventDispatcher } from 'svelte';
-  import { _ } from 'svelte-i18n';
+  import { _, locale } from 'svelte-i18n';
+  import { intlLocale } from '../../i18n/index.js';
   import { portal } from '../../lib/portal.js';
   import { timeFormat } from '../../stores/settings.js';
 
@@ -18,6 +19,17 @@
   let selAmPm = 'AM';
 
   $: is24 = $timeFormat === '24h';
+
+  // AM/PM labels in the app language (Intl dayPeriod); selAmPm stays 'AM'/'PM'
+  // internally. Falls back to the English marker if Intl has none.
+  function _dayPeriod(hour, fallback) {
+    try {
+      const parts = new Intl.DateTimeFormat(intlLocale(), { hour: 'numeric', hourCycle: 'h12' })
+        .formatToParts(new Date(2000, 0, 1, hour));
+      return parts.find(p => p.type === 'dayPeriod')?.value || fallback;
+    } catch { return fallback; }
+  }
+  $: ampmLabel = ($locale, { AM: _dayPeriod(0, 'AM'), PM: _dayPeriod(13, 'PM') });
 
   // Parse value into hour/minute/ampm
   function _parse(v) {
@@ -57,7 +69,7 @@
     if (!v && placeholder) return placeholder;
     const [h, m] = (v || '12:00').split(':').map(Number);
     if (is24) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    const ampm = h >= 12 ? 'PM' : 'AM';
+    const ampm = ampmLabel[h >= 12 ? 'PM' : 'AM'];
     const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
     return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
   }
@@ -70,7 +82,7 @@
 
 <button class="tp-trigger" {disabled} on:click={() => { _parse(value); open = true; }}>
   {#if label}<span class="tp-label">{label}</span>{/if}
-  <span class="tp-value" class:tp-placeholder={!value && placeholder}>{_display(value)}</span>
+  <span class="tp-value" class:tp-placeholder={!value && placeholder}>{_display(value, ampmLabel)}</span>
   <span class="material-symbols-rounded" style="font-size:18px;color:var(--text-3)">schedule</span>
 </button>
 
@@ -85,7 +97,7 @@
         {#if is24}
           {String(selHour).padStart(2, '0')}:{String(selMinute).padStart(2, '0')}
         {:else}
-          {selHour}:{String(selMinute).padStart(2, '0')} {selAmPm}
+          {selHour}:{String(selMinute).padStart(2, '0')} {ampmLabel[selAmPm]}
         {/if}
       </div>
 
@@ -115,8 +127,8 @@
           <div class="tp-col tp-col-ampm">
             <div class="tp-col-label">&nbsp;</div>
             <div class="tp-ampm">
-              <button class="tp-cell tp-cell-ampm" class:tp-sel={selAmPm === 'AM'} on:click={() => selAmPm = 'AM'}>AM</button>
-              <button class="tp-cell tp-cell-ampm" class:tp-sel={selAmPm === 'PM'} on:click={() => selAmPm = 'PM'}>PM</button>
+              <button class="tp-cell tp-cell-ampm" class:tp-sel={selAmPm === 'AM'} on:click={() => selAmPm = 'AM'}>{ampmLabel.AM}</button>
+              <button class="tp-cell tp-cell-ampm" class:tp-sel={selAmPm === 'PM'} on:click={() => selAmPm = 'PM'}>{ampmLabel.PM}</button>
             </div>
           </div>
         {/if}

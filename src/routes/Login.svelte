@@ -7,6 +7,7 @@
   import { push } from 'svelte-spa-router';
   import { slide } from 'svelte/transition';
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../lib/server-errors.js';
   import { apiUrl, isNative, getServerUrl, setAuthToken, resolveAssetUrl, iconUrl } from '../lib/platform.js';
   import { cookieBlockedByHttp, droppedCookieReason } from '../lib/cookie-check.js';
   import CookieWarning from '../components/ui/CookieWarning.svelte';
@@ -129,7 +130,7 @@
         body: JSON.stringify({ username: username.trim(), password }),
       });
       const data = await res.json();
-      if (!res.ok) { showError(data.error || $_('login.errors.failed')); return; }
+      if (!res.ok) { showError(data.error ? localizeError(data.error) : $_('login.errors.failed')); return; }
       // Store auth token for native server mode
       if (isNative && data.token) setAuthToken(data.token);
       // If biometric login is enabled, stash the JWT so the next launch
@@ -184,7 +185,7 @@
         body: JSON.stringify({ token: recoveryToken.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) { showError(data.error || $_('login.recovery.failed')); return; }
+      if (!res.ok) { showError(data.error ? localizeError(data.error) : $_('login.recovery.failed')); return; }
       localStorage.removeItem('wl:userId');
       await loadAuthState();
       recoveryDone = true;
@@ -212,7 +213,7 @@
         }),
       });
       const data = await res.json();
-      if (!res.ok) { showError(data.error || $_('login.signup.failed')); return; }
+      if (!res.ok) { showError(data.error ? localizeError(data.error) : $_('login.signup.failed')); return; }
       username = signUpUsername.trim();
       password = signUpPassword;
       signUpPassword = '';
@@ -335,7 +336,7 @@
         <div class="recovery-box" transition:slide={{ duration: 180 }}>
           <span class="material-symbols-rounded" style="font-size:20px;color:var(--warning,#f59e0b)">warning</span>
           <p>{@html $_('login.recovery.explainer')}</p>
-          <p style="margin:0">{$_('login.recovery.token_prompt')}</p>
+          <p style="margin:0">{@html $_('login.recovery.token_prompt')}</p>
           <input class="input" type="password" bind:value={recoveryToken} placeholder={$_('login.recovery.token_placeholder')} />
           <button class="btn btn-secondary" style="width:100%;border-color:var(--danger);color:var(--danger)"
             on:click={recover} disabled={recovering || !recoveryToken.trim()}>

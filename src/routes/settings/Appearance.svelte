@@ -13,36 +13,36 @@
   function set(key, value) { DB.setSetting(key, value); scheduleSave(key, value); }
 
   const ACCENT_COLORS = [
-    { value: 'mint',   label: 'Mint',   dark: '#4FFFB0', light: '#00C47A' },
-    { value: 'blue',   label: 'Blue',   dark: '#4FC3F7', light: '#0277BD' },
-    { value: 'red',    label: 'Red',    dark: '#FF7070', light: '#D93025' },
-    { value: 'purple', label: 'Purple', dark: '#CE93D8', light: '#8E24AA' },
-    { value: 'orange', label: 'Orange', dark: '#FFB547', light: '#E65100' },
-    { value: 'teal',   label: 'Teal',   dark: '#4DD0E1', light: '#00838F' },
-    { value: 'pink',   label: 'Pink',   dark: '#F48FB1', light: '#C2185B' },
-    { value: 'yellow', label: 'Yellow', dark: '#FFF176', light: '#F9A825' },
-    { value: 'indigo', label: 'Indigo', dark: '#9FA8DA', light: '#3949AB' },
-    { value: 'lime',   label: 'Lime',   dark: '#C5E1A5', light: '#558B2F' },
-    { value: 'rose',   label: 'Rose',   dark: '#FF80AB', light: '#E91E63' },
-    { value: 'cyan',   label: 'Cyan',   dark: '#80DEEA', light: '#0097A7' },
+    { value: 'mint',   labelKey: 'settings.appearance.colors.mint',   dark: '#4FFFB0', light: '#00C47A' },
+    { value: 'blue',   labelKey: 'settings.appearance.colors.blue',   dark: '#4FC3F7', light: '#0277BD' },
+    { value: 'red',    labelKey: 'settings.appearance.colors.red',    dark: '#FF7070', light: '#D93025' },
+    { value: 'purple', labelKey: 'settings.appearance.colors.purple', dark: '#CE93D8', light: '#8E24AA' },
+    { value: 'orange', labelKey: 'settings.appearance.colors.orange', dark: '#FFB547', light: '#E65100' },
+    { value: 'teal',   labelKey: 'settings.appearance.colors.teal',   dark: '#4DD0E1', light: '#00838F' },
+    { value: 'pink',   labelKey: 'settings.appearance.colors.pink',   dark: '#F48FB1', light: '#C2185B' },
+    { value: 'yellow', labelKey: 'settings.appearance.colors.yellow', dark: '#FFF176', light: '#F9A825' },
+    { value: 'indigo', labelKey: 'settings.appearance.colors.indigo', dark: '#9FA8DA', light: '#3949AB' },
+    { value: 'lime',   labelKey: 'settings.appearance.colors.lime',   dark: '#C5E1A5', light: '#558B2F' },
+    { value: 'rose',   labelKey: 'settings.appearance.colors.rose',   dark: '#FF80AB', light: '#E91E63' },
+    { value: 'cyan',   labelKey: 'settings.appearance.colors.cyan',   dark: '#80DEEA', light: '#0097A7' },
   ];
-  const APPEARANCE_OPTS = [
-    { value: 'system', label: 'System Default' },
-    { value: 'dark',   label: 'Dark'           },
-    { value: 'light',  label: 'Light'          },
+  $: APPEARANCE_OPTS = [
+    { value: 'system', label: $_('settings.appearance.theme_system') },
+    { value: 'dark',   label: $_('settings.appearance.theme_dark')   },
+    { value: 'light',  label: $_('settings.appearance.theme_light')  },
   ];
-  const NAV_STYLE_OPTS = [
-    { value: 'bottom',   label: 'Bottom tab bar' },
-    { value: 'sidebar',  label: 'Side panel'     },
-    { value: 'both',     label: 'Both'           },
+  $: NAV_STYLE_OPTS = [
+    { value: 'bottom',   label: $_('settings.appearance.nav_bottom')  },
+    { value: 'sidebar',  label: $_('settings.appearance.nav_sidebar') },
+    { value: 'both',     label: $_('settings.appearance.nav_both')    },
   ];
-  const START_PAGE_OPTS = [
-    { value: '/',           label: 'Diary'      },
-    { value: '/foods',      label: 'Foods'      },
-    { value: '/statistics', label: 'Statistics' },
-    { value: '/wellness',   label: 'Wellness'   },
-    { value: '/goals',      label: 'Goals'      },
-    { value: '/settings',   label: 'Settings'   },
+  $: START_PAGE_OPTS = [
+    { value: '/',           label: $_('nav.diary')      },
+    { value: '/foods',      label: $_('nav.foods')      },
+    { value: '/statistics', label: $_('nav.statistics') },
+    { value: '/wellness',   label: $_('nav.wellness')   },
+    { value: '/goals',      label: $_('nav.goals')      },
+    { value: '/settings',   label: $_('nav.settings')   },
   ];
 
   $: isDark = $appearance === 'dark' || ($appearance === 'system' && (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches));
@@ -154,8 +154,8 @@
 <div class="section-body">
 
   <!-- Group: Theme & Color -->
-  <p class="settings-group-heading">Theme &amp; Color</p>
-  <p class="settings-group-sub">System theme and accent palette used across the app.</p>
+  <p class="settings-group-heading">{$_('settings.appearance.group_theme')}</p>
+  <p class="settings-group-sub">{$_('settings.appearance.group_theme_sub')}</p>
   <div class="card settings-card">
     <div class="setting-row">
       <span class="setting-label">{$_('settings.appearance.theme')}</span>
@@ -174,7 +174,7 @@
             class="accent-swatch"
             class:active={$accentColor === c.value}
             style="background:{isDark ? c.dark : c.light}"
-            title={c.label}
+            title={$_(c.labelKey)}
             on:click={() => applyAccentColor(c.value)}
           >
             {#if $accentColor === c.value}
@@ -193,8 +193,8 @@
   </div>
 
   <!-- Group: Navigation -->
-  <p class="settings-group-heading">Navigation</p>
-  <p class="settings-group-sub">How you get around the app and where you land on open.</p>
+  <p class="settings-group-heading">{$_('settings.appearance.group_navigation')}</p>
+  <p class="settings-group-sub">{$_('settings.appearance.group_navigation_sub')}</p>
   <div class="card settings-card">
     <div class="setting-row">
       <span class="setting-label">{$_('settings.appearance.navigation_style')}</span>
@@ -226,16 +226,16 @@
     <div class="setting-divider"></div>
     <div class="setting-row">
       <div>
-        <span class="setting-label">Force Mobile Layout</span>
-        <div class="setting-desc">For users who prefer the compact phone-style layout on large screens. When on, the large-screen breakpoints (Diary right rail, Settings two-pane, week strip) are all disabled at every viewport width, and drag-to-copy meals is turned off. Keep this off to use the full large-screen experience.</div>
+        <span class="setting-label">{$_('settings.appearance.force_mobile')}</span>
+        <div class="setting-desc">{$_('settings.appearance.force_mobile_desc')}</div>
       </div>
       <Toggle checked={$forceMobileLayout} on:change={e => forceMobileLayout.set(e.detail)} />
     </div>
   </div>
 
   <!-- Group: Motion & Chrome -->
-  <p class="settings-group-heading">Motion &amp; Chrome</p>
-  <p class="settings-group-sub">Animation intensity and top-of-page banner treatment.</p>
+  <p class="settings-group-heading">{$_('settings.appearance.group_motion')}</p>
+  <p class="settings-group-sub">{$_('settings.appearance.group_motion_sub')}</p>
   <div class="card settings-card">
     <div class="setting-row">
       <span class="setting-label">{$_('settings_main.reduce_motion')}</span>
@@ -285,7 +285,7 @@
 </div>
 
 <!-- Custom color picker sheet -->
-<Sheet bind:open={showColorSheet} title="Custom Color">
+<Sheet bind:open={showColorSheet} title={$_('settings_main.custom_color')}>
   <div class="cp-body">
     <!-- Live preview -->
     <div class="cp-preview" style="background:{customColorHex}">
@@ -293,7 +293,7 @@
     </div>
     <!-- Hue slider -->
     <div class="cp-slider-group">
-      <label class="form-label">Hue</label>
+      <label class="form-label">{$_('settings_color.hue')}</label>
       <div class="cp-slider-wrap">
         <input type="range" class="cp-slider cp-hue" min="0" max="360"
           bind:value={cpHue} on:input={cpUpdateFromSliders} />

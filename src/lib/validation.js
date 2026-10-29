@@ -1,6 +1,10 @@
+import { t } from './i18n-t.js';
+
 /**
  * Password rules — single source of truth. Mirrors the server's validator
  * in server/routes/auth.js. Any change here should be reflected there too.
+ *
+ * Messages are in the app language (password.rules.* keys).
  *
  * Required:
  *   - 8+ characters
@@ -10,11 +14,11 @@
  *   - at least one special character
  */
 export function validatePassword(pw) {
-  if (!pw || pw.length < 8) return 'Password must be at least 8 characters';
-  if (!/[a-z]/.test(pw)) return 'Password must include a lowercase letter';
-  if (!/[A-Z]/.test(pw)) return 'Password must include an uppercase letter';
-  if (!/[0-9]/.test(pw)) return 'Password must include a number';
-  if (!/[^a-zA-Z0-9]/.test(pw)) return 'Password must include a special character';
+  if (!pw || pw.length < 8) return t('password.rules.min_length', null, 'Password must be at least 8 characters');
+  if (!/[a-z]/.test(pw)) return t('password.rules.needs_lowercase', null, 'Password must include a lowercase letter');
+  if (!/[A-Z]/.test(pw)) return t('password.rules.needs_uppercase', null, 'Password must include an uppercase letter');
+  if (!/[0-9]/.test(pw)) return t('password.rules.needs_number', null, 'Password must include a number');
+  if (!/[^a-zA-Z0-9]/.test(pw)) return t('password.rules.needs_special', null, 'Password must include a special character');
   return null;
 }
 
@@ -28,6 +32,7 @@ export function passwordStrength(pw) {
   if (/[0-9]/.test(pw)) score++;
   if (/[^a-zA-Z0-9]/.test(pw)) score++;
   score = Math.min(4, score);
-  const labels = ['Too weak', 'Weak', 'Fair', 'Strong', 'Very strong'];
-  return { score, label: labels[score] };
+  const labels = ['too_weak', 'weak', 'fair', 'strong', 'very_strong'];
+  const en = ['Too weak', 'Weak', 'Fair', 'Strong', 'Very strong'];
+  return { score, label: t(`password.strength.${labels[score]}`, null, en[score]) };
 }

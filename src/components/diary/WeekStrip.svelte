@@ -17,6 +17,8 @@
    */
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
+  import { _, locale } from 'svelte-i18n';
+  import { intlLocale } from '../../i18n/index.js';
   import { portal } from '../../lib/portal.js';
   import { NtApi } from '../../lib/api.js';
   import { localDateStr } from '../../lib/db.js';
@@ -42,7 +44,7 @@
       return `${dy}/${m}/${dt.getFullYear()}`;
     }
     if (fmt === 'natural') {
-      return dt.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      return dt.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
     }
     return iso;   // ISO / fallback
   }
@@ -88,7 +90,10 @@
 
   // Full weekday names — desktop has plenty of room. If a narrower
   // rail size is ever added, swap this to a short/abbreviated set.
-  const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  // Names follow the app language; the markup passes $locale so they update.
+  function _dowName(iso, _lang) {
+    return new Date(iso + 'T12:00:00').toLocaleDateString(intlLocale(), { weekday: 'long' });
+  }
 
   let byDate = new Map();      // iso → { kcal, protein, carbs, fat, water_ml, items }
   let goalByDate = new Map();  // iso → per-day resolved calorie goal (base + dynamic + activity per day)
@@ -180,7 +185,7 @@
       const active = activeByDate.get(iso) ?? 0;
       out.push({
         iso,
-        dow: DOW[dt.getDay()],
+        dow: _dowName(iso),
         dnum: dt.getDate(),
         kcal,
         goal,
@@ -318,7 +323,7 @@
   $: currentDate, refreshKey, adjustFromActivity, activityPolicy, calorieGoalMode, calorieGoalFactor, calorieGoal, _loadWeekAdjustments();
 </script>
 
-<nav class="week-strip" aria-label="Week strip">
+<nav class="week-strip" aria-label={$_('diary.week_strip.aria')}>
   {#each strip as day (day.iso)}
     <button
       class="ws-day"
@@ -333,13 +338,13 @@
       on:dragover={(e) => _onDayDragOver(e, day.iso)}
       on:dragleave={() => _onDayDragLeave(day.iso)}
       on:drop={(e) => _onDayDrop(e, day.iso)}
-      title="Switch diary to {day.iso}"
+      title={$_('diary.week_strip.switch_to', { values: { date: day.iso } })}
     >
-      <span class="ws-dow">{day.dow}</span>
+      <span class="ws-dow">{_dowName(day.iso, $locale)}</span>
       <span class="ws-dnum">
         {day.dnum}
         {#if showCompletion && day.completed}
-          <span class="ws-complete-mark material-symbols-rounded" title="Day marked complete" aria-label="Day marked complete">check_circle</span>
+          <span class="ws-complete-mark material-symbols-rounded" title={$_('diary.day_complete.marked_toast')} aria-label={$_('diary.day_complete.marked_toast')}>check_circle</span>
         {/if}
       </span>
       <span class="ws-kcal">
@@ -360,7 +365,7 @@
   {@const day = _popDay}
   <button type="button" tabindex="-1" use:portal class="ws-popover"
     style="top: {_popPos.top}px; left: {_popPos.left}px;"
-    title="Switch diary to {day.iso}"
+    title={$_('diary.week_strip.switch_to', { values: { date: day.iso } })}
     on:mouseenter={() => clearTimeout(_popHideTimer)}
     on:mouseleave={_hidePopNow}
     on:click={() => { const iso = day.iso; _hidePopNow(); onSelectDate(iso); }}
@@ -371,14 +376,14 @@
       <span class="ws-pop-unit">kcal</span>
     </span>
     <span class="ws-pop-macros">
-      <span class="ws-pop-macro p">{day.stats.protein}g P</span>
-      <span class="ws-pop-macro c">{day.stats.carbs}g C</span>
-      <span class="ws-pop-macro f">{day.stats.fat}g F</span>
+      <span class="ws-pop-macro p">{$_('diary.week_strip.macro_p', { values: { g: day.stats.protein } })}</span>
+      <span class="ws-pop-macro c">{$_('diary.week_strip.macro_c', { values: { g: day.stats.carbs } })}</span>
+      <span class="ws-pop-macro f">{$_('diary.week_strip.macro_f', { values: { g: day.stats.fat } })}</span>
     </span>
     {#if day.stats.water_ml > 0}
       <span class="ws-pop-water">💧 {(day.stats.water_ml / 1000).toFixed(2)} L</span>
     {/if}
-    <span class="ws-pop-items">{day.stats.item_count} food{day.stats.item_count === 1 ? '' : 's'} logged</span>
+    <span class="ws-pop-items">{$_('diary.week_strip.foods_logged', { values: { count: day.stats.item_count } })}</span>
   </button>
 {/if}
 

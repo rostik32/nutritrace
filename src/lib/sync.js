@@ -28,6 +28,8 @@ import {
 } from './db-native.js';
 import { localDataIsThisAccount, serverKeepsNotes, accountGeneration } from './local-account.js';
 import { get, writable } from 'svelte/store';
+import { t } from './i18n-t.js';
+import { localizeError } from './server-errors.js';
 
 /** Sync state — reactive store for UI */
 export const syncState = writable({
@@ -817,8 +819,8 @@ async function pullChanges({ signal = null, gen = accountGeneration() } = {}) {
 export async function pushAllFromDevice() {
   if (typeof window === 'undefined') throw new Error('Browser only');
   const { isNative, getServerUrl } = await import('./platform.js');
-  if (!isNative) throw new Error('This action only works in the native app.');
-  if (!getServerUrl()) throw new Error('Connect to a server first.');
+  if (!isNative) throw new Error(t('sync.errors.native_only'));
+  if (!getServerUrl()) throw new Error(t('sync.errors.connect_first'));
   const { getDb } = await import('./db-native.js');
   const db = await getDb();
 
@@ -892,7 +894,7 @@ async function _fullSync(silent, forceCheck, showFailureBanner, signal, gen) {
     ...s,
     syncing: true,
     error: null,
-    ...(silent ? {} : { phase: 'pushing', progress: 'Pushing local changes…' }),
+    ...(silent ? {} : { phase: 'pushing', progress: t('sync.progress.pushing') }),
   }));
 
   try {
@@ -916,7 +918,7 @@ async function _fullSync(silent, forceCheck, showFailureBanner, signal, gen) {
     try {
       const { DB } = await import('./db.js');
       if (DB.getSetting('healthConnectEnabled', false)) {
-        if (!silent) syncState.update(s => ({ ...s, phase: 'health', progress: 'Reading Health Connect…' }));
+        if (!silent) syncState.update(s => ({ ...s, phase: 'health', progress: t('sync.progress.health_connect') }));
         const { syncHealthConnect } = await import('./health-connect.js');
         const today = new Date().toLocaleDateString('sv-SE');
         await syncHealthConnect(today);
@@ -925,10 +927,10 @@ async function _fullSync(silent, forceCheck, showFailureBanner, signal, gen) {
       console.warn('[sync] Health Connect read failed:', e.message);
     }
 
-    if (!silent) syncState.update(s => ({ ...s, phase: 'pushing', progress: 'Pushing local changes…' }));
+    if (!silent) syncState.update(s => ({ ...s, phase: 'pushing', progress: t('sync.progress.pushing') }));
     const pushed = await pushChanges({ signal, gen });
 
-    if (!silent) syncState.update(s => ({ ...s, phase: 'pulling', progress: 'Downloading data…' }));
+    if (!silent) syncState.update(s => ({ ...s, phase: 'pulling', progress: t('sync.progress.downloading') }));
     const pulled = await pullChanges({ signal, gen });
 
 
@@ -936,17 +938,17 @@ async function _fullSync(silent, forceCheck, showFailureBanner, signal, gen) {
 
     // Show sync bar for silent syncs only if there were actual changes
     if (silent && hadChanges) {
-      syncState.update(s => ({ ...s, syncing: true, progress: 'Synced changes' }));
+      syncState.update(s => ({ ...s, syncing: true, progress: t('sync.progress.synced_changes') }));
     }
 
     // Cache images for offline use (only if changes or non-silent)
     if (!silent || hadChanges) {
-      syncState.update(s => ({ ...s, phase: 'images', progress: 'Caching images…' }));
+      syncState.update(s => ({ ...s, phase: 'images', progress: t('sync.progress.caching_images') }));
       try {
         const { cacheAllImages } = await import('./image-cache.js');
         await cacheAllImages((done, total) => {
           if (total > 0) {
-            syncState.update(s => ({ ...s, progress: `Caching images… ${done}/${total}` }));
+            syncState.update(s => ({ ...s, progress: t('sync.progress.caching_images_count', { done, total }) }));
           }
         });
         await loadImageMap();
@@ -1013,13 +1015,13 @@ async function _fullSync(silent, forceCheck, showFailureBanner, signal, gen) {
       syncing: false,
       phase: '',
       progress: '',
-      error: e.message || 'Sync failed (see console)',
+      error: e.message || t('sync.errors.failed_see_console'),
       ...(showFailureBanner ? { showErrorBanner: true } : {}),
     }));
     // Notify on sync failure
     try {
       const { notify } = await import('./notifications.js');
-      await notify('notifSyncFailures', 'Sync Failed', e.message || 'Could not sync with server');
+      await notify('notifSyncFailures', t('sync.error_title'), localizeError(e.message) || t('sync.errors.could_not_sync'));
     } catch {}
     return { ok: false, reason: 'error', error: e?.message || null };
   } finally {

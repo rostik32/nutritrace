@@ -28,6 +28,7 @@
   import { showError } from '../../stores/toast.js';
   import { _ } from 'svelte-i18n';
   import { decimalInput, parseDecimal } from '../../lib/decimal-input.js';
+  import { localizeError } from '../../lib/server-errors.js';
 
   export let open = false;
   export let meal = 0;          // meal index this entry will be filed under
@@ -70,7 +71,7 @@
   async function _save() {
     const raw = parseDecimal(_value);
     if (!Number.isFinite(raw) || raw <= 0) {
-      showError(`Enter a positive ${_unitLabel} value.`);
+      showError($_('diary.errors.positive_energy', { values: { unit: _unitLabel } }));
       return;
     }
     // kJ → kcal: 1 kcal = 4.184 kJ. Store as kcal internally (matches the
@@ -89,7 +90,7 @@
       dispatch('added', { kcal, name: _name || 'Quick Calories', meal });
       open = false;
     } catch (e) {
-      showError(e.message || 'Could not save quick calories.');
+      showError(e?.message ? localizeError(e.message) : $_('diary.errors.quick_calories_save_failed'));
     } finally {
       _saving = false;
     }
@@ -100,13 +101,13 @@
   }
 </script>
 
-<Sheet bind:open title="Quick Calories{mealName ? `: ${mealName}` : ''}">
+<Sheet bind:open title={mealName ? $_('diary.quick_calories.title_meal', { values: { meal: mealName } }) : $_('diary.quick_calories.title')}>
   <div class="qc-body">
     <p class="qc-help">
-      Log just the {_unitLabel} when you don't have full nutrition info, or when you don't want to model the food. Optional macros are stored only when you fill them in. Adds straight to the diary; no food entry is created.
+      {$_('diary.quick_calories.help_macros', { values: { unit: _unitLabel } })}
     </p>
 
-    <label class="form-label" for="qc-name">Name (optional)</label>
+    <label class="form-label" for="qc-name">{$_('diary.quick_calories.name_label')}</label>
     <input id="qc-name" class="input" type="text" maxlength="60"
            placeholder={$_('quick_calories.name_ph')}
            bind:value={_name} on:keydown={_onKey} />
@@ -149,14 +150,14 @@
                  bind:value={_fat} on:keydown={_onKey} />
           <span class="qc-macro-unit" style="color:var(--macro-fat)">g</span>
         </div>
-        <span class="qc-macro-label">Fat</span>
+        <span class="qc-macro-label">{$_('diary_deep.fat')}</span>
       </div>
     </div>
 
     <div class="qc-actions">
       <button class="btn btn-secondary" on:click={() => open = false} disabled={_saving}>{$_('quick_calories.cancel')}</button>
       <button class="btn btn-primary" on:click={_save} disabled={_saving || !_value}>
-        {_saving ? 'Adding…' : 'Add'}
+        {_saving ? $_('diary.quick_calories.adding') : $_('diary.quick_calories.add')}
       </button>
     </div>
   </div>

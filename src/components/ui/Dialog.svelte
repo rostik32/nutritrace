@@ -3,13 +3,14 @@
   import { scale, fade } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { createEventDispatcher } from 'svelte';
+  import { _ } from 'svelte-i18n';
   import { portal } from '../../lib/portal.js';
 
   export let open    = false;
   export let title   = '';
   export let message = '';
-  export let confirmText = 'OK';
-  export let cancelText  = 'Cancel';
+  export let confirmText = '';
+  export let cancelText  = '';
   export let dangerous   = false;
   export let confirmDisabled = false;
   /** When true, dispatches 'confirm' but doesn't auto-close — caller controls
@@ -55,11 +56,11 @@
       {/if}
       <slot />
       <div class="dialog-actions">
-        <button class="btn btn-secondary" on:click={cancel}>{cancelText}</button>
+        <button class="btn btn-secondary" on:click={cancel}>{cancelText || $_('common.cancel')}</button>
         <button
           class="btn {dangerous ? 'btn-danger' : 'btn-primary'}"
           disabled={confirmDisabled}
-          on:click={confirm}>{confirmText}</button>
+          on:click={confirm}>{confirmText || $_('ui.dialog.ok')}</button>
       </div>
     </div>
   </div>

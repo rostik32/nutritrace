@@ -1,12 +1,13 @@
 <script>
   import { slide } from 'svelte/transition';
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../../lib/server-errors.js';
   import Toggle from './Toggle.svelte';
   import TimePicker from '../ui/TimePicker.svelte';
   import ConnectionStatus from './ConnectionStatus.svelte';
   import { showSuccess, showError } from '../../stores/toast.js';
   import { DB } from '../../lib/db.js';
-  import { scheduleSave } from '../../stores/settings.js';
+  import { scheduleSave, displayMealNames } from '../../stores/settings.js';
 
   function set(key, value) { DB.setSetting(key, value); scheduleSave(key, value); }
 
@@ -129,12 +130,12 @@
     set('appriseUrl', _appriseUrl); set('appriseTag', _appriseTag);
     try {
       const { sendPush } = await import('../../lib/notifications.js');
-      await sendPush(_notifPushService, 'NutriTrace', 'Test notification, push service connected', 5);
+      await sendPush(_notifPushService, 'NutriTrace', $_('settings_notifications.push.test_body'), 5);
       _pushTestResult = 'ok';
       showSuccess($_('settings_notifications.toast.test_sent'));
     } catch (e) {
       _pushTestResult = 'fail';
-      showError($_('settings_notifications.toast.test_failed', { values: { error: e.message || 'unknown error' } }));
+      showError($_('settings_notifications.toast.test_failed', { values: { error: e.message ? localizeError(e.message) : $_('settings_notifications.toast.unknown_error') } }));
     }
     _gotifyTesting = false;
   }
@@ -144,7 +145,7 @@
 
   <!-- Delivery setup -->
   <p class="settings-group-heading">{$_('settings_notifications.sections.delivery')}</p>
-  <p class="settings-group-sub">How notifications reach you: on-device pop-ups and optional third-party push service.</p>
+  <p class="settings-group-sub">{$_('settings_notifications.sections_sub.delivery')}</p>
   <div class="card settings-card">
     {#if _notifPushService !== 'none'}
       <ConnectionStatus
@@ -241,7 +242,7 @@
 
   {#if _anyNotifEnabled}
     <p class="settings-group-heading">{$_('settings_notifications.sections.scheduled_reminders')}</p>
-    <p class="settings-group-sub">Recurring reminders at set times of day: water, meals, weigh-in, bedtime.</p>
+    <p class="settings-group-sub">{$_('settings_notifications.sections_sub.scheduled_reminders')}</p>
     <div class="card settings-card">
       <div class="setting-row">
         <div>
@@ -273,8 +274,7 @@
         <Toggle checked={_notifMeals} on:change={e => { _notifMeals = e.detail; set('notifMealReminders', e.detail); _scheduleMeals(); }} />
       </div>
       {#if _notifMeals}
-        {@const mealNames = DB.getSetting('mealNames', ['Breakfast','Lunch','Dinner','Snacks'])}
-        {#each mealNames as name, i}
+        {#each $displayMealNames as name, i}
           <div class="setting-divider"></div>
           <div class="setting-row">
             <span class="setting-label">{name}</span>
@@ -356,7 +356,7 @@
     </div>
 
     <p class="settings-group-heading">{$_('settings_notifications.sections.alerts_summaries')}</p>
-    <p class="settings-group-sub">Milestone alerts and periodic summary reports.</p>
+    <p class="settings-group-sub">{$_('settings_notifications.sections_sub.alerts_summaries')}</p>
     <div class="card settings-card">
       <div class="setting-row">
         <div>
