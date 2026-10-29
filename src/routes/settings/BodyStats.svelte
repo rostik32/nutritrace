@@ -1,13 +1,14 @@
 <script>
+  import { _ } from 'svelte-i18n';
   import { DB } from '../../lib/db.js';
   import Toggle from '../../components/settings/Toggle.svelte';
   import { bodyStatsOrder, hiddenBodyStats } from '../../stores/settings.js';
 
   const BODY_STATS = [
-    { id:'weight', label:'Weight' }, { id:'neck', label:'Neck' }, { id:'waist', label:'Waist' },
-    { id:'hips', label:'Hips' }, { id:'chest', label:'Chest' }, { id:'thighs', label:'Thighs' },
-    { id:'biceps', label:'Biceps' }, { id:'calves', label:'Calves' },
-    { id:'body_fat', label:'Body Fat %' }, { id:'body_water', label:'Body Water %' },
+    { id:'weight', label:'statistics_page.metric.weight' }, { id:'neck', label:'statistics_page.metric.neck' }, { id:'waist', label:'statistics_page.metric.waist' },
+    { id:'hips', label:'statistics_page.metric.hips' }, { id:'chest', label:'statistics_page.metric.chest' }, { id:'thighs', label:'statistics_page.metric.thighs' },
+    { id:'biceps', label:'statistics_page.metric.biceps' }, { id:'calves', label:'statistics_page.metric.calves' },
+    { id:'body_fat', label:'statistics_page.metric.body_fat_pct' }, { id:'body_water', label:'statistics_page.metric.body_water_pct' },
   ];
 
   $: orderedBodyStats = (() => {
@@ -96,7 +97,7 @@
           : ''}>
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <span class="drag-handle material-symbols-rounded" on:pointerdown={e => onStatDragDown(e, i)}>drag_indicator</span>
-        <span class="setting-label">{stat.label}</span>
+        <span class="setting-label">{$_(stat.label)}</span>
         <Toggle checked={isStatVisible(stat.id)} on:change={() => toggleStatVisible(stat.id)} />
       </div>
     {/each}

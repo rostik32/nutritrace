@@ -11,6 +11,7 @@
  * Call it straight from the click handler, without awaiting anything first:
  * the fallback only works while the browser still counts the tap.
  */
+import { t } from './i18n-t.js';
 export async function copyText(text) {
   const value = String(text ?? '');
   const secure = typeof window !== 'undefined' && window.isSecureContext;
@@ -22,7 +23,7 @@ export async function copyText(text) {
       // Denied or unsupported despite being present; try the copy command.
     }
   }
-  if (!copyWithSelection(value)) throw new Error('Copying is not available in this browser');
+  if (!copyWithSelection(value)) throw new Error(t('clipboard.unavailable'));
 }
 
 /** The copy-command path on its own. Returns whether the browser reported success. */

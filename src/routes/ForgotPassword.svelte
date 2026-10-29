@@ -1,6 +1,7 @@
 <script>
   import { push } from 'svelte-spa-router';
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../lib/server-errors.js';
   import { apiUrl, resolveAssetUrl, iconUrl } from '../lib/platform.js';
 
   let email   = '';
@@ -20,7 +21,7 @@
         body: JSON.stringify({ email: email.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) { error = data.error || $_('common.errors.failed'); return; }
+      if (!res.ok) { error = data.error ? localizeError(data.error) : $_('common.errors.failed'); return; }
       sent = true;
     } catch {
       error = $_('common.errors.cant_reach_server');
@@ -55,7 +56,7 @@
         <input class="input" type="email" autocomplete="email"
           bind:value={email}
           on:keydown={e => e.key === 'Enter' && submit()}
-          placeholder="you@example.com" autofocus />
+          placeholder={$_('login.signup.email_placeholder')} autofocus />
       </div>
 
       {#if error}

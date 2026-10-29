@@ -13,7 +13,7 @@
   import { fly, fade } from 'svelte/transition';
   import { _ } from 'svelte-i18n';
   import { closeOnBack } from '../../lib/back-stack.js';
-  import { mealNames, energyUnit, smartLogVoiceLang } from '../../stores/settings.js';
+  import { displayMealNames, energyUnit, smartLogVoiceLang } from '../../stores/settings.js';
 
   // Resolve the configured voice-input language. 'auto' (default) means
   // use the device locale; anything else is a BCP-47 tag the user picked
@@ -33,6 +33,9 @@
   // (saveItems skips it), so the Add button does not count it either.
   const _loggable = (m) => !!m.food && !(m.source === 'off' && offNutritionStatus(m.food, API.offNutritionInfo(m.food.barcode)) !== 'ok');
   import { isNative } from '../../lib/platform.js';
+  import { localizeError } from '../../lib/server-errors.js';
+  // Example phrases in the app language (also inserted into the input).
+  $: _examples = [$_('smart_log.example_1'), $_('smart_log.example_2'), $_('smart_log.example_3')];
 
   export let date;                  // 'YYYY-MM-DD'
   export let defaultMealSlot = 0;   // index into mealNames (used if AI can't infer)
@@ -56,7 +59,7 @@
   let matchedItems = [];
   let errorMsg = '';
 
-  $: meals = $mealNames || ['Breakfast','Lunch','Dinner','Snacks'];
+  $: meals = $displayMealNames;
 
   onMount(async () => {
     // Pre-parsed mode: caller already ran parseInput + matchItems via the
@@ -101,7 +104,7 @@
         };
         webRecognition.onerror = (e) => {
           listening = false;
-          showError('Voice input failed: ' + (e.error || 'unknown error'));
+          showError($_('smart_log.voice_failed', { values: { error: e.error || $_('smart_log.unknown_error') } }));
         };
         webRecognition.onend = () => { listening = false; };
         voiceAvailable = true;
@@ -132,7 +135,7 @@
 
   async function startListening() {
     if (!voiceAvailable) {
-      showError('Voice input not available on this device.');
+      showError($_('smart_log.voice_unavailable'));
       return;
     }
     if (isNative) {
@@ -143,7 +146,7 @@
         if (perm.speechRecognition !== 'granted') {
           const req = await SpeechRecognition.requestPermissions();
           if (req.speechRecognition !== 'granted') {
-            showError('Microphone permission denied.');
+            showError($_('smart_log.mic_denied'));
             return;
           }
         }
@@ -151,7 +154,7 @@
         const result = await SpeechRecognition.start({
           language: _resolveVoiceLang(),
           maxResults: 1,
-          prompt: 'Tell me what you ate',
+          prompt: $_('smart_log.voice_prompt'),
           partialResults: false,
           popup: false,
         });
@@ -165,14 +168,14 @@
       } catch (e) {
         listening = false;
         console.error('[smart-log] native voice failed:', e);
-        showError('Voice input failed: ' + (e.message || 'unknown error'));
+        showError($_('smart_log.voice_failed', { values: { error: e.message || $_('smart_log.unknown_error') } }));
       }
     } else if (webRecognition) {
       try {
         webRecognition.start();
         listening = true;
       } catch (e) {
-        showError('Could not start mic: ' + e.message);
+        showError($_('smart_log.cant_start_mic', { values: { error: e.message } }));
       }
     }
   }
@@ -197,7 +200,7 @@
       const parsed = await parseInput(inputText, meals);
       parsedMeal = parsed.meal;
       if (!parsed.items || parsed.items.length === 0) {
-        errorMsg = 'No food items found. Try rephrasing.';
+        errorMsg = $_('smart_log.no_items');
         phase = 'input';
         return;
       }
@@ -214,7 +217,7 @@
       phase = 'review';
     } catch (e) {
       console.error('[smart-log] parse failed:', e);
-      errorMsg = e.message || 'Parse failed.';
+      errorMsg = e.message || $_('smart_log.parse_failed');
       phase = 'input';
     }
   }
@@ -257,16 +260,16 @@
     try {
       const { saved } = await saveItems(matchedItems, { date, defaultMealSlot });
       if (saved > 0) {
-        showSuccess(`Logged ${saved} item${saved === 1 ? '' : 's'}`);
+        showSuccess($_('smart_log.logged', { values: { count: saved } }));
         dispatch('saved');
         dispatch('close');
       } else {
-        errorMsg = 'Nothing was saved. All items missing food data.';
+        errorMsg = $_('smart_log.nothing_saved');
         phase = 'review';
       }
     } catch (e) {
       console.error('[smart-log] save failed:', e);
-      errorMsg = $_('common.errors.save_failed') + ': ' + e.message;
+      errorMsg = $_('smart_log.save_failed', { values: { error: localizeError(e.message) } });
       phase = 'review';
     }
   }
@@ -292,7 +295,7 @@
 
   {#if phase === 'input'}
     <div class="ql-body">
-      <p class="ql-hint">Type or speak what you ate. Mention the meal too — "for breakfast I had…"</p>
+      <p class="ql-hint">{$_('smart_log.hint')}</p>
       <div class="ql-input-row">
         <input
           bind:this={inputEl}
@@ -303,7 +306,7 @@
           autocomplete="off"
         />
         {#if voiceAvailable}
-          <button class="btn-icon ql-mic" class:listening on:click={toggleMic} title={listening ? 'Stop' : 'Voice input'}>
+          <button class="btn-icon ql-mic" class:listening on:click={toggleMic} title={listening ? $_('smart_log.stop') : $_('smart_log.voice_input')}>
             <span class="material-symbols-rounded">{listening ? 'stop_circle' : 'mic'}</span>
           </button>
         {/if}
@@ -311,40 +314,40 @@
       {#if listening}
         <div class="ql-listening-banner">
           <span class="material-symbols-rounded ql-pulse-icon">graphic_eq</span>
-          Listening… speak now
+          {$_('smart_log.listening')}
         </div>
       {/if}
       {#if errorMsg}
-        <div class="ql-error">{errorMsg}</div>
+        <div class="ql-error">{localizeError(errorMsg)}</div>
       {/if}
       <div class="ql-actions">
         <button class="btn btn-primary" on:click={runParse} disabled={!inputText.trim()}>
-          <span class="material-symbols-rounded" style="font-size:16px">arrow_forward</span> Parse
+          <span class="material-symbols-rounded" style="font-size:16px">arrow_forward</span> {$_('smart_log.parse')}
         </button>
       </div>
       <div class="ql-examples">
-        <div class="ql-example-label">Examples:</div>
-        <button class="ql-example" on:click={() => { inputText = 'for breakfast I had 2 eggs and a slice of toast'; }}>"for breakfast I had 2 eggs and a slice of toast"</button>
-        <button class="ql-example" on:click={() => { inputText = 'lunch was a chicken caesar salad and a coke'; }}>"lunch was a chicken caesar salad and a coke"</button>
-        <button class="ql-example" on:click={() => { inputText = 'snacking on some almonds and a banana'; }}>"snacking on some almonds and a banana"</button>
+        <div class="ql-example-label">{$_('smart_log.examples')}</div>
+        {#each _examples as ex}
+          <button class="ql-example" on:click={() => { inputText = ex; }}>{$_('smart_log.example_quoted', { values: { text: ex } })}</button>
+        {/each}
       </div>
     </div>
 
   {:else if phase === 'parsing'}
     <div class="ql-body ql-loading">
       <span class="material-symbols-rounded ql-spin" style="font-size:32px;color:var(--accent)">autorenew</span>
-      <p>Parsing "{inputText}"…</p>
+      <p>{$_('smart_log.parsing', { values: { text: inputText } })}</p>
     </div>
 
   {:else if phase === 'review'}
     <div class="ql-body">
       <div class="ql-review-header">
         <button class="btn btn-secondary btn-sm" on:click={backToInput}>
-          <span class="material-symbols-rounded" style="font-size:14px">arrow_back</span> Edit
+          <span class="material-symbols-rounded" style="font-size:14px">arrow_back</span> {$_('smart_log.edit')}
         </button>
         <span class="ql-review-count">
-          {matchedItems.length} item{matchedItems.length === 1 ? '' : 's'}
-          {#if parsedMeal}· detected: <strong>{parsedMeal}</strong>{/if}
+          {$_('smart_log.items_count', { values: { count: matchedItems.length } })}
+          {#if parsedMeal}· {$_('smart_log.detected')} <strong>{parsedMeal}</strong>{/if}
         </span>
       </div>
       <div class="ql-list">
@@ -357,24 +360,24 @@
                 {m.food?.name || m.item.name}
                 {#if m.source === 'local'}<span class="ql-badge ql-badge-local">{$_('smart_log.badge_local')}</span>{/if}
                 {#if m.source === 'off'}<span class="ql-badge ql-badge-off">OFF</span>{/if}
-                {#if m.source === 'meal'}<span class="ql-badge ql-badge-meal">Meal</span>{/if}
+                {#if m.source === 'meal'}<span class="ql-badge ql-badge-meal">{$_('smart_log.badge_meal')}</span>{/if}
                 {#if m.source === 'recipe'}<span class="ql-badge ql-badge-recipe">{$_('smart_log.badge_recipe')}</span>{/if}
                 {#if m.source === 'yesterday'}<span class="ql-badge ql-badge-yesterday">{$_('smart_log.badge_yesterday')}</span>{/if}
                 {#if isWater}<span class="ql-badge ql-badge-water">{$_('smart_log.badge_water')}</span>{/if}
                 {#if !m.food}<span class="ql-badge ql-badge-warn">{$_('smart_log.badge_not_found')}</span>{/if}
               </div>
               {#if isWater && m.food}
-                <div class="ql-row-meta">{m.food._waterMl} ml — adds to water log</div>
+                <div class="ql-row-meta">{$_('smart_log.water_meta', { values: { ml: m.food._waterMl } })}</div>
               {:else if m.food && isExpansion}
                 <div class="ql-row-meta">
-                  Expands to {m.food.items.length} item{m.food.items.length === 1 ? '' : 's'}
+                  {$_('smart_log.expands_to', { values: { count: m.food.items.length } })}
                   {#if m.food.nutrition?.calories}
                     {@const _e = Nutrition.displayEnergy(m.food.nutrition.calories, $energyUnit)}
-                    · ~{_e.value.toLocaleString()} {_e.unit} total
+                    · {$_('smart_log.approx_total', { values: { value: _e.value.toLocaleString(), unit: _e.unit } })}
                   {/if}
                 </div>
                 <details class="ql-swap">
-                  <summary>Show items ({m.food.items.length})</summary>
+                  <summary>{$_('smart_log.show_items', { values: { count: m.food.items.length } })}</summary>
                   <div class="ql-candidates">
                     {#each m.food.items as sub}
                       <div class="ql-subitem">{sub.name}{sub.brand ? ' · ' + sub.brand : ''}</div>
@@ -391,11 +394,11 @@
                   {_e2.value.toLocaleString()} {_e2.unit} · {amountAndUnit(m.quantity, m.food.unit)}
                 </div>
               {:else}
-                <div class="ql-row-meta">No nutrition data — remove or add manually</div>
+                <div class="ql-row-meta">{$_('smart_log.no_nutrition')}</div>
               {/if}
               {#if m.candidates && m.candidates.length > 1 && !isExpansion && !isWater}
                 <details class="ql-swap">
-                  <summary>Swap match ({m.candidates.length})</summary>
+                  <summary>{$_('smart_log.swap_match', { values: { count: m.candidates.length } })}</summary>
                   <div class="ql-candidates">
                     {#each m.candidates as c}
                       <button class="ql-candidate" class:active={c === m.food} on:click={() => swapCandidate(i, c)}>
@@ -418,9 +421,9 @@
                 <input type="number" class="input ql-qty" min="1" bind:value={m.quantity} />
               {/if}
               {#if isWater && m.food}
-                <input type="number" class="input ql-qty" min="1" bind:value={m.food._waterMl} title="Amount in ml" />
+                <input type="number" class="input ql-qty" min="1" bind:value={m.food._waterMl} title={$_('smart_log.amount_ml')} />
               {/if}
-              <button class="btn-icon" style="color:var(--danger)" on:click={() => removeRow(i)} aria-label="Remove">
+              <button class="btn-icon" style="color:var(--danger)" on:click={() => removeRow(i)} aria-label={$_('smart_log.remove')}>
                 <span class="material-symbols-rounded" style="font-size:18px">close</span>
               </button>
             </div>
@@ -428,12 +431,12 @@
         {/each}
       </div>
       {#if errorMsg}
-        <div class="ql-error">{errorMsg}</div>
+        <div class="ql-error">{localizeError(errorMsg)}</div>
       {/if}
       <div class="ql-actions">
         <button class="btn btn-primary" on:click={commitAll} disabled={matchedItems.filter(_loggable).length === 0}>
           <span class="material-symbols-rounded" style="font-size:16px">check</span>
-          Add {matchedItems.filter(_loggable).length} to Diary
+          {$_('smart_log.add_to_diary', { values: { count: matchedItems.filter(_loggable).length } })}
         </button>
       </div>
     </div>
@@ -441,7 +444,7 @@
   {:else if phase === 'saving'}
     <div class="ql-body ql-loading">
       <span class="material-symbols-rounded ql-spin" style="font-size:32px;color:var(--accent)">autorenew</span>
-      <p>Saving…</p>
+      <p>{$_('common.saving')}</p>
     </div>
   {/if}
 </div>

@@ -93,7 +93,7 @@
       {#each ($foodCategories || []) as cat}
         <div class="chip">
           {_catDisplay(cat)}
-          <button class="chip-x" on:click={() => removeCategory(cat)} aria-label="Remove">
+          <button class="chip-x" on:click={() => removeCategory(cat)} aria-label={$_('settings_stats.remove')}>
             <span class="material-symbols-rounded" style="font-size:14px">close</span>
           </button>
         </div>
@@ -106,17 +106,17 @@
     <div class="cat-add-row">
       <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;position:relative">
         <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);text-align:center">{$_('settings_stats.label')}</span>
-        <button class="input emoji-btn" title="Pick an emoji label"
+        <button class="input emoji-btn" title={$_('settings_stats.pick_emoji')}
           on:click={openEmojiPicker}>
           {newCategoryLabel || '🏷️'}
         </button>
       </div>
       <div style="display:flex;flex-direction:column;gap:3px;flex:1">
-        <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)">Category name *</span>
-        <input class="input" style="height:40px" placeholder="e.g. Dairy, Proteins…"
+        <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)">{$_('settings_stats.category_name_label')}</span>
+        <input class="input" style="height:40px" placeholder={$_('settings_stats.category_name_placeholder')}
           bind:value={newCategoryName} on:keydown={e => e.key==='Enter' && addCategory()} />
       </div>
-      <button class="btn btn-secondary" style="height:40px;padding:0 16px;align-self:flex-end" on:click={addCategory}>Add</button>
+      <button class="btn btn-secondary" style="height:40px;padding:0 16px;align-self:flex-end" on:click={addCategory}>{$_('settings_stats.add')}</button>
     </div>
   </div>
 </div>

@@ -12,6 +12,7 @@
   import ActivityCategoryPicker from './ActivityCategoryPicker.svelte';
   import { decimalInput, parseDecimal } from '../../lib/decimal-input.js';
   import { foldText } from '../../lib/search-text.js';
+  import { localizeError } from '../../lib/server-errors.js';
 
 
   export let open = false;
@@ -246,7 +247,7 @@
       open = false;
       dispatch('saved');
     } catch (e) {
-      error = e?.message || 'Could not save';
+      error = e?.message || $_('diary.errors.activity_save_failed');
     } finally {
       saving = false;
     }
@@ -318,7 +319,7 @@
       </label>
       <label class="field">
         <span class="field-label">{$_('diary.activity.field_distance')} <span class="hint">{$_('diary.activity.field_optional')}</span></span>
-        <input class="input" type="text" bind:value={distance} placeholder={`e.g. 10 ${$distUnit || 'mi'}`} maxlength="40" />
+        <input class="input" type="text" bind:value={distance} placeholder={$_('diary.activity.field_distance_placeholder_unit', { values: { unit: $distUnit || 'mi' } })} maxlength="40" />
       </label>
     </div>
 
@@ -347,7 +348,7 @@
     </label>
 
     {#if error}
-      <div class="error">{error}</div>
+      <div class="error">{localizeError(error)}</div>
     {/if}
 
     <div class="actions">

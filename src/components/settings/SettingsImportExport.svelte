@@ -11,6 +11,7 @@
    */
   import BulkImportModal from '../foods/BulkImportModal.svelte';
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../../lib/server-errors.js';
   import { showSuccess, showError } from '../../stores/toast.js';
   import { DB } from '../../lib/db.js';
   import { NtApi } from '../../lib/api.js';
@@ -31,7 +32,7 @@
       reader.readAsDataURL(blob);
     });
     await Filesystem.writeFile({ path: `Download/${filename}`, data: base64, directory: Directory.ExternalStorage, recursive: true });
-    showSuccess(`Saved to Downloads/${filename}`);
+    showSuccess($_('diary_export.toast.saved_downloads', { values: { file: filename } }));
   }
 
   function _downloadBlob(blob, filename) {
@@ -87,7 +88,7 @@
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       _downloadBlob(blob, `nutritrace-backup-${new Date().toISOString().slice(0,10)}.json`);
       showSuccess($_('settings_import_export.toast.backup_exported'));
-    } catch(e) { showError($_('settings_import_export.toast.export_failed_prefix', { values: { error: e.message } })); }
+    } catch(e) { showError($_('settings_import_export.toast.export_failed_prefix', { values: { error: localizeError(e.message) } })); }
   }
 
   async function importBackup() {
@@ -145,7 +146,7 @@
 
         showSuccess($_('settings_import_export.toast.backup_restored_reload'));
         setTimeout(() => location.reload(), 1500);
-      } catch(err) { showError($_('settings_import_export.toast.import_failed_prefix', { values: { error: err.message } })); }
+      } catch(err) { showError($_('settings_import_export.toast.import_failed_prefix', { values: { error: localizeError(err.message) } })); }
     };
     input.click();
   }
@@ -201,7 +202,7 @@
       showSuccess(msg);
       bulkImportOpen = false;
     } catch (err) {
-      showError($_('settings_import_export.toast.import_failed_prefix', { values: { error: err.message || $_('settings_import_export.toast.unknown_error') } }));
+      showError($_('settings_import_export.toast.import_failed_prefix', { values: { error: localizeError(err.message) || $_('settings_import_export.toast.unknown_error') } }));
     }
   }
 
@@ -224,7 +225,7 @@
       const blob = new Blob([csv], { type: 'text/csv' });
       _downloadBlob(blob, `nutritrace-diary-${new Date().toISOString().slice(0,10)}.csv`);
       showSuccess($_('settings_import_export.toast.csv_exported'));
-    } catch(e) { showError($_('settings_import_export.toast.export_failed_prefix', { values: { error: e.message } })); }
+    } catch(e) { showError($_('settings_import_export.toast.export_failed_prefix', { values: { error: localizeError(e.message) } })); }
   }
 
   // ── Full Nutrition CSV Export (#202) ────────────────────────────────────────
@@ -282,7 +283,7 @@
       const blob = new Blob([csv], { type: 'text/csv' });
       _downloadBlob(blob, `nutritrace-diary-full-${new Date().toISOString().slice(0,10)}.csv`);
       showSuccess($_('settings_import_export.toast.csv_exported'));
-    } catch(e) { showError($_('settings_import_export.toast.export_failed_prefix', { values: { error: e.message } })); }
+    } catch(e) { showError($_('settings_import_export.toast.export_failed_prefix', { values: { error: localizeError(e.message) } })); }
   }
 
   // ── Activity CSV Export (#77) ───────────────────────────────────────────────
@@ -312,14 +313,14 @@
       const blob = new Blob([csv], { type: 'text/csv' });
       _downloadBlob(blob, `nutritrace-activity-${new Date().toISOString().slice(0,10)}.csv`);
       showSuccess($_('settings_import_export.toast.activity_csv_exported'));
-    } catch(e) { showError($_('settings_import_export.toast.export_failed_prefix', { values: { error: e.message } })); }
+    } catch(e) { showError($_('settings_import_export.toast.export_failed_prefix', { values: { error: localizeError(e.message) } })); }
   }
 </script>
 
 <div class="section-body">
   <!-- Import card -->
   <p class="settings-group-heading">{$_('settings_import_export.sections.import')}</p>
-  <p class="settings-group-sub">Pull data in: bulk-add foods by barcode list, or restore a NutriTrace JSON export.</p>
+  <p class="settings-group-sub">{$_('settings_import_export.sections_sub.import')}</p>
   <div class="card settings-card">
     <button class="setting-row setting-action" on:click={openBulkImport}>
       <span class="material-symbols-rounded si" style="color:var(--accent)">playlist_add</span>
@@ -342,7 +343,7 @@
 
   <!-- Export card -->
   <p class="settings-group-heading">{$_('settings_import_export.sections.export')}</p>
-  <p class="settings-group-sub">Portable JSON snapshot or CSV of your diary or activity log.</p>
+  <p class="settings-group-sub">{$_('settings_import_export.sections_sub.export')}</p>
   <div class="card settings-card">
     <button class="setting-row setting-action" on:click={exportBackup}>
       <span class="material-symbols-rounded si" style="color:var(--accent)">download</span>

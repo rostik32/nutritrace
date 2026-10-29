@@ -8,6 +8,7 @@
 
 import compendium from './activity-compendium.json';
 import { foldText } from './search-text.js';
+import { t } from './i18n-t.js';
 
 /** All compendium activities as a flat array of { id, category, name, met }. */
 export const ACTIVITIES = compendium.activities;
@@ -44,6 +45,12 @@ export const CATEGORY_ICONS = {
   Occupation:   'work',
 };
 
+/** Category name in the app language (activity_categories.*). The English
+ *  name stays the id: compare and store `category`, show this. */
+export function categoryLabel(category) {
+  return category ? t(`activity_categories.${String(category).toLowerCase()}`, null, category) : '';
+}
+
 /** Group all compendium entries by category, in CATEGORY_ORDER.
  *  Returns [{ category, icon, items: [...] }, ...]. */
 export function groupedByCategory() {
@@ -56,6 +63,7 @@ export function groupedByCategory() {
     .filter(c => bucket.has(c))
     .map(category => ({
       category,
+      label: categoryLabel(category),
       icon: CATEGORY_ICONS[category] || 'directions_run',
       items: bucket.get(category),
     }));

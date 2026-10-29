@@ -11,6 +11,7 @@
   import { _ } from 'svelte-i18n';
   import { activeFast, fastHistory, loadFasting, fastingStats, deleteFast } from '../../stores/fasting.js';
   import { confirmDialog } from '../../stores/confirmDialog.js';
+  import { intlLocale } from '../../i18n/index.js';
 
   let _showHistory = false;
 
@@ -18,11 +19,12 @@
 
   async function _removeFast(f) {
     const hrs = f.end_at ? ((new Date(f.end_at) - new Date(f.start_at)) / 3600000).toFixed(1) : '?';
-    const day = new Date(f.start_at).toLocaleDateString();
+    const day = new Date(f.start_at).toLocaleDateString(intlLocale());
     const ok = await confirmDialog({
-      title: 'Remove this fast?',
-      message: `${hrs}h fast on ${day} will be deleted from your history. This can't be undone.`,
-      confirmText: 'Remove',
+      title: $_('fasting_insights.remove_title'),
+      message: $_('fasting_insights.remove_message', { values: { hours: hrs, day } }),
+      confirmText: $_('fasting.remove'),
+      cancelText: $_('common.cancel'),
       dangerous: true,
     });
     if (!ok) return;
@@ -32,14 +34,14 @@
   function _fmtDayLabel(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString(intlLocale(), { month: 'short', day: 'numeric' });
   }
   function _fmtDuration(start, end) {
     if (!start || !end) return '—';
     const h = (new Date(end) - new Date(start)) / 3600000;
     const wh = Math.floor(h);
     const m = Math.round((h - wh) * 60);
-    return `${wh}h ${String(m).padStart(2, '0')}m`;
+    return $_('fasting.duration_hm', { values: { h: wh, m: String(m).padStart(2, '0') } });
   }
 
   // Build the per-day bars from the last 14 days. End-time anchors the day
@@ -64,7 +66,7 @@
       const d = new Date(today);
       d.setUTCDate(d.getUTCDate() - i);
       const day = d.toISOString().slice(0, 10);
-      out.push({ day, label: d.toLocaleDateString(undefined, { weekday: 'narrow' }), hours: map.get(day) || 0 });
+      out.push({ day, label: d.toLocaleDateString(intlLocale(), { weekday: 'narrow' }), hours: map.get(day) || 0 });
     }
     return out;
   })();
@@ -81,19 +83,19 @@
 
   <div class="fi-stats">
     <div class="fi-stat">
-      <div class="fi-stat-value">{_stats.avg_hours || 0}<span class="fi-stat-unit">h</span></div>
+      <div class="fi-stat-value">{_stats.avg_hours || 0}<span class="fi-stat-unit">{$_('fasting_insights.unit_hours')}</span></div>
       <div class="fi-stat-label">{$_('fasting_insights.avg_duration')}</div>
     </div>
     <div class="fi-stat">
-      <div class="fi-stat-value">{_stats.longest_hours || 0}<span class="fi-stat-unit">h</span></div>
+      <div class="fi-stat-value">{_stats.longest_hours || 0}<span class="fi-stat-unit">{$_('fasting_insights.unit_hours')}</span></div>
       <div class="fi-stat-label">{$_('fasting_insights.longest')}</div>
     </div>
     <div class="fi-stat">
-      <div class="fi-stat-value">{_stats.current_streak}<span class="fi-stat-unit">d</span></div>
+      <div class="fi-stat-value">{_stats.current_streak}<span class="fi-stat-unit">{$_('fasting_insights.unit_days')}</span></div>
       <div class="fi-stat-label">{$_('fasting_insights.current_streak')}</div>
     </div>
     <div class="fi-stat">
-      <div class="fi-stat-value">{_stats.longest_streak}<span class="fi-stat-unit">d</span></div>
+      <div class="fi-stat-value">{_stats.longest_streak}<span class="fi-stat-unit">{$_('fasting_insights.unit_days')}</span></div>
       <div class="fi-stat-label">{$_('fasting_insights.longest_streak')}</div>
     </div>
   </div>
@@ -103,20 +105,20 @@
       <div class="fi-chart-col">
         <div class="fi-chart-bar-wrap">
           <div class="fi-chart-bar" style="height:{(d.hours / _maxHours * 100).toFixed(1)}%"
-            title="{d.day} · {d.hours.toFixed(1)}h"></div>
+            title={`${d.day} · ${$_('fasting.hours_short', { values: { h: d.hours.toFixed(1) } })}`}></div>
         </div>
         <div class="fi-chart-label">{d.label}</div>
       </div>
     {/each}
   </div>
-  <div class="fi-chart-caption">Last 14 days · {_stats.count} fast{_stats.count === 1 ? '' : 's'} logged</div>
+  <div class="fi-chart-caption">{$_('fasting_insights.last_14_days', { values: { count: _stats.count } })}</div>
 
   {#if $fastHistory && $fastHistory.length > 0}
     <button class="fi-history-toggle" type="button"
       on:click={() => _showHistory = !_showHistory}
       aria-expanded={_showHistory}>
       <span class="material-symbols-rounded" class:rot={_showHistory}>expand_more</span>
-      {_showHistory ? 'Hide' : 'Show'} Recent Fasts
+      {_showHistory ? $_('fasting_insights.hide_recent') : $_('fasting_insights.show_recent')}
     </button>
     {#if _showHistory}
       <div class="fi-history" transition:slide={{ duration: 180 }}>
@@ -127,11 +129,11 @@
               <span class="fi-history-day">{_fmtDayLabel(f.start_at)}</span>
               <span class="fi-history-dur">{_fmtDuration(f.start_at, f.end_at)}</span>
               <span class="fi-history-goal" class:met={goalMet}>
-                Goal {f.goal_hours}h{goalMet ? ' ✓' : ''}
+                {$_('fasting_insights.goal', { values: { hours: f.goal_hours } })}{goalMet ? ' ✓' : ''}
               </span>
             </div>
             <button class="btn-icon fi-history-del" on:click={() => _removeFast(f)}
-              aria-label="Remove this fast" title="Remove this fast">
+              aria-label={$_('fasting_insights.remove_aria')} title={$_('fasting_insights.remove_aria')}>
               <span class="material-symbols-rounded">close</span>
             </button>
           </div>

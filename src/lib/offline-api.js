@@ -29,6 +29,8 @@ import {
 // no copy of it. This is what "Failed to fetch dynamically imported module"
 // looked like from the outside.
 import { embeddableDataUrl } from './image-embed.js';
+import { t } from './i18n-t.js';
+import { localizeError } from './server-errors.js';
 
 const RETRY_MIN_MS = 3_000;
 const RETRY_MAX_MS = 30_000;
@@ -230,7 +232,7 @@ const _fixFastPath = (path) =>
   String(path).replace(/^\/api\/fasts\/(-?\d+)/, (_all, id) => `/api/fasts/${_realId(id)}`);
 
 function _offlineError(message) {
-  const err = new Error(message || 'This needs a connection.');
+  const err = new Error(message || t('offline.needs_connection'));
   err.offline = true;
   return err;
 }
@@ -434,7 +436,7 @@ async function _flushOnce() {
         await _send(op.method, op.path, op.body);
       } catch (err) {
         const offline = isOfflineError(err);
-        _publish({ syncing: false, online: offline ? false : _online(), error: offline ? null : (err.message || 'failed') });
+        _publish({ syncing: false, online: offline ? false : _online(), error: offline ? null : localizeError(err.message || 'failed') });
         if (!offline) console.error(`[offline] your server refused ${op.kind}: ${err.message}`);
         _scheduleFlush(_backoff());
         return false;
@@ -456,7 +458,7 @@ async function _flushOnce() {
       foodResponse = await _post('/api/sync/push', { ...buildCatalogPush(foodOps), client_now: new Date().toISOString() });
     } catch (err) {
       const offline = isOfflineError(err);
-      _publish({ syncing: false, online: offline ? false : _online(), error: offline ? null : (err.message || 'failed') });
+      _publish({ syncing: false, online: offline ? false : _online(), error: offline ? null : localizeError(err.message || 'failed') });
       _scheduleFlush(_backoff());
       return false;
     }
@@ -466,7 +468,7 @@ async function _flushOnce() {
       // person who logged it hears about it: a red cloud on its own tells
       // nobody why. Also into the log behind Settings, Diagnostics.
       console.error(`[offline] your server refused what was waiting: ${foodFailed}`);
-      _publish({ syncing: false, error: foodFailed, online: true });
+      _publish({ syncing: false, error: localizeError(foodFailed), online: true });
       _scheduleFlush(_backoff());
       return false;
     }
@@ -511,14 +513,14 @@ async function _flushOnce() {
     response = await _post('/api/sync/push', { ...buildDiaryPush(diaryOps, mirror), client_now: new Date().toISOString() });
   } catch (err) {
     const offline = isOfflineError(err);
-    _publish({ syncing: false, online: offline ? false : _online(), error: offline ? null : (err.message || 'failed') });
+    _publish({ syncing: false, online: offline ? false : _online(), error: offline ? null : localizeError(err.message || 'failed') });
     _scheduleFlush(_backoff());
     return false;
   }
   const failed = pushError(response);
   if (failed) {
     console.error(`[offline] your server refused what was waiting: ${failed}`);
-    _publish({ syncing: false, error: failed, online: true });
+    _publish({ syncing: false, error: localizeError(failed), online: true });
     _scheduleFlush(_backoff());
     return false;
   }

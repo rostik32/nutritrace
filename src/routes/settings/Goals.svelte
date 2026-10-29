@@ -24,7 +24,7 @@
           on:click={() => calorieGoalMode.set('fixed')}>{$_('settings_goals.mode_fixed')}</button>
         <button class="seg-opt" class:seg-active={$calorieGoalMode === 'dynamic'}
           disabled={!_hasWearable}
-          title={!_hasWearable ? 'Connect a wearable in Wellness first' : ''}
+          title={!_hasWearable ? $_('settings_goals.connect_wearable_first') : ''}
           on:click={() => _hasWearable && calorieGoalMode.set('dynamic')}>{$_('settings_goals.mode_dynamic')}</button>
         <button class="seg-opt" class:seg-active={$calorieGoalMode === 'adaptive'}
           on:click={() => calorieGoalMode.set('adaptive')}>{$_('settings_goals.mode_adaptive')}</button>
@@ -38,30 +38,30 @@
     {#if $calorieGoalMode === 'fixed'}
       <div class="setting-divider"></div>
       <p class="setting-desc" style="padding:8px var(--page-px)">
-        Uses the calorie target from your goal templates as the daily goal.
+        {$_('settings_goals.fixed_desc')}
       </p>
     {:else if $calorieGoalMode === 'dynamic'}
       <div class="setting-divider"></div>
       <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:8px">
         <span class="setting-label">{$_('settings_goals.goal_factor')}</span>
         <div class="seg-control" style="width:100%;--seg-count:3;--seg-active:{$calorieGoalFactor === 0.8 ? 0 : $calorieGoalFactor === 1.2 ? 2 : 1}">
-          <button class="seg-opt" class:seg-active={$calorieGoalFactor === 0.8}  on:click={() => calorieGoalFactor.set(0.8)}>Lose −20%</button>
+          <button class="seg-opt" class:seg-active={$calorieGoalFactor === 0.8}  on:click={() => calorieGoalFactor.set(0.8)}>{$_('settings_goals.factor_lose')}</button>
           <button class="seg-opt" class:seg-active={$calorieGoalFactor === 1.0}  on:click={() => calorieGoalFactor.set(1.0)}>{$_('settings_goals.factor_maintain')}</button>
-          <button class="seg-opt" class:seg-active={$calorieGoalFactor === 1.2}  on:click={() => calorieGoalFactor.set(1.2)}>Gain +20%</button>
+          <button class="seg-opt" class:seg-active={$calorieGoalFactor === 1.2}  on:click={() => calorieGoalFactor.set(1.2)}>{$_('settings_goals.factor_gain')}</button>
         </div>
       </div>
       <div class="setting-divider"></div>
       <p class="setting-desc" style="padding:8px var(--page-px)">
-        Uses yesterday's final calorie burn from your wearable, multiplied by the factor. Falls back to your fixed goal if no data is available.
+        {$_('settings_goals.dynamic_desc')}
       </p>
     {:else if $calorieGoalMode === 'adaptive'}
       <div class="setting-divider"></div>
       <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:8px">
         <span class="setting-label">{$_('settings_goals.goal_factor')}</span>
         <div class="seg-control" style="width:100%;--seg-count:3;--seg-active:{$calorieGoalFactor === 0.8 ? 0 : $calorieGoalFactor === 1.2 ? 2 : 1}">
-          <button class="seg-opt" class:seg-active={$calorieGoalFactor === 0.8}  on:click={() => calorieGoalFactor.set(0.8)}>Lose −20%</button>
+          <button class="seg-opt" class:seg-active={$calorieGoalFactor === 0.8}  on:click={() => calorieGoalFactor.set(0.8)}>{$_('settings_goals.factor_lose')}</button>
           <button class="seg-opt" class:seg-active={$calorieGoalFactor === 1.0}  on:click={() => calorieGoalFactor.set(1.0)}>{$_('settings_goals.factor_maintain')}</button>
-          <button class="seg-opt" class:seg-active={$calorieGoalFactor === 1.2}  on:click={() => calorieGoalFactor.set(1.2)}>Gain +20%</button>
+          <button class="seg-opt" class:seg-active={$calorieGoalFactor === 1.2}  on:click={() => calorieGoalFactor.set(1.2)}>{$_('settings_goals.factor_gain')}</button>
         </div>
       </div>
       <div class="setting-divider"></div>

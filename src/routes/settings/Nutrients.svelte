@@ -99,8 +99,8 @@
 <div class="section-body">
 
   <!-- Group: Visible Nutrients -->
-  <p class="settings-group-heading">Visible Nutrients</p>
-  <p class="settings-group-sub">Drag to reorder. Toggle off any nutrient you don't want shown in the diary and food editor.</p>
+  <p class="settings-group-heading">{$_('settings_custom_nutrient.visible_heading')}</p>
+  <p class="settings-group-sub">{$_('settings_custom_nutrient.visible_sub')}</p>
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="card settings-card drag-list"
     on:pointermove={onNutDragMove}
@@ -126,14 +126,14 @@
 
   <!-- Group: Custom Nutrients -->
   <p class="settings-group-heading">{$_('settings_stats.custom_nutrients')}</p>
-  <p class="settings-group-sub">Track nutrients not covered by the built-in list (e.g. Omega-3).</p>
+  <p class="settings-group-sub">{$_('settings_custom_nutrient.custom_sub')}</p>
   <div class="card settings-card">
     {#each ($customNutriments || []) as cn, i}
       {#if i > 0}<div class="setting-divider"></div>{/if}
       <div class="setting-row">
         <span class="setting-label">{cn.label} ({cn.unit})</span>
         <button class="btn-icon" style="width:32px;height:32px;color:var(--danger)"
-          on:click={() => removeCustomNutrient(cn.id)} title="Remove nutrient">
+          on:click={() => removeCustomNutrient(cn.id)} title={$_('settings_custom_nutrient.remove')}>
           <span class="material-symbols-rounded" style="font-size:18px">delete</span>
         </button>
       </div>
@@ -146,21 +146,21 @@
       <button class="btn btn-secondary" style="height:36px;font-size:13px"
         on:click={() => showNutrientSheet = true}>
         <span class="material-symbols-rounded" style="font-size:18px">add</span>
-        Add custom nutrient
+        {$_('settings_custom_nutrient.add_custom')}
       </button>
     </div>
   </div>
 </div>
 
 <!-- Custom nutrient sheet -->
-<Sheet bind:open={showNutrientSheet} title="Add Custom Nutrient">
+<Sheet bind:open={showNutrientSheet} title={$_('settings_custom_nutrient.sheet_title')}>
   <div style="display:flex;flex-direction:column;gap:16px;padding-top:8px">
     <div class="form-group">
       <label class="form-label" for="cn-label">{$_('settings_custom_nutrient.name')}</label>
-      <input id="cn-label" class="input" placeholder="e.g. Omega-3" bind:value={newNutrient.label} />
+      <input id="cn-label" class="input" placeholder={$_('settings_custom_nutrient.name_placeholder')} bind:value={newNutrient.label} />
     </div>
     <div class="form-group">
-      <label class="form-label" for="cn-unit">Unit</label>
+      <label class="form-label" for="cn-unit">{$_('food_editor.field_unit')}</label>
       <div class="select-wrap">
         <select id="cn-unit" class="select" bind:value={newNutrient.unit}>
           <option value="g">g</option>

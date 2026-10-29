@@ -1,4 +1,5 @@
-import { register, init, getLocaleFromNavigator } from 'svelte-i18n';
+import { register, init, getLocaleFromNavigator, locale } from 'svelte-i18n';
+import { get } from 'svelte/store';
 
 // Languages with a dedicated locale file. As contributors add translations,
 // register them here and add an entry to AVAILABLE_LOCALES so the language
@@ -8,6 +9,7 @@ register('fr', () => import('./fr.json'));
 register('de', () => import('./de.json'));
 register('es', () => import('./es.json'));
 register('ru', () => import('./ru.json'));
+register('uk', () => import('./uk.json'));
 
 export const AVAILABLE_LOCALES = [
   { code: 'en', label: 'English' },
@@ -15,6 +17,7 @@ export const AVAILABLE_LOCALES = [
   { code: 'de', label: 'Deutsch' },
   { code: 'es', label: 'Español' },
   { code: 'ru', label: 'Русский' },
+  { code: 'uk', label: 'Українська' },
 ];
 
 export function initI18n(initialLocale) {
@@ -33,4 +36,11 @@ function pickInitialLocale() {
   if (!nav) return 'en';
   const short = nav.split('-')[0];
   return AVAILABLE_LOCALES.some(l => l.code === short) ? short : 'en';
+}
+
+// Locale for Intl date formatting (weekday and month names), so dates follow
+// the app language instead of the browser's. Pass it where the code would
+// otherwise pass `undefined`: d.toLocaleDateString(intlLocale(), { ... }).
+export function intlLocale() {
+  return get(locale) || undefined;
 }

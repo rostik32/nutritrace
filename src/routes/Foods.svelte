@@ -2,6 +2,7 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import { push, location } from 'svelte-spa-router';
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../lib/server-errors.js';
   import { closeOnBack } from '../lib/back-stack.js';
   import { fade, fly, slide } from 'svelte/transition';
 
@@ -31,7 +32,7 @@
   import { resolveAssetUrl, isNative } from '../lib/platform.js';
   import { itemSourceRef } from '../lib/item-source.js';
   import { offCountryTagToFlag, offCountryTagToName } from '../lib/off-country-flag.js';
-  import { foodsShowThumbnails, foodsShowCategories, foodsShowLabels, foodsShowNotes, foodsSort, mealsSort, recipesSort, foodCategories, foodsShowYesterdayMeals, foodsYesterdayCollapsed, foodsSavedCollapsed, mealNames, usdaEnabled, usdaApiKey, offEnabled, offSearchCountry, offSearchLanguage, foodsSearchExcluded, envLocks, diaryDefaultField, catName as _catName, catDisplay as _catDisplay, pageBanners, bannerStyle, energyUnit } from '../stores/settings.js';
+  import { foodsShowThumbnails, foodsShowCategories, foodsShowLabels, foodsShowNotes, foodsSort, mealsSort, recipesSort, foodCategories, foodsShowYesterdayMeals, foodsYesterdayCollapsed, foodsSavedCollapsed, mealNames, displayMealNames, usdaEnabled, usdaApiKey, offEnabled, offSearchCountry, offSearchLanguage, foodsSearchExcluded, envLocks, diaryDefaultField, catName as _catName, catDisplay as _catDisplay, pageBanners, bannerStyle, energyUnit } from '../stores/settings.js';
   import { mealIcon, mealColor } from '../lib/mealIcon.js';
   import { focusDefaultField } from '../lib/default-field.js';
   import { pageScrollTop, restorePageScroll } from '../lib/scroll-anchor.js';
@@ -51,10 +52,10 @@
   $: pickMeal  = params.meal;
   $: pickDate  = params.date;
 
-  const TABS = [
-    { label: 'Foods',   value: 'foodList' },
-    { label: 'Meals',   value: 'meals' },
-    { label: 'Recipes', value: 'recipes' },
+  $: TABS = [
+    { label: $_('meal_editor.picker_tab_foods'),   value: 'foodList' },
+    { label: $_('meal_editor.picker_tab_meals'),   value: 'meals' },
+    { label: $_('meal_editor.picker_tab_recipes'), value: 'recipes' },
   ];
   let activeTab = 0;
   // Reset source + category filter when switching tabs (not when searchSource itself changes)
@@ -309,7 +310,7 @@
         NtApi.getGroupMeals(),
         NtApi.getGroupRecipes(),
       ]);
-    } catch(e) { console.error('[foods] group load error:', e); showError('Could not load shared items'); }
+    } catch(e) { console.error('[foods] group load error:', e); showError($_('foods_deep.shared_load_failed')); }
     finally { loadingGroup = false; }
   }
 
@@ -318,7 +319,7 @@
       const isMeal = activeTab === 1 || activeTab === 2;
       return isMeal ? await NtApi.copyMeal(food.id) : await NtApi.copyFood(food.id);
     } catch(e) {
-      showError('Could not copy item: ' + e.message);
+      showError($_('foods_deep.copy_failed', { values: { error: localizeError(e.message) } }));
       return null;
     }
   }
@@ -575,7 +576,7 @@
   $: _pickMealRows = _pickHistory ? (pickSub === 'most' ? _pickHistory.meal.most : _pickHistory.meal.recent) : [];
   $: _pickAllRows = _pickHistory ? (pickSub === 'most' ? _pickHistory.all.most : _pickHistory.all.recent) : [];
   $: _pickMealKey = pickSub === 'most' ? 'mealMost' : 'mealRecent';
-  $: _pickMealName = ($mealNames || ['Breakfast', 'Lunch', 'Dinner', 'Snacks'])[Number(pickMeal) || 0] || '';
+  $: _pickMealName = $displayMealNames[Number(pickMeal) || 0] || '';
   $: _pickAllKey = pickSub === 'most' ? 'allMost' : 'allRecent';
   $: if (pickMode) loadPickHistory();
 
@@ -615,6 +616,11 @@
 
   // Convert item portions to grams for total serving display
   const _toG = { g:1, ml:1, oz:28.35, lb:453.59, cup:240, tbsp:15, tsp:5 };
+  // Escapes a value interpolated into a message rendered with {@html}.
+  function _escHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  }
+
   function mealServing(items) {
     if (!items?.length) return '0g';
     const total = items.reduce((s, i) => s + (parseFloat(i.portion)||0) * (_toG[i.unit] ?? 1), 0);
@@ -1122,11 +1128,11 @@
   async function pickMealieRecipe(summary) {
     try {
       const full = await Mealie.getRecipe(summary.slug);
-      if (!full) { showError('Could not load recipe from Mealie'); return; }
+      if (!full) { showError($_('foods_deep.recipe_load_failed', { values: { source: 'Mealie' } })); return; }
       const mapped = Mealie.mapRecipe(full);
       openEditor(mapped, 'foodList');
     } catch(e) {
-      showError(_sourcesOffline ? $_('foods.offline.import') : 'Failed to import from Mealie');
+      showError(_sourcesOffline ? $_('foods.offline.import') : $_('foods_deep.import_failed', { values: { source: 'Mealie' } }));
     }
   }
 
@@ -1139,11 +1145,11 @@
   async function pickCooktraceRecipe(summary) {
     try {
       const full = await CookTrace.getRecipe(summary.id);
-      if (!full) { showError('Could not load recipe from CookTrace'); return; }
+      if (!full) { showError($_('foods_deep.recipe_load_failed', { values: { source: 'CookTrace' } })); return; }
       const mapped = CookTrace.mapRecipe(full);
       openMealEditor(mapped, true);
     } catch (e) {
-      showError(_sourcesOffline ? $_('foods.offline.import') : 'Failed to import from CookTrace');
+      showError(_sourcesOffline ? $_('foods.offline.import') : $_('foods_deep.import_failed', { values: { source: 'CookTrace' } }));
     }
   }
 
@@ -1239,8 +1245,8 @@
     };
     await addDiaryItem(item, chosenMeal);
     editorState.lastMealAdded = chosenMeal;
-    const names = mealNames.get() || ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
-    showSuccess($_('foods.detail.added_to', { values: { meal: names[chosenMeal] || 'meal' } }));
+    const names = $displayMealNames;
+    showSuccess($_('foods.detail.added_to', { values: { meal: names[chosenMeal] || $_('foods_deep.meal_fallback') } }));
   }
 
   function openMealEditor(item, isRecipe) {
@@ -1321,7 +1327,7 @@
       const mine = await copyAndUse(food);
       if (!mine) return;
       food = mine;
-      showSuccess('Saved to your catalog');
+      showSuccess($_('meal_editor.saved_to_catalog'));
       await load();
     }
 
@@ -1484,7 +1490,7 @@
           await addDiaryItem({ ...item, quantity: item.quantity || 1 }, Number(pickMeal) || 0, pickDate || undefined);
         }
       }
-      showSuccess(`Added ${foods.length} meal${foods.length > 1 ? 's' : ''} to diary`);
+      showSuccess($_('foods_deep.added_meals_to_diary', { values: { count: foods.length } }));
       editorState.lastMealAdded = Number(pickMeal) || 0;
       multiAdding = false;
       history.back();
@@ -1524,7 +1530,7 @@
       if (tick) await _addFoodToDiaryNoNav(_scaledFood(food, tick.portion, tick.unit), tick.servings);
       else await _addFoodToDiaryNoNav(food, 1);
     }
-    showSuccess(`Added ${foods.length} item${foods.length > 1 ? 's' : ''} to diary`);
+    showSuccess($_('foods_deep.added_items_to_diary', { values: { count: foods.length } }));
     editorState.lastMealAdded = Number(pickMeal) || 0;
     multiAdding = false;
     history.back();
@@ -1544,7 +1550,7 @@
       const food = { ...item.food, portion: newPortion, unit: item.unit, nutrition: scaledNutrition };
       await _addFoodToDiaryNoNav(food, parseDecimal(item.servings) || 1);
     }
-    showSuccess(`Added ${multiPortionItems.length} item${multiPortionItems.length > 1 ? 's' : ''} to diary`);
+    showSuccess($_('foods_deep.added_items_to_diary', { values: { count: multiPortionItems.length } }));
     editorState.lastMealAdded = Number(pickMeal) || 0;
     multiAdding = false;
     history.back();
@@ -1707,13 +1713,13 @@
     showBulkDeleteDialog = false;
     exitManageMode();
     await load();
-    if (fail === 0) showSuccess(`Deleted ${ok} ${ok === 1 ? 'item' : 'items'}`);
-    else showError(`Deleted ${ok} of ${ids.length}; ${fail} failed`);
+    if (fail === 0) showSuccess($_('foods_deep.deleted_n', { values: { count: ok } }));
+    else showError($_('foods_deep.deleted_partial', { values: { ok, total: ids.length, fail } }));
   }
 
   async function cloneItem(item) {
     const { id: _drop, ...rest } = item;
-    const clone = { ...rest, name: 'Copy of ' + (item.name || ''), created_at: new Date().toISOString() };
+    const clone = { ...rest, name: $_('foods_deep.copy_of', { values: { name: item.name || '' } }), created_at: new Date().toISOString() };
     if (currentStore === 'foodList') await NtApi.createFood(clone);
     else await NtApi.createMeal(clone);
     await load();
@@ -1723,12 +1729,12 @@
   $: _itemActionList = foodItemActions(selectedItem, { pickMode, foodsTab: activeTab === 0 }).map(value => ({
     value,
     ...{
-      copy:   { label: 'Save to My Catalog', icon: 'bookmark_add' },
-      save:   { label: 'Save to My Foods', icon: 'bookmark_add' },
-      edit:   { label: pickMode && activeTab === 0 ? $_('foods.item_actions.edit_and_add') : 'Edit', icon: 'edit' },
-      clone:  { label: 'Clone', icon: 'content_copy' },
-      select: { label: 'Select Multiple', icon: 'checklist' },
-      delete: { label: 'Delete', icon: 'delete', danger: true },
+      copy:   { label: $_('food_editor.save_to_catalog'), icon: 'bookmark_add' },
+      save:   { label: $_('foods_deep.save_to_my_foods'), icon: 'bookmark_add' },
+      edit:   { label: pickMode && activeTab === 0 ? $_('foods.item_actions.edit_and_add') : $_('foods.detail.edit'), icon: 'edit' },
+      clone:  { label: $_('foods_deep.clone'), icon: 'content_copy' },
+      select: { label: $_('foods_deep.select_multiple'), icon: 'checklist' },
+      delete: { label: $_('common.delete'), icon: 'delete', danger: true },
     }[value],
   }));
 
@@ -1764,7 +1770,7 @@
       showSuccess($_('foods.toast.saved_to_my_foods'));
       await load();
     } catch (e) {
-      showError('Could not save: ' + e.message);
+      showError($_('foods_deep.save_failed', { values: { error: localizeError(e.message) } }));
     }
   }
 
@@ -1777,7 +1783,7 @@
     } else if (detail.value === 'clone') {
       cloneItem(selectedItem);
     } else if (detail.value === 'copy') {
-      copyAndUse(selectedItem).then(() => { showSuccess('Saved to your catalog'); load(); });
+      copyAndUse(selectedItem).then(() => { showSuccess($_('meal_editor.saved_to_catalog')); load(); });
     } else if (detail.value === 'save') {
       _saveFoundFood(selectedItem);
     } else if (detail.value === 'delete') {
@@ -1913,13 +1919,13 @@
       } else {
         if ($offEnabled) {
           const { showInfo: si } = await import('../stores/toast.js');
-          si('Not in Open Food Facts — enter the food and contribute it back if you want');
+          si($_('foods_deep.barcode_not_in_off'));
         }
         openEditor({ barcode: code }, 'foodList');
       }
     } catch(e) {
       const { showError: se } = await import('../stores/toast.js');
-      se('Lookup failed — opening editor so you can enter manually');
+      se($_('foods_deep.barcode_lookup_failed'));
       openEditor({ barcode: code }, 'foodList');
     } finally {
       _scanLookupActive = false;
@@ -1935,7 +1941,7 @@
     const yStr = localDateStr(yDate);
     const entry = await NtApi.getDiaryDate(yStr);
     if (!entry || !entry.items || !entry.items.length) { yesterdayMeals = []; return; }
-    const names = $mealNames || ['Breakfast','Lunch','Dinner','Snacks'];
+    const names = $displayMealNames;
     const groups = {};
     for (const item of entry.items) {
       const m = item.meal != null ? Number(item.meal) : 0;
@@ -1944,7 +1950,7 @@
     }
     yesterdayMeals = Object.entries(groups).map(([mIdx, items]) => ({
       mealIdx: Number(mIdx),
-      mealName: names[Number(mIdx)] || ('Meal ' + (Number(mIdx)+1)),
+      mealName: names[Number(mIdx)] || $_('settings_main_deep.meal_placeholder', { values: { n: Number(mIdx)+1 } }),
       items,
       totalKcal: Math.round(items.reduce((s,i) => {
         const factor = (i.quantity || 1);
@@ -2006,7 +2012,7 @@
       const imgUrl = liveImgFor(item);
       await addDiaryItem({ ...item, imgUrl }, targetMeal, pickDate);
     }
-    import('../stores/toast.js').then(m => m.showSuccess('Added ' + group.mealName));
+    import('../stores/toast.js').then(m => m.showSuccess($_('foods_deep.added_meal', { values: { name: group.mealName } })));
     editorState.lastMealAdded = targetMeal;
     history.back();
   }
@@ -2210,25 +2216,25 @@
   <!-- Manage-mode action icons — fixed at top-right, matches Diary UX -->
   {#if manageMode}
     <div use:portal class="foods-topbar-actions">
-      <button class="btn-icon" on:click={exitManageMode} aria-label="Cancel selection" title="Cancel">
+      <button class="btn-icon" on:click={exitManageMode} aria-label={$_('foods_deep.cancel_selection')} title={$_('common.cancel')}>
         <span class="material-symbols-rounded">close</span>
       </button>
       <button class="btn-icon"
         disabled={_visibleManageableIds.length === 0 || _allVisibleSelected || bulkDeleting}
         on:click={selectAllVisible}
-        aria-label="Select all visible" title="Select all">
+        aria-label={$_('foods_deep.select_all_visible')} title={$_('foods_deep.select_all')}>
         <span class="material-symbols-rounded">select_all</span>
       </button>
       <button class="btn-icon"
         disabled={manageSelected.size === 0 || bulkDeleting}
         on:click={selectNoneVisible}
-        aria-label="Select none" title="Select none">
+        aria-label={$_('foods_deep.select_none')} title={$_('foods_deep.select_none')}>
         <span class="material-symbols-rounded">deselect</span>
       </button>
       <button class="btn-icon" style="color:var(--danger)"
         disabled={manageSelected.size === 0 || bulkDeleting}
         on:click={() => (showBulkDeleteDialog = true)}
-        aria-label="Delete selected" title="Delete">
+        aria-label={$_('foods_deep.delete_selected')} title={$_('common.delete')}>
         <span class="material-symbols-rounded" class:spin={bulkDeleting}>{bulkDeleting ? 'refresh' : 'delete'}</span>
       </button>
     </div>
@@ -2249,7 +2255,7 @@
         {/if}
       </button>
     {:else if manageMode}
-      <h1 class="select-mode-title">{manageSelected.size} selected</h1>
+      <h1 class="select-mode-title">{$_('foods.n_selected', { values: { n: manageSelected.size } })}</h1>
     {:else}
       <h1>{$_('routes.foods.title')}</h1>
       <button class="btn-icon accent" on:click={() => {
@@ -2351,7 +2357,7 @@
              more than one source to pick from. Meals/Recipes with
              just Local (no shared users) hide the section entirely
              — no dead heading with a single chip beneath. -->
-        <p class="foods-filter-heading">Sources</p>
+        <p class="foods-filter-heading">{$_('foods.search.filter_sources')}</p>
         <div class="foods-rail-chips foods-rail-sources">
           {@render sourceChips()}
         </div>
@@ -2359,7 +2365,7 @@
       {#if activeTab !== 0 && availableSources.length <= 1}
         <!-- Rail would be empty otherwise — leave a low-key hint so
              the column doesn't render as a mysteriously-empty box. -->
-        <p class="foods-filter-empty">No filters available for this tab.</p>
+        <p class="foods-filter-empty">{$_('foods_deep.no_filters')}</p>
       {/if}
     </aside>
     {/if}
@@ -2371,7 +2377,7 @@
     <button class="meal-section-header" type="button"
       on:click={() => foodsYesterdayCollapsed.set(!$foodsYesterdayCollapsed)}
       aria-expanded={!$foodsYesterdayCollapsed}>
-      <span class="meal-section-label">Yesterday's Meals</span>
+      <span class="meal-section-label">{$_('foods_deep.yesterday_meals')}</span>
       <span class="material-symbols-rounded meal-section-chevron"
         class:meal-section-chevron-collapsed={$foodsYesterdayCollapsed}>expand_more</span>
     </button>
@@ -2387,15 +2393,15 @@
             </div>
             <div class="food-info">
               <span class="food-name">{group.mealName}</span>
-              <span class="food-kcal text-sm">{group.items.length} items · {_grpEnergy.value.toLocaleString()} {_grpEnergy.unit}</span>
+              <span class="food-kcal text-sm">{$_('meal_editor.items_count', { values: { count: group.items.length } })} · {_grpEnergy.value.toLocaleString()} {_grpEnergy.unit}</span>
             </div>
           </button>
           <button class="btn-icon" on:click|stopPropagation={() => yesterdayInfoGroup = group}
-            aria-label="Show items in {group.mealName}" title="Show items">
+            aria-label={$_('foods_deep.show_items_in', { values: { name: group.mealName } })} title={$_('foods_deep.show_items')}>
             <span class="material-symbols-rounded">info</span>
           </button>
           <button class="btn-icon accent" on:click|stopPropagation={() => addYesterdayMeal(group)}
-            aria-label="Add {group.mealName} to today" title="Add to today">
+            aria-label={$_('foods_deep.add_meal_to_today', { values: { name: group.mealName } })} title={$_('foods_deep.add_to_today')}>
             <span class="material-symbols-rounded">add_circle</span>
           </button>
         </div>
@@ -2531,13 +2537,13 @@
                 class:food-selected={_sel || _mSel}
                 class:food-pane-active={source === 'own' && item.id != null && _paneFood?.id === item.id}>
               {#if pickMode && _fsSelectable(source)}
-                <button class="food-select-btn" on:click={() => toggleSelect(item)} aria-label="Select">
+                <button class="food-select-btn" on:click={() => toggleSelect(item)} aria-label={$_('meal_editor.select')}>
                   <span class="food-check material-symbols-rounded" class:food-check-on={_sel}>
                     {_sel ? 'check_circle' : 'radio_button_unchecked'}
                   </span>
                 </button>
               {:else if manageMode && source === 'own'}
-                <button class="food-select-btn" on:click={() => toggleManageSelect(item)} aria-label="Select">
+                <button class="food-select-btn" on:click={() => toggleManageSelect(item)} aria-label={$_('meal_editor.select')}>
                   <span class="food-check material-symbols-rounded" class:food-check-on={_mSel}>
                     {_mSel ? 'check_circle' : 'radio_button_unchecked'}
                   </span>
@@ -2566,12 +2572,12 @@
                 {/if}
                 <div class="food-info">
                   <span class="food-name">
-                    {#if isMine && item.favorite}<span class="material-symbols-rounded fav-mark" title="Favorite">favorite</span>{/if}
+                    {#if isMine && item.favorite}<span class="material-symbols-rounded fav-mark" title={$_('foods_deep.favorite_mark')}>favorite</span>{/if}
                     {item.name}
                     {#if (source === 'off' || source === 'off-live') && item.originTag}
                       {@const _flag = offCountryTagToFlag(item.originTag)}
                       {#if _flag}
-                        <span class="off-origin-flag" title={`Made in ${offCountryTagToName(item.originTag)}`} aria-label={`Origin: ${offCountryTagToName(item.originTag)}`}>{_flag}</span>
+                        <span class="off-origin-flag" title={$_('foods_deep.made_in', { values: { country: offCountryTagToName(item.originTag) } })} aria-label={$_('foods_deep.origin', { values: { country: offCountryTagToName(item.originTag) } })}>{_flag}</span>
                       {/if}
                     {/if}
                   </span>
@@ -2584,14 +2590,14 @@
                     <span class="food-kcal text-sm">
                       {#if (source === 'off' || source === 'off-live') && _offNoValues(item)}{$_('foods.off_no_values_listed')}{:else}{_energy.value.toLocaleString()} {_energy.unit}{/if}
                       {#if isMine} · {amountAndUnit(item.portion || 100, item.unit)}{/if}
-                      {#if isMine && item._shared_by} · <span style="color:var(--accent)">by {item._shared_by}</span>{/if}
+                      {#if isMine && item._shared_by} · <span style="color:var(--accent)">{$_('foods_deep.by_user', { values: { name: item._shared_by } })}</span>{/if}
                       {#if (source === 'off' || source === 'off-live') && typeof item.completeness === 'number'}
                         <span class="off-quality-dot"
                               class:off-q-hi={item.completeness >= 0.7}
                               class:off-q-mid={item.completeness >= 0.4 && item.completeness < 0.7}
                               class:off-q-lo={item.completeness < 0.4}
-                              title={`OFF data completeness: ${Math.round(item.completeness * 100)}%`}
-                              aria-label={`Data completeness ${Math.round(item.completeness * 100)}%`}></span>
+                              title={$_('foods_deep.off_completeness', { values: { pct: Math.round(item.completeness * 100) } })}
+                              aria-label={$_('foods_deep.data_completeness', { values: { pct: Math.round(item.completeness * 100) } })}></span>
                       {/if}
                       {#if source === 'usda' && item.dataType}
                         {@const _t = item.dataType}
@@ -2601,7 +2607,7 @@
                               class:usda-t-mid={_t === 'Survey (FNDDS)'}
                               class:usda-t-lo={_t === 'Branded' || _t === 'Experimental'}
                               title={`USDA ${_t}`}
-                              aria-label={`USDA data type ${_t}`}>{_abbr}</span>
+                              aria-label={$_('foods_deep.usda_type_aria', { values: { type: _t } })}>{_abbr}</span>
                       {/if}
                     </span>
                   {/if}
@@ -2691,7 +2697,7 @@
                 {/if}
                 <div class="food-info">
                   <span class="food-name">
-                    {#if source === 'local' && item.favorite}<span class="material-symbols-rounded fav-mark" title="Favorite">favorite</span>{/if}
+                    {#if source === 'local' && item.favorite}<span class="material-symbols-rounded fav-mark" title={$_('foods_deep.favorite_mark')}>favorite</span>{/if}
                     {item.name}
                     <!-- OFF origin-country flag — shown on any OFF item
                          with origin data, regardless of whether the user
@@ -2699,7 +2705,7 @@
                     {#if source === 'off' && item.originTag}
                       {@const _flag = offCountryTagToFlag(item.originTag)}
                       {#if _flag}
-                        <span class="off-origin-flag" title={`Made in ${offCountryTagToName(item.originTag)}`} aria-label={`Origin: ${offCountryTagToName(item.originTag)}`}>{_flag}</span>
+                        <span class="off-origin-flag" title={$_('foods_deep.made_in', { values: { country: offCountryTagToName(item.originTag) } })} aria-label={$_('foods_deep.origin', { values: { country: offCountryTagToName(item.originTag) } })}>{_flag}</span>
                       {/if}
                     {/if}
                   </span>
@@ -2718,8 +2724,8 @@
                                 class:off-q-hi={item.completeness >= 0.7}
                                 class:off-q-mid={item.completeness >= 0.4 && item.completeness < 0.7}
                                 class:off-q-lo={item.completeness < 0.4}
-                                title={`OFF data completeness: ${Math.round(item.completeness * 100)}%`}
-                                aria-label={`Data completeness ${Math.round(item.completeness * 100)}%`}></span>
+                                title={$_('foods_deep.off_completeness', { values: { pct: Math.round(item.completeness * 100) } })}
+                                aria-label={$_('foods_deep.data_completeness', { values: { pct: Math.round(item.completeness * 100) } })}></span>
                         {/if}
                         <!-- USDA data-type badge -->
                         {#if source === 'usda' && item.dataType}
@@ -2730,11 +2736,11 @@
                                 class:usda-t-mid={_t === 'Survey (FNDDS)'}
                                 class:usda-t-lo={_t === 'Branded' || _t === 'Experimental'}
                                 title={`USDA ${_t}`}
-                                aria-label={`USDA data type ${_t}`}>{_abbr}</span>
+                                aria-label={$_('foods_deep.usda_type_aria', { values: { type: _t } })}>{_abbr}</span>
                         {/if}
                       </span>
                     {/if}
-                    {#if source === 'shared' && item._shared_by}<span class="food-kcal text-sm" style="color:var(--accent)">by {item._shared_by}</span>{/if}
+                    {#if source === 'shared' && item._shared_by}<span class="food-kcal text-sm" style="color:var(--accent)">{$_('foods_deep.by_user', { values: { name: item._shared_by } })}</span>{/if}
                   {/if}
                 </div>
                 <span class="source-badge source-badge-{source}">
@@ -2757,24 +2763,24 @@
           {@const _localCount = (_ownList || []).filter(f => search.trim() ? _fuzzyMatch(f, search) : false).length}
           {@const _sharedCount = _tabHasShared ? (_groupList || []).filter(f => search.trim() ? _fuzzyMatch(f, search) : false).length : 0}
           <div class="all-source-counts">
-            <span class="asc-chip"><span class="asc-dot asc-local"></span>Local · {_localCount}</span>
+            <span class="asc-chip"><span class="asc-dot asc-local"></span>{$_('foods.sources.local')} · {_localCount}</span>
             {#if _tabHasShared}
-              <span class="asc-chip"><span class="asc-dot asc-shared"></span>Shared · {_sharedCount}</span>
+              <span class="asc-chip"><span class="asc-dot asc-shared"></span>{$_('foods.sources.shared')} · {_sharedCount}</span>
             {/if}
             {#if _mealieEnabled && activeTab === 0}
-              <span class="asc-chip"><span class="asc-dot asc-mealie"></span>Mealie · {#if _sourcesOffline}{$_('foods.offline.source')}{:else}{mealieResults.length}{#if _allMealieTotal > mealieResults.length} of {_allMealieTotal.toLocaleString()}{/if}{/if}</span>
+              <span class="asc-chip"><span class="asc-dot asc-mealie"></span>Mealie · {#if _sourcesOffline}{$_('foods.offline.source')}{:else}{#if _allMealieTotal > mealieResults.length}{$_('foods_deep.n_of_total', { values: { n: mealieResults.length, total: _allMealieTotal.toLocaleString() } })}{:else}{mealieResults.length}{/if}{/if}</span>
             {/if}
             {#if _cooktraceEnabled && activeTab === 2}
-              <span class="asc-chip"><span class="asc-dot asc-cooktrace"></span>CookTrace · {#if _sourcesOffline}{$_('foods.offline.source')}{:else}{cooktraceResults.length}{#if _allCooktraceTotal > cooktraceResults.length} of {_allCooktraceTotal.toLocaleString()}{/if}{/if}</span>
+              <span class="asc-chip"><span class="asc-dot asc-cooktrace"></span>CookTrace · {#if _sourcesOffline}{$_('foods.offline.source')}{:else}{#if _allCooktraceTotal > cooktraceResults.length}{$_('foods_deep.n_of_total', { values: { n: cooktraceResults.length, total: _allCooktraceTotal.toLocaleString() } })}{:else}{cooktraceResults.length}{/if}{/if}</span>
             {/if}
             {#if _cooktraceEnabled && activeTab === 0}
-              <span class="asc-chip"><span class="asc-dot asc-cooktrace"></span>CookTrace · {#if _sourcesOffline}{$_('foods.offline.source')}{:else}{ctPantryResults.length}{#if _allCtPantryTotal > ctPantryResults.length} of {_allCtPantryTotal.toLocaleString()}{/if}{/if}</span>
+              <span class="asc-chip"><span class="asc-dot asc-cooktrace"></span>CookTrace · {#if _sourcesOffline}{$_('foods.offline.source')}{:else}{#if _allCtPantryTotal > ctPantryResults.length}{$_('foods_deep.n_of_total', { values: { n: ctPantryResults.length, total: _allCtPantryTotal.toLocaleString() } })}{:else}{ctPantryResults.length}{/if}{/if}</span>
             {/if}
             {#if $offEnabled}
-              <span class="asc-chip"><span class="asc-dot asc-off"></span>OFF · {#if _sourcesOffline}{$_('foods.offline.source')}{:else}{offResults.length}{#if _allOffTotal > offResults.length} of {_allOffTotal.toLocaleString()}{/if}{/if}</span>
+              <span class="asc-chip"><span class="asc-dot asc-off"></span>OFF · {#if _sourcesOffline}{$_('foods.offline.source')}{:else}{#if _allOffTotal > offResults.length}{$_('foods_deep.n_of_total', { values: { n: offResults.length, total: _allOffTotal.toLocaleString() } })}{:else}{offResults.length}{/if}{/if}</span>
             {/if}
             {#if $usdaEnabled}
-              <span class="asc-chip"><span class="asc-dot asc-usda"></span>USDA · {#if _sourcesOffline}{$_('foods.offline.source')}{:else}{usdaResults.length}{#if _allUsdaTotal > usdaResults.length} of {_allUsdaTotal.toLocaleString()}{/if}{/if}</span>
+              <span class="asc-chip"><span class="asc-dot asc-usda"></span>USDA · {#if _sourcesOffline}{$_('foods.offline.source')}{:else}{#if _allUsdaTotal > usdaResults.length}{$_('foods_deep.n_of_total', { values: { n: usdaResults.length, total: _allUsdaTotal.toLocaleString() } })}{:else}{usdaResults.length}{/if}{/if}</span>
             {/if}
           </div>
         {/if}
@@ -2809,18 +2815,18 @@
           <span class="material-symbols-rounded empty-icon">
             {activeTab === 0 ? 'restaurant' : activeTab === 1 ? 'dinner_dining' : 'book'}
           </span>
-          <p>No {TABS[activeTab].label.toLowerCase()} yet</p>
+          <p>{$_(activeTab === 0 ? 'foods_deep.empty_foods' : activeTab === 1 ? 'foods_deep.empty_meals' : 'foods_deep.empty_recipes')}</p>
           <button class="btn btn-primary" on:click={() => {
             if (activeTab === 0) openEditor(null);
             else openMealEditor(null, activeTab === 2);
           }}>
-            Add {TABS[activeTab].label.slice(0,-1)}
+            {$_(activeTab === 0 ? 'foods_deep.add_food' : activeTab === 1 ? 'foods_deep.add_meal' : 'foods_deep.add_recipe')}
           </button>
         </div>
       {:else if filteredList.length === 0 && search}
         <div class="empty-state">
           <span class="material-symbols-rounded empty-icon">search_off</span>
-          <p>No matches for "{search}"</p>
+          <p>{$_('foods.search.no_matches', { values: { q: search } })}</p>
           {#if _sourcesOffline}
             <p class="empty-state-hint">{$_('foods.offline.search_hint')}</p>
           {:else if activeTab === 0}
@@ -2840,13 +2846,13 @@
                 class:food-pane-active={food.id != null && _paneFood?.id === food.id}
                 in:fade={{ duration: 160 }}>
               {#if pickMode}
-                <button class="food-select-btn" on:click={() => toggleSelect(food)} aria-label="Select">
+                <button class="food-select-btn" on:click={() => toggleSelect(food)} aria-label={$_('meal_editor.select')}>
                   <span class="food-check material-symbols-rounded" class:food-check-on={_sel}>
                     {_sel ? 'check_circle' : 'radio_button_unchecked'}
                   </span>
                 </button>
               {:else if manageMode}
-                <button class="food-select-btn" on:click={() => toggleManageSelect(food)} aria-label="Select">
+                <button class="food-select-btn" on:click={() => toggleManageSelect(food)} aria-label={$_('meal_editor.select')}>
                   <span class="food-check material-symbols-rounded" class:food-check-on={_mSel}>
                     {_mSel ? 'check_circle' : 'radio_button_unchecked'}
                   </span>
@@ -2867,16 +2873,16 @@
                 {/if}
                 <div class="food-info">
                   <span class="food-name">
-                    {#if food.favorite}<span class="material-symbols-rounded fav-mark" title="Favorite">favorite</span>{/if}
+                    {#if food.favorite}<span class="material-symbols-rounded fav-mark" title={$_('foods_deep.favorite_mark')}>favorite</span>{/if}
                     {food.name}
                   </span>
                   {#if activeTab === 0}
                     {#if food.brand}<span class="food-brand text-3 text-sm">{food.brand}</span>{/if}
-                    <span class="food-kcal text-sm">{amountAndUnit(food.portion || 100, food.unit)}{#if food.nutrition_basis && ($showUnitMetadata || $warnUnitMismatch)} · <span class="food-basis text-3">per 100 {food.nutrition_basis}</span>{/if}{#if food._shared_by} · <span style="color:var(--accent)">by {food._shared_by}</span>{/if}</span>
+                    <span class="food-kcal text-sm">{amountAndUnit(food.portion || 100, food.unit)}{#if food.nutrition_basis && ($showUnitMetadata || $warnUnitMismatch)} · <span class="food-basis text-3">{$_('foods_deep.per_100', { values: { basis: food.nutrition_basis } })}</span>{/if}{#if food._shared_by} · <span style="color:var(--accent)">{$_('foods_deep.by_user', { values: { name: food._shared_by } })}</span>{/if}</span>
                   {:else}
                     {@const _kcal = Math.round(Nutrition.sum((food.items||[]).map(i => Nutrition.calculate(i))).calories || food.nutrition?.calories || 0)}
                     {@const _mealEnergy = Nutrition.displayEnergy(_kcal, $energyUnit)}
-                    <span class="food-brand text-3 text-sm">{mealServing(food.items)}{#if food._shared_by} · <span style="color:var(--accent)">by {food._shared_by}</span>{/if}</span>
+                    <span class="food-brand text-3 text-sm">{mealServing(food.items)}{#if food._shared_by} · <span style="color:var(--accent)">{$_('foods_deep.by_user', { values: { name: food._shared_by } })}</span>{/if}</span>
                     <span class="food-kcal text-sm">{_mealEnergy.value.toLocaleString()} {_mealEnergy.unit}</span>
                   {/if}
                 </div>
@@ -2886,7 +2892,7 @@
               </button>
               {#if (activeTab === 1 || activeTab === 2) && (food.items || []).length > 0 && !manageMode}
                 <button class="btn-icon meal-info-btn" on:click|stopPropagation={() => openMealInfo(food)}
-                  aria-label="Show items in {food.name}" title="Show items">
+                  aria-label={$_('foods_deep.show_items_in', { values: { name: food.name } })} title={$_('foods_deep.show_items')}>
                   <span class="material-symbols-rounded">info</span>
                 </button>
               {/if}
@@ -2921,9 +2927,7 @@
           <div class="empty-state">
             <span class="material-symbols-rounded empty-icon">filter_alt_off</span>
             <p>
-              {apiResults.length.toLocaleString()} result{apiResults.length === 1 ? '' : 's'} hidden by the
-              {searchSource === 'off' ? 'OFF' : 'USDA'} tier filter.
-              Widen your selection in the dropdown next to the source chip.
+              {$_('foods_deep.tier_hidden', { values: { count: apiResults.length, source: searchSource === 'off' ? 'OFF' : 'USDA' } })}
             </p>
           </div>
         {/if}
@@ -2945,7 +2949,7 @@
               {@const _foodEnergy = Nutrition.displayEnergy(food.nutrition?.calories || food.calories || 0, $energyUnit)}
               <li class="food-item card" class:food-selected={_sel}>
                 {#if pickMode}
-                  <button class="food-select-btn" on:click={() => toggleSelect(food)} aria-label="Select">
+                  <button class="food-select-btn" on:click={() => toggleSelect(food)} aria-label={$_('meal_editor.select')}>
                     <span class="food-check material-symbols-rounded" class:food-check-on={_sel}>
                       {_sel ? 'check_circle' : 'radio_button_unchecked'}
                     </span>
@@ -2976,7 +2980,7 @@
                                show nothing rather than a placeholder. Sold-in countries
                                (`countries_tags`) are deliberately NOT used here since
                                they don't mean origin. -->
-                          <span class="off-origin-flag" title={`Made in ${offCountryTagToName(food.originTag)}`} aria-label={`Origin: ${offCountryTagToName(food.originTag)}`}>{_flag}</span>
+                          <span class="off-origin-flag" title={$_('foods_deep.made_in', { values: { country: offCountryTagToName(food.originTag) } })} aria-label={$_('foods_deep.origin', { values: { country: offCountryTagToName(food.originTag) } })}>{_flag}</span>
                         {/if}
                       {/if}
                     </span>
@@ -2992,8 +2996,8 @@
                               class:off-q-hi={food.completeness >= 0.7}
                               class:off-q-mid={food.completeness >= 0.4 && food.completeness < 0.7}
                               class:off-q-lo={food.completeness < 0.4}
-                              title={`OFF data completeness: ${Math.round(food.completeness * 100)}%`}
-                              aria-label={`Data completeness ${Math.round(food.completeness * 100)}%`}></span>
+                              title={$_('foods_deep.off_completeness', { values: { pct: Math.round(food.completeness * 100) } })}
+                              aria-label={$_('foods_deep.data_completeness', { values: { pct: Math.round(food.completeness * 100) } })}></span>
                       {/if}
                       {#if searchSource === 'usda' && food.dataType}
                         <!-- USDA data-type badge. Foundation + SR Legacy are USDA's
@@ -3009,7 +3013,7 @@
                               class:usda-t-mid={_t === 'Survey (FNDDS)'}
                               class:usda-t-lo={_t === 'Branded' || _t === 'Experimental'}
                               title={`USDA ${_t}`}
-                              aria-label={`USDA data type ${_t}`}>{_abbr}</span>
+                              aria-label={$_('foods_deep.usda_type_aria', { values: { type: _t } })}>{_abbr}</span>
                       {/if}
                     </span>
                   </div>
@@ -3181,7 +3185,7 @@
             <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={item.portion} data-field="portion" style="font-size:16px;width:100%" />
           </div>
           <div style="width:100px">
-            <label class="form-label" style="font-size:11px;color:var(--text-3);display:block;margin-bottom:5px">Unit</label>
+            <label class="form-label" style="font-size:11px;color:var(--text-3);display:block;margin-bottom:5px">{$_('food_editor.field_unit')}</label>
             <UnitPicker bind:value={item.unit} />
           </div>
           <div style="width:72px">
@@ -3217,7 +3221,7 @@
   on:deleted={() => { detailSheetFood = null; load(); }} />
 
 <!-- Quantity prompt sheet -->
-<Sheet bind:open={showQtyPrompt} instant={_qtyInstant} title={promptFood ? promptFood.name : 'Add to Diary'}>
+<Sheet bind:open={showQtyPrompt} instant={_qtyInstant} title={promptFood ? promptFood.name : $_('foods.add_to_diary')}>
   <svelte:fragment slot="header-actions">
     {#if promptFood && !promptFood._shared_by}
       <button class="btn-icon qty-fav-btn" class:on={!!promptFood.favorite}
@@ -3244,15 +3248,15 @@
       </div>
       <div class="qty-macro-pill" style="background:var(--macro-protein-dim)">
         <span class="qty-macro-val" style="color:var(--macro-protein)">{Math.round((qtyCalc.proteins || 0) * 10) / 10}g</span>
-        <span class="qty-macro-label">protein</span>
+        <span class="qty-macro-label">{$_('foods_deep.macro_protein')}</span>
       </div>
       <div class="qty-macro-pill" style="background:var(--macro-carbs-dim)">
         <span class="qty-macro-val" style="color:var(--macro-carbs)">{Math.round((qtyCalc.carbohydrates || 0) * 10) / 10}g</span>
-        <span class="qty-macro-label">carbs</span>
+        <span class="qty-macro-label">{$_('foods_deep.macro_carbs')}</span>
       </div>
       <div class="qty-macro-pill" style="background:var(--macro-fat-dim)">
         <span class="qty-macro-val" style="color:var(--macro-fat)">{Math.round((qtyCalc.fat || 0) * 10) / 10}g</span>
-        <span class="qty-macro-label">fat</span>
+        <span class="qty-macro-label">{$_('foods_deep.macro_fat')}</span>
       </div>
     </div>
     <!-- Issues #69 + #70: surface the OFF nutrition basis so users know
@@ -3261,7 +3265,7 @@
          that implies it). -->
     {#if promptFood?.nutrition_basis && ($showUnitMetadata || $warnUnitMismatch)}
       <div class="qty-basis-label">
-        Nutrition per 100 {promptFood.nutrition_basis}
+        {$_('foods_deep.nutrition_per_100', { values: { basis: promptFood.nutrition_basis } })}
       </div>
     {/if}
     {#if promptFood && (promptFood.notes || '').trim()}
@@ -3293,7 +3297,7 @@
           style="font-size:16px;width:100%" />
       </div>
       <div style="width:100px">
-        <label class="form-label" style="font-size:11px;color:var(--text-3);display:block;margin-bottom:6px">Unit</label>
+        <label class="form-label" style="font-size:11px;color:var(--text-3);display:block;margin-bottom:6px">{$_('food_editor.field_unit')}</label>
         <UnitPicker bind:value={promptUnit} />
       </div>
     </div>
@@ -3307,7 +3311,7 @@
       <div class="qty-mismatch-warn">
         <span class="material-symbols-rounded">warning</span>
         <span>
-          Nutrition is per 100 {promptFood.nutrition_basis}. Converting from {_unitSystem(promptUnit) === 'g' ? 'grams' : 'milliliters'} uses 1 ml ≈ 1 g, rough for oils, honey, etc. Add a <strong>Density (g/ml)</strong> value to the food for accurate conversion.
+          {@html $_('foods_deep.unit_mismatch_warn', { values: { basis: _escHtml(promptFood.nutrition_basis), from: _unitSystem(promptUnit) === 'g' ? $_('foods_deep.from_grams') : $_('foods_deep.from_milliliters') } })}
         </span>
       </div>
     {/if}
@@ -3329,7 +3333,7 @@
 
 <!-- Yesterday's meal info sheet — list of items in that meal group -->
 <Sheet open={yesterdayInfoGroup != null}
-  title={yesterdayInfoGroup ? `Yesterday: ${yesterdayInfoGroup.mealName}` : ''}
+  title={yesterdayInfoGroup ? $_('foods_deep.yesterday_title', { values: { name: yesterdayInfoGroup.mealName } }) : ''}
   on:close={() => yesterdayInfoGroup = null}>
   {#if yesterdayInfoGroup}
     {@const _yTotEnergy = Nutrition.displayEnergy(yesterdayInfoGroup.totalKcal, $energyUnit)}
@@ -3348,7 +3352,7 @@
             </div>
           {/if}
           <div style="display:flex;flex-direction:column;min-width:0;flex:1">
-            <span style="font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{it.name || 'Unnamed'}</span>
+            <span style="font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{it.name || $_('foods_deep.unnamed')}</span>
             {#if it.brand}<span class="text-3 text-sm">{it.brand}</span>{/if}
             <span class="text-3 text-sm">
               {it.quantity ? `${it.quantity} × ` : ''}{amountAndUnit(it.portion || 100, it.unit)}
@@ -3365,7 +3369,7 @@
       </div>
       <button class="btn btn-primary w-full" style="margin-top:8px"
         on:click={() => { const g = yesterdayInfoGroup; yesterdayInfoGroup = null; addYesterdayMeal(g); }}>
-        Add this meal
+        {$_('foods_deep.add_this_meal')}
       </button>
     </div>
   {/if}
@@ -3373,7 +3377,7 @@
 
 <!-- Saved meal/recipe info sheet — list of items inside that meal/recipe -->
 <Sheet open={mealInfoGroup != null}
-  title={mealInfoGroup ? `${mealInfoGroup.isRecipe ? 'Recipe' : 'Meal'}: ${mealInfoGroup.mealName}` : ''}
+  title={mealInfoGroup ? $_(mealInfoGroup.isRecipe ? 'foods_deep.recipe_title' : 'foods_deep.meal_title', { values: { name: mealInfoGroup.mealName } }) : ''}
   on:close={() => mealInfoGroup = null}>
   {#if mealInfoGroup}
     {@const _mTotEnergy = Nutrition.displayEnergy(mealInfoGroup.totalKcal, $energyUnit)}
@@ -3392,7 +3396,7 @@
             </div>
           {/if}
           <div style="display:flex;flex-direction:column;min-width:0;flex:1">
-            <span style="font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{it.name || 'Unnamed'}</span>
+            <span style="font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{it.name || $_('foods_deep.unnamed')}</span>
             {#if it.brand}<span class="text-3 text-sm">{it.brand}</span>{/if}
             <span class="text-3 text-sm">
               {it.quantity ? `${it.quantity} × ` : ''}{amountAndUnit(it.portion || 100, it.unit)}
@@ -3410,7 +3414,7 @@
       {#if pickMode}
         <button class="btn btn-primary w-full" style="margin-top:8px"
           on:click={() => { const f = mealInfoGroup.food; mealInfoGroup = null; pickFood(f); }}>
-          Add this {mealInfoGroup.isRecipe ? 'recipe' : 'meal'}
+          {$_(mealInfoGroup.isRecipe ? 'foods_deep.add_this_recipe' : 'foods_deep.add_this_meal')}
         </button>
       {/if}
     </div>
@@ -3446,18 +3450,18 @@
 
 <Dialog
   bind:open={showDeleteDialog}
-  title="Delete item?"
-  message="This will permanently delete this item."
-  confirmText="Delete"
+  title={$_('foods_deep.delete_item_title')}
+  message={$_('foods_deep.delete_item_msg')}
+  confirmText={$_('common.delete')}
   dangerous
   on:confirm={() => selectedItem && deleteItem(selectedItem)}
 />
 
 <Dialog
   bind:open={showBulkDeleteDialog}
-  title={`Delete ${manageSelected.size} ${manageSelected.size === 1 ? 'item' : 'items'}?`}
-  message="Diary entries that reference these will keep their nutrition snapshot but lose the link to the source. This can't be undone."
-  confirmText="Delete"
+  title={$_('foods_deep.delete_n_title', { values: { count: manageSelected.size } })}
+  message={$_('foods_deep.bulk_delete_msg')}
+  confirmText={$_('common.delete')}
   dangerous
   on:confirm={confirmBulkDelete}
 />

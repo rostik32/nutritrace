@@ -117,14 +117,14 @@
     class:sidebar-persistent={persistent}
     in:fly={{ x: -280, duration: persistent ? 0 : 280, easing: cubicOut }}
     out:fly={{ x: -280, duration: persistent ? 0 : 200 }}
-    aria-label="Navigation menu"
+    aria-label={$_('nav.navigation_menu')}
   >
     <!-- App branding -->
     <div class="sidebar-brand">
       <img class="brand-icon" src={iconUrl('/icons/logo.png')} alt="NutriTrace" />
       <div class="brand-text">
         <span class="brand-name">NutriTrace</span>
-        <span class="brand-tagline">Trace Every Bite — Personal Nutrition Tracker</span>
+        <span class="brand-tagline">{$_('nav.tagline')}</span>
       </div>
     </div>
 
@@ -144,7 +144,7 @@
             <span class="material-symbols-rounded sidebar-icon">
               {item.icon}
               {#if item.path === '/settings' && ($updateAvailable.available || $pwaUpdateReady)}
-                <span class="nav-update-dot" aria-label="Update available"></span>
+                <span class="nav-update-dot" aria-label={$_('nav.update_available')}></span>
               {/if}
             </span>
           {/if}

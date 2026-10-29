@@ -2,7 +2,8 @@
   import { closeOnBack } from '../lib/back-stack.js';
   import { onMount, tick } from 'svelte';
   import { slide } from 'svelte/transition';
-  import { _ } from 'svelte-i18n';
+  import { _, locale } from 'svelte-i18n';
+  import { intlLocale } from '../i18n/index.js';
   import { push } from 'svelte-spa-router';
   import { DB, localDateStr } from '../lib/db.js';
   import { NtApi } from '../lib/api.js';
@@ -25,16 +26,17 @@
   $: _hasWearable = $fitbitFamilyEnabled || $garminEnabled;
 
   const BODY_STATS = [
-    { id: 'weight',     label: 'Weight',     isBody: true },
-    { id: 'neck',       label: 'Neck',       isBody: true },
-    { id: 'waist',      label: 'Waist',      isBody: true },
-    { id: 'hips',       label: 'Hips',       isBody: true },
-    { id: 'chest',      label: 'Chest',      isBody: true },
-    { id: 'thighs',     label: 'Thighs',     isBody: true },
-    { id: 'biceps',     label: 'Biceps',     isBody: true },
-    { id: 'calves',     label: 'Calves',     isBody: true },
-    { id: 'body_fat',   label: 'Body Fat',   isBody: true, unit: '%' },
-    { id: 'body_water', label: 'Body Water', isBody: true, unit: '%' },
+    // label holds an i18n key; bodyStatsWithUnit resolves it.
+    { id: 'weight',     label: 'goals_page.fields.weight',     isBody: true },
+    { id: 'neck',       label: 'goals_page.fields.neck',       isBody: true },
+    { id: 'waist',      label: 'goals_page.fields.waist',      isBody: true },
+    { id: 'hips',       label: 'goals_page.fields.hips',       isBody: true },
+    { id: 'chest',      label: 'goals_page.fields.chest',      isBody: true },
+    { id: 'thighs',     label: 'goals_page.fields.thighs',     isBody: true },
+    { id: 'biceps',     label: 'goals_page.fields.biceps',     isBody: true },
+    { id: 'calves',     label: 'goals_page.fields.calves',     isBody: true },
+    { id: 'body_fat',   label: 'goals_page.fields.body_fat',   isBody: true, unit: '%' },
+    { id: 'body_water', label: 'goals_page.fields.body_water', isBody: true, unit: '%' },
   ];
 
   $: wUnit = $weightUnit || 'kg';
@@ -42,6 +44,7 @@
   $: lUnit = $lengthUnit || 'in';
   $: bodyStatsWithUnit = BODY_STATS.map(s => ({
     ...s,
+    label: $_(s.label),
     unit: s.unit || (s.id === 'weight' ? wUnit : lUnit)
   }));
 
@@ -56,23 +59,30 @@
   // Wellness goal fields (shown when wellness is enabled)
   const WELLNESS_GOALS = [
     // Fitbit — Movement
-    { id: 'steps',              label: 'Daily Steps',       unit: 'steps', isWellness: true },
-    { id: 'active_minutes',     label: 'Active Minutes',    unit: 'min',   isWellness: true },
-    { id: 'floors',             label: 'Floors Climbed',    unit: 'floors',isWellness: true },
-    { id: 'calories_out',       label: 'Calories Burned',   unit: 'kcal',  isWellness: true },
+    // label (and unitKey, where the unit is a word) hold i18n keys;
+    // wellnessGoals below resolves them.
+    { id: 'steps',              label: 'goals_page.fields.steps',          unit: 'steps', unitKey: 'goals_page.units.steps',  isWellness: true },
+    { id: 'active_minutes',     label: 'goals_page.fields.active_minutes', unit: 'min',   unitKey: 'goals_page.units.min',    isWellness: true },
+    { id: 'floors',             label: 'goals_page.fields.floors',         unit: 'floors',unitKey: 'goals_page.units.floors', isWellness: true },
+    { id: 'calories_out',       label: 'goals_page.fields.calories_out',   unit: 'kcal',  isWellness: true },
     // Fitbit — Sleep
-    { id: 'sleep_duration_min', label: 'Sleep Duration',    unit: 'min',   isWellness: true },
-    { id: 'sleep_efficiency',   label: 'Sleep Efficiency',  unit: '%',     isWellness: true },
+    { id: 'sleep_duration_min', label: 'goals_page.fields.sleep_duration',   unit: 'min',   unitKey: 'goals_page.units.min', isWellness: true },
+    { id: 'sleep_efficiency',   label: 'goals_page.fields.sleep_efficiency', unit: '%',     isWellness: true },
     // Fitbit — Heart
-    { id: 'hrv_daily_rmssd',    label: 'HRV (RMSSD)',       unit: 'ms',    isWellness: true },
+    { id: 'hrv_daily_rmssd',    label: 'goals_page.fields.hrv',            unit: 'ms',    isWellness: true },
     // Withings — Body
-    { id: 'weight_kg',          label: 'Target Weight',     unit: 'kg',    isWellness: true },
-    { id: 'body_fat_pct',       label: 'Target Body Fat',   unit: '%',     isWellness: true },
-    { id: 'muscle_mass_kg',     label: 'Target Muscle Mass',unit: 'kg',    isWellness: true },
+    { id: 'weight_kg',          label: 'goals_page.fields.target_weight',      unit: 'kg',    isWellness: true },
+    { id: 'body_fat_pct',       label: 'goals_page.fields.target_body_fat',    unit: '%',     isWellness: true },
+    { id: 'muscle_mass_kg',     label: 'goals_page.fields.target_muscle_mass', unit: 'kg',    isWellness: true },
   ];
+  $: wellnessGoals = WELLNESS_GOALS.map(s => ({
+    ...s,
+    label: $_(s.label),
+    unit: s.unitKey ? $_(s.unitKey) : s.unit,
+  }));
 
   // All fields for goal-setting: all body stats + all nutrients + wellness if enabled
-  $: wellnessFields = $wellnessEnabled ? WELLNESS_GOALS : [];
+  $: wellnessFields = $wellnessEnabled ? wellnessGoals : [];
   $: allFields = [...bodyStatsWithUnit, ...allNutrients, ...wellnessFields];
   // Your Goals: categorized
   $: configuredBodyStats = bodyStatsWithUnit.filter(s => $goals[s.id]);
@@ -163,7 +173,7 @@
   }
 
   function formatDate(iso) {
-    return new Date(iso).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+    return new Date(iso).toLocaleDateString(intlLocale(), { year:'numeric', month:'short', day:'numeric' });
   }
   let today = localDateStr();
   let todayTotals = {};
@@ -457,7 +467,7 @@
 
   function deleteGoal() {
     if (!editStat) return;
-    if (!confirm(`Remove goal for ${editStat.label || editStat.id}?`)) return;
+    if (!confirm($_('goals_page.editor.remove_confirm', { values: { name: editStat.label || editStat.id } }))) return;
     const storageId = _goalStorageId(editStat.id);
     goals.update(g => {
       const n = { ...g };
@@ -468,7 +478,12 @@
     editOpen = false;
   }
 
-  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  // Short weekday names Sun..Sat in the app language (2024-01-07 is a Sunday).
+  function _weekdayNames() {
+    return Array.from({ length: 7 }, (_d, i) =>
+      new Date(2024, 0, 7 + i).toLocaleDateString(intlLocale(), { weekday: 'short' }));
+  }
+  $: DAYS = ($locale, _weekdayNames());
 
   const MACRO_DENSITY = { fat: 9, 'saturated-fat': 9, carbohydrates: 4, sugars: 4, proteins: 4 };
   function isPercentEligible(stat) {
@@ -534,8 +549,8 @@
     if (!rec) return '';
     // Format: "as of May 18" — concise, locale-aware.
     const dt = new Date(rec.date + 'T12:00:00');
-    const label = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    return `as of ${label}`;
+    const label = dt.toLocaleDateString(intlLocale(), { month: 'short', day: 'numeric' });
+    return $_('goals_page.row.as_of', { values: { date: label } });
   }
 
   // Row progress formatter — 'CUR / TGT UNIT' when there's a
@@ -604,18 +619,18 @@
     const out = [];
     const kcal = _effectiveCalGoal;
     if (kcal && kcal < 1200) {
-      out.push({ level: 'warn', msg: `Extreme calorie target (${kcal.toLocaleString()} kcal). Most guidelines suggest 1,200 kcal minimum.` });
+      out.push({ level: 'warn', msg: $_('goals_page.warnings.kcal_low', { values: { kcal: kcal.toLocaleString() } }) });
     } else if (kcal && kcal > 5000) {
-      out.push({ level: 'warn', msg: `Extreme calorie target (${kcal.toLocaleString()} kcal). Double-check this is intentional.` });
+      out.push({ level: 'warn', msg: $_('goals_page.warnings.kcal_high', { values: { kcal: kcal.toLocaleString() } }) });
     }
     if (_macroKcalSum > 0 && kcal > 0) {
       const tol = kcal * 0.05;
       if (Math.abs(_macroKcalSum - kcal) > tol) {
-        out.push({ level: 'info', msg: `Macros sum to ${Math.round(_macroKcalSum).toLocaleString()} kcal, calorie goal is ${kcal.toLocaleString()} kcal.` });
+        out.push({ level: 'info', msg: $_('goals_page.warnings.macro_sum', { values: { sum: Math.round(_macroKcalSum).toLocaleString(), kcal: kcal.toLocaleString() } }) });
       }
     }
     if (_macroKcalSum <= 0) {
-      out.push({ level: 'info', msg: 'Set protein / carbs / fat goals to see the macro breakdown.' });
+      out.push({ level: 'info', msg: $_('goals_page.warnings.set_macros') });
     }
     // TODO: weight-loss rate warning once body-weight timeline is available.
     return out;
@@ -627,10 +642,12 @@
     keto:           { p: 25, c:  5, f: 70 },
     'high-protein': { p: 40, c: 30, f: 30 },
   };
+  // i18n keys of the preset names
   const MACRO_PRESET_LABELS = {
-    balanced:       'Balanced',
-    keto:           'Keto',
-    'high-protein': 'High-Protein',
+    balanced:       'goals_page.macros.preset_balanced',
+    keto:           'goals_page.macros.preset_keto',
+    'high-protein': 'goals_page.macros.preset_high_protein',
+    custom:         'goals_page.macros.preset_custom',
   };
   // Match the CURRENT P/C/F percentages against known presets so
   // the Macros card can show 'Currently: Balanced' / 'Currently:
@@ -642,10 +659,10 @@
       if (Math.abs(_macroPct.p - ratio.p) <= 2 &&
           Math.abs(_macroPct.c - ratio.c) <= 2 &&
           Math.abs(_macroPct.f - ratio.f) <= 2) {
-        return MACRO_PRESET_LABELS[key];
+        return key;
       }
     }
-    return 'Custom';
+    return 'custom';
   })();
   function applyMacroPreset(name) {
     const preset = MACRO_PRESETS[name];
@@ -660,7 +677,7 @@
       carbohydrates: { sharedGoal: true, isMin: false, showInDiary: true, showInStats: true, ...(g.carbohydrates || {}), isPercent: false, max: cG, min: undefined, days: Array(7).fill(cG) },
       fat:           { sharedGoal: true, isMin: false, showInDiary: true, showInStats: true, ...(g.fat           || {}), isPercent: false, max: fG, min: undefined, days: Array(7).fill(fG) },
     }));
-    showSuccess('Macros set');
+    showSuccess($_('goals.toast.macros_set'));
   }
 
   // ── All-fields filter (desktop search input) ───────────────────────────
@@ -673,9 +690,9 @@
 
   // ── Reset-all-goals (rail button on desktop) ───────────────────────────
   function _resetAllGoals() {
-    if (!confirm('Remove ALL goals? This clears every configured goal and cannot be undone.')) return;
+    if (!confirm($_('goals_page.reset_all_confirm'))) return;
     goals.set({});
-    showSuccess('Goals cleared');
+    showSuccess($_('goals.toast.goals_cleared'));
   }
 
   function getPct(stat, totals, bodyStats, wellness, recent) {
@@ -694,13 +711,13 @@
   <!-- Tabs -->
   <div class="tab-bar">
     <button class="tab-btn" class:active={activeTab==='yours'} on:click={() => activeTab='yours'}>
-      Your Goals
+      {$_('goals_page.tabs.yours')}
     </button>
     <button class="tab-btn" class:active={activeTab==='all'} on:click={() => activeTab='all'}>
-      All Fields
+      {$_('goals_page.tabs.all')}
     </button>
     <button class="tab-btn" class:active={activeTab==='templates'} on:click={() => activeTab='templates'}>
-      Templates
+      {$_('goals_page.tabs.templates')}
     </button>
   </div>
 
@@ -712,18 +729,18 @@
 
     <!-- ─── LEFT RAIL (desktop only) ────────────────────────────────────── -->
     <aside class="goals-left-rail">
-      <div class="goals-rail-heading">Navigate</div>
+      <div class="goals-rail-heading">{$_('goals_page.rail.navigate')}</div>
       <button class="goals-rail-nav" class:active={activeTab === 'yours'} on:click={() => activeTab = 'yours'}>
         <span class="material-symbols-rounded">flag</span>
-        Your Goals
+        {$_('goals_page.tabs.yours')}
       </button>
       <button class="goals-rail-nav" class:active={activeTab === 'all'} on:click={() => activeTab = 'all'}>
         <span class="material-symbols-rounded">list</span>
-        All Fields
+        {$_('goals_page.tabs.all')}
       </button>
       <button class="goals-rail-nav" class:active={activeTab === 'templates'} on:click={() => activeTab = 'templates'}>
         <span class="material-symbols-rounded">bookmark</span>
-        Templates
+        {$_('goals_page.tabs.templates')}
       </button>
 
       <div class="goals-rail-heading" style="margin-top:16px">{$_('settings_goals.calorie_goal_mode')}</div>
@@ -732,7 +749,7 @@
           on:click={() => calorieGoalMode.set('fixed')}>{$_('settings_goals.mode_fixed')}</button>
         <button class="seg-opt" class:seg-active={$calorieGoalMode === 'dynamic'}
           disabled={!_hasWearable}
-          title={!_hasWearable ? 'Connect a wearable in Wellness first' : ''}
+          title={!_hasWearable ? $_('settings_goals.connect_wearable_first') : ''}
           on:click={() => _hasWearable && calorieGoalMode.set('dynamic')}>{$_('settings_goals.mode_dynamic')}</button>
         <button class="seg-opt" class:seg-active={$calorieGoalMode === 'adaptive'}
           on:click={() => calorieGoalMode.set('adaptive')}>{$_('settings_goals.mode_adaptive')}</button>
@@ -747,20 +764,20 @@
       {/if}
 
       {#if $calorieGoalMode === 'adaptive' && _adaptiveLoaded}
-        <div class="goals-rail-heading" style="margin-top:12px">Adaptive TDEE</div>
+        <div class="goals-rail-heading" style="margin-top:12px">{$_('goals_page.adaptive.title')}</div>
         <div class="goals-rail-adaptive">
           {#if _adaptive?.ready}
             {@const _tdeeE = Nutrition.displayEnergy(_adaptive.tdee, $energyUnit)}
             <div class="goals-rail-adaptive-line">
-              <span class="text-3 text-sm">Learned TDEE</span>
+              <span class="text-3 text-sm">{$_('goals_page.adaptive.learned_tdee')}</span>
               <strong>{_tdeeE.value.toLocaleString()} {_tdeeE.unit}</strong>
             </div>
             <div class="goals-rail-adaptive-line">
-              <span class="text-3 text-sm">Confidence</span>
+              <span class="text-3 text-sm">{$_('goals_page.adaptive.confidence')}</span>
               <strong>{Math.round((_adaptive.confidence || 0) * 100)}%</strong>
             </div>
             <div class="goals-rail-adaptive-line">
-              <span class="text-3 text-sm">Weight source</span>
+              <span class="text-3 text-sm">{$_('goals_page.adaptive.weight_source')}</span>
               <strong style="text-transform:capitalize">{_adaptive.weightSource}</strong>
             </div>
           {:else}
@@ -769,7 +786,7 @@
                 style="width:{Math.min(100, ((_adaptive?.daysAvailable ?? 0) / (_adaptive?.daysRequired ?? 21)) * 100)}%"></div>
             </div>
             <p class="text-3 text-sm" style="margin:6px 0 0">
-              {_adaptive?.daysAvailable ?? 0} / {_adaptive?.daysRequired ?? 21} days
+              {$_('goals_page.adaptive.days_progress', { values: { available: _adaptive?.daysAvailable ?? 0, required: _adaptive?.daysRequired ?? 21 } })}
             </p>
           {/if}
         </div>
@@ -782,7 +799,7 @@
         </button>
         <button class="btn btn-ghost" on:click={_resetAllGoals}>
           <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px">restart_alt</span>
-          Reset all
+          {$_('goals_page.rail.reset_all')}
         </button>
       </div>
     </aside>
@@ -859,33 +876,33 @@
       <div class="card goals-macro-card">
         <div class="goals-macro-head">
           <div>
-            <div class="font-medium">Macros</div>
+            <div class="font-medium">{$_('goals_page.macros.title')}</div>
           </div>
         </div>
         <div class="goals-macro-grid">
-          <button class="goals-macro-cell" on:click={() => openEdit({ id: 'proteins',      label: 'Protein', unit: 'g' })}>
-            <span class="gm-lbl">Protein</span>
+          <button class="goals-macro-cell" on:click={() => openEdit({ id: 'proteins',      label: $_('goals_page.macros.protein'), unit: 'g' })}>
+            <span class="gm-lbl">{$_('goals_page.macros.protein')}</span>
             <span class="gm-val">{_proteinGoalG ?? '—'}<span class="gm-u">g</span></span>
             <span class="gm-pct">{_macroPct.p}%</span>
           </button>
-          <button class="goals-macro-cell" on:click={() => openEdit({ id: 'carbohydrates', label: 'Carbohydrates', unit: 'g' })}>
-            <span class="gm-lbl">Carbs</span>
+          <button class="goals-macro-cell" on:click={() => openEdit({ id: 'carbohydrates', label: $_('goals_page.macros.carbohydrates'), unit: 'g' })}>
+            <span class="gm-lbl">{$_('goals_page.macros.carbs')}</span>
             <span class="gm-val">{_carbsGoalG ?? '—'}<span class="gm-u">g</span></span>
             <span class="gm-pct">{_macroPct.c}%</span>
           </button>
-          <button class="goals-macro-cell" on:click={() => openEdit({ id: 'fat',           label: 'Fat', unit: 'g' })}>
-            <span class="gm-lbl">Fat</span>
+          <button class="goals-macro-cell" on:click={() => openEdit({ id: 'fat',           label: $_('goals_page.macros.fat'), unit: 'g' })}>
+            <span class="gm-lbl">{$_('goals_page.macros.fat')}</span>
             <span class="gm-val">{_fatGoalG ?? '—'}<span class="gm-u">g</span></span>
             <span class="gm-pct">{_macroPct.f}%</span>
           </button>
         </div>
         <div class="goals-macro-presets">
-          <button class="chip" class:chip-active={_currentPreset === 'Balanced'} on:click={() => applyMacroPreset('balanced')}>Balanced 30/40/30</button>
-          <button class="chip" class:chip-active={_currentPreset === 'Keto'} on:click={() => applyMacroPreset('keto')}>Keto 25/5/70</button>
-          <button class="chip" class:chip-active={_currentPreset === 'High-Protein'} on:click={() => applyMacroPreset('high-protein')}>High-Protein 40/30/30</button>
+          <button class="chip" class:chip-active={_currentPreset === 'balanced'} on:click={() => applyMacroPreset('balanced')}>{$_('goals_page.macros.preset_balanced')} 30/40/30</button>
+          <button class="chip" class:chip-active={_currentPreset === 'keto'} on:click={() => applyMacroPreset('keto')}>{$_('goals_page.macros.preset_keto')} 25/5/70</button>
+          <button class="chip" class:chip-active={_currentPreset === 'high-protein'} on:click={() => applyMacroPreset('high-protein')}>{$_('goals_page.macros.preset_high_protein')} 40/30/30</button>
           {#if _currentPreset}
-            <span class="goals-macro-current" title="Ratio matches this preset (±2% tolerance)">
-              Currently: <strong>{_currentPreset}</strong>
+            <span class="goals-macro-current" title={$_('goals_page.macros.preset_match_tip')}>
+              {$_('goals_page.macros.currently')} <strong>{$_(MACRO_PRESET_LABELS[_currentPreset])}</strong>
             </span>
           {/if}
         </div>
@@ -927,7 +944,7 @@
                 </div>
                 {#if _statsIdForGoal(stat)}
                   <span class="goal-trend material-symbols-rounded" role="button" tabindex="0"
-                    title="View trend" aria-label="View trend in Statistics"
+                    title={$_('goals_page.row.view_trend')} aria-label={$_('goals_page.row.view_trend_aria')}
                     on:click|stopPropagation={() => _openStatsForGoal(stat)}
                     on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openStatsForGoal(stat); } }}>trending_up</span>
                 {/if}
@@ -968,7 +985,7 @@
                 </div>
                 {#if _statsIdForGoal(stat)}
                   <span class="goal-trend material-symbols-rounded" role="button" tabindex="0"
-                    title="View trend" aria-label="View trend in Statistics"
+                    title={$_('goals_page.row.view_trend')} aria-label={$_('goals_page.row.view_trend_aria')}
                     on:click|stopPropagation={() => _openStatsForGoal(stat)}
                     on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openStatsForGoal(stat); } }}>trending_up</span>
                 {/if}
@@ -992,7 +1009,7 @@
             <span class="text-3 text-sm">{waterTodayDisplay.toLocaleString()} / {waterGoalDisplay.toLocaleString()} {$waterUnit}</span>
           </div>
           <span class="goal-trend material-symbols-rounded" role="button" tabindex="0"
-            title="View trend" aria-label="View trend in Statistics"
+            title={$_('goals_page.row.view_trend')} aria-label={$_('goals_page.row.view_trend_aria')}
             on:click|stopPropagation={() => push('#/statistics?metric=water&range=1M')}
             on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); push('#/statistics?metric=water&range=1M'); } }}>trending_up</span>
           <span class="material-symbols-rounded text-3" style="font-size:18px">chevron_right</span>
@@ -1021,7 +1038,7 @@
               </div>
               {#if _statsIdForGoal(stat)}
                 <span class="goal-trend material-symbols-rounded" role="button" tabindex="0"
-                  title="View trend" aria-label="View trend in Statistics"
+                  title={$_('goals_page.row.view_trend')} aria-label={$_('goals_page.row.view_trend_aria')}
                   on:click|stopPropagation={() => _openStatsForGoal(stat)}
                   on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openStatsForGoal(stat); } }}>trending_up</span>
               {/if}
@@ -1037,7 +1054,7 @@
 
       <div class="goals-all-filter">
         <span class="material-symbols-rounded">search</span>
-        <input type="search" placeholder="Filter nutrients…" bind:value={_allFieldsQuery} />
+        <input type="search" placeholder={$_('goals_page.all_fields.filter_placeholder')} bind:value={_allFieldsQuery} />
       </div>
 
       <!-- Body Stats -->
@@ -1066,7 +1083,7 @@
             </div>
             {#if _statsIdForGoal(stat)}
               <span class="goal-trend material-symbols-rounded" role="button" tabindex="0"
-                title="View trend" aria-label="View trend in Statistics"
+                title={$_('goals_page.row.view_trend')} aria-label={$_('goals_page.row.view_trend_aria')}
                 on:click|stopPropagation={() => _openStatsForGoal(stat)}
                 on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openStatsForGoal(stat); } }}>trending_up</span>
             {/if}
@@ -1097,7 +1114,7 @@
             </div>
             {#if _statsIdForGoal(stat)}
               <span class="goal-trend material-symbols-rounded" role="button" tabindex="0"
-                title="View trend" aria-label="View trend in Statistics"
+                title={$_('goals_page.row.view_trend')} aria-label={$_('goals_page.row.view_trend_aria')}
                 on:click|stopPropagation={() => _openStatsForGoal(stat)}
                 on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openStatsForGoal(stat); } }}>trending_up</span>
             {/if}
@@ -1118,7 +1135,7 @@
             <span class="text-3 text-sm">{waterTodayDisplay.toLocaleString()} / {waterGoalDisplay.toLocaleString()} {$waterUnit}</span>
           </div>
           <span class="goal-trend material-symbols-rounded" role="button" tabindex="0"
-            title="View trend" aria-label="View trend in Statistics"
+            title={$_('goals_page.row.view_trend')} aria-label={$_('goals_page.row.view_trend_aria')}
             on:click|stopPropagation={() => push('#/statistics?metric=water&range=1M')}
             on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); push('#/statistics?metric=water&range=1M'); } }}>trending_up</span>
           <span class="material-symbols-rounded text-3" style="font-size:18px">chevron_right</span>
@@ -1129,7 +1146,7 @@
       {#if $wellnessEnabled}
         <p class="section-title">{$_('goals_page.sections.wellness')}</p>
         <div class="card goals-all-card">
-          {#each WELLNESS_GOALS.filter(_matchesQuery) as stat, i}
+          {#each wellnessGoals.filter(_matchesQuery) as stat, i}
             {@const _kjMode = stat.id === 'calories_out' && $energyUnit === 'kJ'}
             {@const _statUnit = _kjMode ? 'kJ' : stat.unit}
             {#if i > 0}<div class="divider"></div>{/if}
@@ -1152,7 +1169,7 @@
               </div>
               {#if _statsIdForGoal(stat)}
                 <span class="goal-trend material-symbols-rounded" role="button" tabindex="0"
-                  title="View trend" aria-label="View trend in Statistics"
+                  title={$_('goals_page.row.view_trend')} aria-label={$_('goals_page.row.view_trend_aria')}
                   on:click|stopPropagation={() => _openStatsForGoal(stat)}
                   on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openStatsForGoal(stat); } }}>trending_up</span>
               {/if}
@@ -1197,10 +1214,10 @@
                 <span class="text-3 text-sm">{formatDate(tpl.createdAt)} · {$_('goals_page.templates.goals_count', { values: { count: tpl.goalCount || Object.keys(tpl.goals).filter(k => tpl.goals[k]?.min != null || tpl.goals[k]?.max != null).length + (tpl.waterGoalMl > 0 ? 1 : 0) } })}</span>
                 {#if _tKcal || _tP || _tC || _tF}
                   <div class="tpl-preview-chips">
-                    {#if _tKcal}<span class="tpl-chip">{_tKcal.toLocaleString()} kcal</span>{/if}
-                    {#if _tP}<span class="tpl-chip tpl-chip-p">P {_tP}g</span>{/if}
-                    {#if _tC}<span class="tpl-chip tpl-chip-c">C {_tC}g</span>{/if}
-                    {#if _tF}<span class="tpl-chip tpl-chip-f">F {_tF}g</span>{/if}
+                    {#if _tKcal}<span class="tpl-chip">{$_('goals_page.macros.kcal_value', { values: { value: _tKcal.toLocaleString() } })}</span>{/if}
+                    {#if _tP}<span class="tpl-chip tpl-chip-p">{$_('goals_page.macros.chip_p', { values: { value: _tP } })}</span>{/if}
+                    {#if _tC}<span class="tpl-chip tpl-chip-c">{$_('goals_page.macros.chip_c', { values: { value: _tC } })}</span>{/if}
+                    {#if _tF}<span class="tpl-chip tpl-chip-f">{$_('goals_page.macros.chip_f', { values: { value: _tF } })}</span>{/if}
                   </div>
                 {/if}
               </div>
@@ -1223,7 +1240,7 @@
 
     <!-- ─── RIGHT RAIL — live preview (desktop only) ─────────────────────── -->
     <aside class="goals-right-rail">
-      <div class="goals-rail-heading">Preview</div>
+      <div class="goals-rail-heading">{$_('goals_page.rail.preview')}</div>
 
       <div class="goals-preview-ring">
         {#key `${_effectiveCalGoal}-${_proteinGoalG}-${_carbsGoalG}-${_fatGoalG}`}
@@ -1240,22 +1257,22 @@
         {/key}
       </div>
 
-      <div class="goals-preview-macrobar" title="Macro split by kcal">
+      <div class="goals-preview-macrobar" title={$_('goals_page.rail.macro_split')}>
         {#if _macroKcalSum > 0}
-          <div class="gp-seg gp-p" style="width:{_macroPct.p}%" title="Protein {_macroPct.p}%"></div>
-          <div class="gp-seg gp-c" style="width:{_macroPct.c}%" title="Carbs {_macroPct.c}%"></div>
-          <div class="gp-seg gp-f" style="width:{_macroPct.f}%" title="Fat {_macroPct.f}%"></div>
+          <div class="gp-seg gp-p" style="width:{_macroPct.p}%" title={$_('goals_page.macros.protein_pct', { values: { pct: _macroPct.p } })}></div>
+          <div class="gp-seg gp-c" style="width:{_macroPct.c}%" title={$_('goals_page.macros.carbs_pct', { values: { pct: _macroPct.c } })}></div>
+          <div class="gp-seg gp-f" style="width:{_macroPct.f}%" title={$_('goals_page.macros.fat_pct', { values: { pct: _macroPct.f } })}></div>
         {:else}
           <div class="gp-seg gp-empty" style="width:100%"></div>
         {/if}
       </div>
       <div class="goals-preview-sum">
-        P {_proteinGoalG ?? '—'}g · C {_carbsGoalG ?? '—'}g · F {_fatGoalG ?? '—'}g
-        {#if _macroKcalSum > 0}= {Math.round(_macroKcalSum).toLocaleString()} kcal{/if}
+        {$_('goals_page.macros.summary', { values: { p: _proteinGoalG ?? '—', c: _carbsGoalG ?? '—', f: _fatGoalG ?? '—' } })}
+        {#if _macroKcalSum > 0}= {$_('goals_page.macros.kcal_value', { values: { value: Math.round(_macroKcalSum).toLocaleString() } })}{/if}
       </div>
 
       {#if _goalWarnings.length}
-        <div class="goals-rail-heading" style="margin-top:14px">Notes</div>
+        <div class="goals-rail-heading" style="margin-top:14px">{$_('goals_page.rail.notes')}</div>
         <div class="goals-preview-warnings">
           {#each _goalWarnings as w}
             <div class="gp-warn gp-warn-{w.level}">

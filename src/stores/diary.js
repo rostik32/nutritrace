@@ -1,6 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import { NtApi } from '../lib/api.js';
 import { Nutrition } from '../lib/nutrition.js';
+import { t } from '../lib/i18n-t.js';
 import { localDateStr, DB } from '../lib/db.js';
 import { resolveAssetUrl, isNative } from '../lib/platform.js';
 import { itemSourceRef } from '../lib/item-source.js';
@@ -334,7 +335,7 @@ export async function addDiaryItem(foodItem, meal, date) {
  *  separately per the `quickCaloriesDisplay` setting. */
 export async function addQuickCalories({ kcal, name, meal, date, proteins, carbohydrates, fat } = {}) {
   const calories = Math.max(0, Math.round(Number(kcal) || 0));
-  if (!calories) throw new Error('Quick Calories requires a positive kcal value.');
+  if (!calories) throw new Error(t('quick_calories.errors.positive_kcal'));
   const nutrition = { calories };
   // Optional macros — only include when a positive numeric value was supplied.
   // Round to 1 decimal place to match the rest of the diary's macro storage.
@@ -348,6 +349,7 @@ export async function addQuickCalories({ kcal, name, meal, date, proteins, carbo
   if (f != null) nutrition.fat           = f;
   const item = {
     type: 'quick_calories',
+    // Stored in English on purpose; the diary translates this default name for display.
     name: (typeof name === 'string' && name.trim()) ? name.trim().slice(0, 60) : 'Quick Calories',
     nutrition,
     // No portion/unit/quantity — render branch skips the portion line for this type.

@@ -219,13 +219,13 @@
   let _nativeListener = null;
   let _nativeBarcodeScannerRef = null;
   let nativeScannerActive = false;
-  let nativeStatus = 'Starting camera…';
+  let nativeStatus = 'barcode_scanner.status.starting';   // i18n key
   let nativeTorchOn = false;
 
   async function startNativeScanner() {
     detected = false;  // reset detected guard so re-opening after a prior scan works
     scanning = true;
-    nativeStatus = 'Requesting camera…';
+    nativeStatus = 'barcode_scanner.status.requesting';
     try {
       const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
       _nativeBarcodeScannerRef = BarcodeScanner;
@@ -243,7 +243,7 @@
       // bottom of this file. App-wide global CSS opt-in is in main.js.
       document.body.classList.add('barcode-scanner-active');
       nativeScannerActive = true;
-      nativeStatus = 'Align Barcode';
+      nativeStatus = 'barcode_scanner.status.align';
 
       _nativeListener = await BarcodeScanner.addListener('barcodeScanned', (event) => {
         const code = event?.barcode?.rawValue;
@@ -388,7 +388,7 @@
       <button class="btn-icon ns-close" on:click={closeNative} aria-label={$_('barcode_scanner.close')} title={$_('barcode_scanner.close')}>
         <span class="material-symbols-rounded">close</span>
       </button>
-      <div class="ns-status">{nativeStatus}</div>
+      <div class="ns-status">{$_(nativeStatus)}</div>
       <button class="btn-icon ns-torch" class:active={nativeTorchOn} on:click={toggleNativeTorch} aria-label={$_('barcode_scanner.torch')} title={$_('barcode_scanner.torch')}>
         <span class="material-symbols-rounded">{nativeTorchOn ? 'flash_on' : 'flash_off'}</span>
       </button>

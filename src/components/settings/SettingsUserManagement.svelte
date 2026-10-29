@@ -1,6 +1,8 @@
 <script>
   import { slide } from 'svelte/transition';
   import { _ } from 'svelte-i18n';
+  import { intlLocale } from '../../i18n/index.js';
+  import { localizeError } from '../../lib/server-errors.js';
   import Toggle from './Toggle.svelte';
   import { showSuccess, showError } from '../../stores/toast.js';
   import { DB } from '../../lib/db.js';
@@ -81,7 +83,7 @@
       await NtApi.del(`/api/auth/invites/${token}`);
       await loadPendingInvites();
       showSuccess($_('settings.users.invite_revoked'));
-    } catch (e) { showError(e.message || $_('settings.users.err_could_not_revoke')); }
+    } catch (e) { showError(localizeError(e.message) || $_('settings.users.err_could_not_revoke')); }
   }
 
   export async function loadData() {
@@ -131,11 +133,11 @@
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        showError($_('settings.users.err_open_signup', { values: { msg: data.error || res.status } }));
+        showError($_('settings.users.err_open_signup', { values: { msg: localizeError(data.error) || res.status } }));
         openSignup = prev;
       }
     } catch (e) {
-      showError($_('settings.users.err_open_signup', { values: { msg: e?.message || $_('settings.users.network_error') } }));
+      showError($_('settings.users.err_open_signup', { values: { msg: localizeError(e?.message) || $_('settings.users.network_error') } }));
       openSignup = prev;
     }
   }
@@ -155,7 +157,7 @@
         // config key'). Roll back the optimistic UI flip and surface
         // the reason so the failure isn't silent.
         const data = await res.json().catch(() => ({}));
-        const msg = data.error || $_('settings.users.save_failed_status', { values: { status: res.status } });
+        const msg = localizeError(data.error) || $_('settings.users.save_failed_status', { values: { status: res.status } });
         console.warn('[password-policy] save rejected:', msg);
         showError($_('settings.users.err_password_policy_prefix', { values: { msg } }));
         passwordPolicy = prev;
@@ -169,7 +171,7 @@
       setTimeout(() => passwordPolicySaved = false, 2000);
     } catch (e) {
       console.warn('[password-policy] save threw:', e);
-      showError($_('settings.users.err_password_policy', { values: { msg: e?.message || $_('settings.users.network_error') } }));
+      showError($_('settings.users.err_password_policy', { values: { msg: localizeError(e?.message) || $_('settings.users.network_error') } }));
       passwordPolicy = prev;
     }
   }
@@ -214,7 +216,7 @@
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { enableUmError = data.error || $_('settings.users.err_registration_failed'); enableUmLoading = false; return; }
+      if (!res.ok) { enableUmError = localizeError(data.error) || $_('settings.users.err_registration_failed'); enableUmLoading = false; return; }
       // Migrate previously-anonymous settings (`wl_<key>`) to the new admin's
       // per-user prefix BEFORE flipping wl:userId, so the wizard-configured
       // mealNames/dob/gender/goals/etc. survive the mode switch instead of
@@ -251,7 +253,7 @@
   async function loadUsers() {
     try {
       umUsers = await NtApi.get('/api/auth/users');
-    } catch(e) { umError = e.message; }
+    } catch(e) { umError = localizeError(e.message); }
   }
 
   async function addUser() {
@@ -265,13 +267,13 @@
         body: JSON.stringify({ username: newUsername.trim(), password: newPassword, full_name: newFullName.trim() || undefined, role: newRole }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { umError = data.error || $_('settings.users.err_failed_to_add'); } else {
+      if (!res.ok) { umError = localizeError(data.error) || $_('settings.users.err_failed_to_add'); } else {
         newUsername = ''; newPassword = ''; newFullName = ''; newRole = 'user';
         showAddUser = false;
         await loadUsers();
         showSuccess($_('settings.users.toast_user_created'));
       }
-    } catch(e) { umError = e.message; }
+    } catch(e) { umError = localizeError(e.message); }
     umLoading = false;
   }
 
@@ -292,8 +294,8 @@
         body: JSON.stringify({ role: newRole }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { showError(data?.error || $_('settings.users.err_could_not_change_role')); return; }
-      showSuccess($_('settings.users.toast_role_changed', { values: { name, role: newRole } }));
+      if (!res.ok) { showError(localizeError(data?.error) || $_('settings.users.err_could_not_change_role')); return; }
+      showSuccess($_('settings.users.toast_role_changed', { values: { name, role: $_(newRole === 'admin' ? 'settings.users.role_admin' : 'settings.users.role_user') } }));
       await loadUsers();
     } catch (e) { showError($_('settings.users.err_could_not_reach_server')); }
   }
@@ -312,7 +314,7 @@
         body: JSON.stringify({ new_password: pw }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { showError(data?.error || $_('settings.users.err_could_not_reset_password')); return; }
+      if (!res.ok) { showError(localizeError(data?.error) || $_('settings.users.err_could_not_reset_password')); return; }
       showSuccess($_('settings.users.toast_password_reset'));
     } catch (e) { showError($_('settings.users.err_could_not_reach_server')); }
   }
@@ -334,7 +336,7 @@
       const r = await NtApi.get(`/api/auth/users/${u.id}/data-counts`);
       if (_delOpen && _delTarget?.id === u.id) _delCounts = r;
     } catch (e) {
-      _delCounts = { error: e.message };
+      _delCounts = { error: localizeError(e.message) };
     }
   }
 
@@ -349,7 +351,7 @@
       await loadUsers();
       showSuccess($_('settings.users.toast_user_deleted'));
     } catch (e) {
-      showError(e.message || 'Could not delete user');
+      showError(localizeError(e.message) || $_('settings.users.err_could_not_delete_user'));
     }
     _delLoading = false;
   }
@@ -393,7 +395,7 @@
       await loadAuthState();
       showSuccess($_('settings.users.toast_um_disabled'));
       await loadUsers();
-    } catch(e) { showError(e.message); }
+    } catch(e) { showError(localizeError(e.message)); }
   }
 
   async function logoutServer() {
@@ -450,7 +452,7 @@
         body: JSON.stringify({ email: _inviteEmailTrimmed || undefined, role: inviteRole }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { showError(data.error || $_('settings.users.err_failed_create_invite')); return; }
+      if (!res.ok) { showError(localizeError(data.error) || $_('settings.users.err_failed_create_invite')); return; }
       inviteResult = data;
       // Server reports sent: true only after nodemailer's SMTP handoff resolves
       if (data.sent) showSuccess($_('settings.users.invite_sent_to', { values: { email: _inviteEmailTrimmed } }));
@@ -492,12 +494,12 @@
                   <div class="um-user-sub">@{u.username}</div>
                   <div class="um-user-role">
                     {#if u.id === $currentUser?.id}
-                      <span class="um-role-self">{u.role} {$_('settings.users.role_self_suffix')}</span>
+                      <span class="um-role-self">{u.role === 'admin' ? $_('settings.users.role_admin') : $_('settings.users.role_user')} {$_('settings.users.role_self_suffix')}</span>
                     {:else}
                       <select class="um-role-select" value={u.role}
                         on:change={e => changeUserRole(u, e.target.value)}>
-                        <option value="user">user</option>
-                        <option value="admin">admin</option>
+                        <option value="user">{$_('settings.users.role_user')}</option>
+                        <option value="admin">{$_('settings.users.role_admin')}</option>
                       </select>
                     {/if}
                   </div>
@@ -553,7 +555,7 @@
                     <span class="pending-invite-email">{inv.email || $_('settings.users.link_only')}</span>
                     <span class="pending-invite-meta">
                       {inv.role === 'admin' ? $_('settings.users.role_admin_display') : $_('settings.users.role_user_display')} ·
-                      {$_('settings.users.expires_short', { values: { date: new Date(inv.expires_at).toLocaleDateString() } })}
+                      {$_('settings.users.expires_short', { values: { date: new Date(inv.expires_at).toLocaleDateString(intlLocale()) } })}
                     </span>
                   </div>
                   <button class="btn-icon pending-invite-revoke" on:click={() => revokeInvite(inv.token)}
@@ -601,7 +603,7 @@
               {:else}
                 <input class="input um-pw-input" type="password" bind:value={newPassword} placeholder={$_('settings.users.password_required')} autocomplete="new-password" passwordrules="minlength: 8; required: upper; required: lower; required: digit; required: special;" />
               {/if}
-              <button class="um-pw-eye" type="button" on:click={() => newShowPass = !newShowPass} aria-label={newShowPass ? 'Hide' : 'Show'}>
+              <button class="um-pw-eye" type="button" on:click={() => newShowPass = !newShowPass} aria-label={newShowPass ? $_('common.hide') : $_('settings_email.form.show')}>
                 <span class="material-symbols-rounded">{newShowPass ? 'visibility_off' : 'visibility'}</span>
               </button>
             </div>
@@ -722,7 +724,7 @@
                 {:else}
                   <input class="input" style="flex:1;min-width:0" type="password" bind:value={enableAdminPass} placeholder={$_('settings.users.password_required')} autocomplete="new-password" passwordrules="minlength: 8; required: upper; required: lower; required: digit; required: special;" />
                 {/if}
-                <button class="btn-icon" on:click={() => enableShowPass = !enableShowPass} style="flex-shrink:0" aria-label={enableShowPass ? $_('common.hide') : 'Show password'}>
+                <button class="btn-icon" on:click={() => enableShowPass = !enableShowPass} style="flex-shrink:0" aria-label={enableShowPass ? $_('common.hide') : $_('settings_email.form.show_pass_aria')}>
                   <span class="material-symbols-rounded" style="font-size:18px">{enableShowPass ? 'visibility_off' : 'visibility'}</span>
                 </button>
               </div>
@@ -732,7 +734,7 @@
                 {:else}
                   <input class="input" style="flex:1;min-width:0" type="password" bind:value={enableAdminConf} placeholder={$_('settings.users.confirm_required')} autocomplete="new-password" passwordrules="minlength: 8; required: upper; required: lower; required: digit; required: special;" />
                 {/if}
-                <button class="btn-icon" on:click={() => enableShowPass = !enableShowPass} style="flex-shrink:0" aria-label={enableShowPass ? $_('common.hide') : 'Show password'}>
+                <button class="btn-icon" on:click={() => enableShowPass = !enableShowPass} style="flex-shrink:0" aria-label={enableShowPass ? $_('common.hide') : $_('settings_email.form.show_pass_aria')}>
                   <span class="material-symbols-rounded" style="font-size:18px">{enableShowPass ? 'visibility_off' : 'visibility'}</span>
                 </button>
               </div>
@@ -751,37 +753,37 @@
 <!-- Type-username-to-confirm delete-user dialog with cascade preview -->
 <Dialog
   bind:open={_delOpen}
-  title={_delTarget ? `Delete ${_delTarget.full_name || _delTarget.username}?` : 'Delete user?'}
+  title={_delTarget ? $_('settings.users.delete_user_title', { values: { name: _delTarget.full_name || _delTarget.username } }) : $_('settings.users.delete_dialog.title_fallback')}
   message=""
-  confirmText={_delLoading ? 'Deleting…' : 'Delete Permanently'}
-  cancelText="Cancel"
+  confirmText={_delLoading ? $_('settings.users.delete_dialog.deleting') : $_('settings.users.delete_dialog.confirm')}
+  cancelText={$_('common.cancel')}
   dangerous={true}
   manualClose={true}
   confirmDisabled={!_delTarget || _delTyped.trim() !== _delTarget.username || _delLoading}
   on:cancel={_cancelDeleteUser}
   on:confirm={_confirmDeleteUser}>
   {#if _delTarget}
-    <p class="del-intro">This will permanently delete the account and everything it owns. This cannot be undone.</p>
+    <p class="del-intro">{$_('settings.users.delete_dialog.intro')}</p>
     {#if !_delCounts}
-      <div class="del-counts-loading">Loading data preview…</div>
+      <div class="del-counts-loading">{$_('settings.users.delete_dialog.loading_preview')}</div>
     {:else if _delCounts.error}
-      <div class="del-error">Couldn't load data preview: {_delCounts.error}</div>
+      <div class="del-error">{$_('settings.users.delete_dialog.preview_failed', { values: { error: _delCounts.error } })}</div>
     {:else}
       <ul class="del-counts">
-        {#if _delCounts.foods         > 0}<li><strong>{_delCounts.foods.toLocaleString()}</strong> {_delCounts.foods === 1 ? 'food' : 'foods'}</li>{/if}
-        {#if _delCounts.meals         > 0}<li><strong>{_delCounts.meals.toLocaleString()}</strong> {_delCounts.meals === 1 ? 'meal' : 'meals'}</li>{/if}
-        {#if _delCounts.recipes       > 0}<li><strong>{_delCounts.recipes.toLocaleString()}</strong> {_delCounts.recipes === 1 ? 'recipe' : 'recipes'}</li>{/if}
-        {#if _delCounts.diary_days    > 0}<li><strong>{_delCounts.diary_days.toLocaleString()}</strong> diary {_delCounts.diary_days === 1 ? 'day' : 'days'}</li>{/if}
-        {#if _delCounts.activities    > 0}<li><strong>{_delCounts.activities.toLocaleString()}</strong> manual {_delCounts.activities === 1 ? 'activity' : 'activities'}</li>{/if}
-        {#if _delCounts.workouts      > 0}<li><strong>{_delCounts.workouts.toLocaleString()}</strong> {_delCounts.workouts === 1 ? 'workout' : 'workouts'}</li>{/if}
-        {#if _delCounts.wellness_data > 0}<li><strong>{_delCounts.wellness_data.toLocaleString()}</strong> wellness data points</li>{/if}
+        {#if _delCounts.foods         > 0}<li><strong>{_delCounts.foods.toLocaleString()}</strong> {$_('settings.users.delete_dialog.foods', { values: { count: _delCounts.foods } })}</li>{/if}
+        {#if _delCounts.meals         > 0}<li><strong>{_delCounts.meals.toLocaleString()}</strong> {$_('settings.users.delete_dialog.meals', { values: { count: _delCounts.meals } })}</li>{/if}
+        {#if _delCounts.recipes       > 0}<li><strong>{_delCounts.recipes.toLocaleString()}</strong> {$_('settings.users.delete_dialog.recipes', { values: { count: _delCounts.recipes } })}</li>{/if}
+        {#if _delCounts.diary_days    > 0}<li><strong>{_delCounts.diary_days.toLocaleString()}</strong> {$_('settings.users.delete_dialog.diary_days', { values: { count: _delCounts.diary_days } })}</li>{/if}
+        {#if _delCounts.activities    > 0}<li><strong>{_delCounts.activities.toLocaleString()}</strong> {$_('settings.users.delete_dialog.activities', { values: { count: _delCounts.activities } })}</li>{/if}
+        {#if _delCounts.workouts      > 0}<li><strong>{_delCounts.workouts.toLocaleString()}</strong> {$_('settings.users.delete_dialog.workouts', { values: { count: _delCounts.workouts } })}</li>{/if}
+        {#if _delCounts.wellness_data > 0}<li><strong>{_delCounts.wellness_data.toLocaleString()}</strong> {$_('settings.users.delete_dialog.wellness_data', { values: { count: _delCounts.wellness_data } })}</li>{/if}
         {#if !_delCounts.foods && !_delCounts.meals && !_delCounts.recipes && !_delCounts.diary_days && !_delCounts.activities && !_delCounts.workouts && !_delCounts.wellness_data}
-          <li class="del-empty">No data attached to this account.</li>
+          <li class="del-empty">{$_('settings.users.delete_dialog.no_data')}</li>
         {/if}
       </ul>
     {/if}
     <label class="del-confirm-label" for="del-confirm-input">
-      Type <code>{_delTarget.username}</code> to confirm:
+      {$_('settings.users.delete_dialog.type_before')} <code>{_delTarget.username}</code> {$_('settings.users.delete_dialog.type_after')}
     </label>
     <input id="del-confirm-input" class="input del-confirm-input" type="text"
       autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
@@ -789,7 +791,7 @@
       placeholder={_delTarget.username}
       class:matched={_delTyped.trim() === _delTarget.username} />
     {#if _delTyped.trim() !== _delTarget.username}
-      <p class="del-hint">Confirm button enables once the username matches exactly.</p>
+      <p class="del-hint">{$_('settings.users.delete_dialog.hint')}</p>
     {/if}
   {/if}
 </Dialog>

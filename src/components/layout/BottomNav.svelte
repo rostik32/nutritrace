@@ -35,7 +35,7 @@
   function go(path) { push(path); }
 </script>
 
-<nav class="bottom-nav" role="navigation" aria-label="Main navigation">
+<nav class="bottom-nav" role="navigation" aria-label={$_('nav.main_navigation')}>
   <!-- Sliding pill indicator -->
   <div
     class="nav-pill"
@@ -56,7 +56,7 @@
         <span class="material-symbols-rounded nav-icon">
           {tab.icon}
           {#if tab.path === '/settings' && ($updateAvailable.available || $pwaUpdateReady)}
-            <span class="nav-update-dot" aria-label="Update available"></span>
+            <span class="nav-update-dot" aria-label={$_('nav.update_available')}></span>
           {/if}
         </span>
       {/if}

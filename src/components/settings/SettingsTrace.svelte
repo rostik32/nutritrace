@@ -1,6 +1,7 @@
 <script>
   import { slide } from 'svelte/transition';
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../../lib/server-errors.js';
   import Toggle from './Toggle.svelte';
   import ConnectionStatus from './ConnectionStatus.svelte';
   import { showSuccess, showError } from '../../stores/toast.js';
@@ -179,7 +180,7 @@
 
   async function testConnection() {
     if (!canTest && !envLocks.ai) {
-      testError = 'Fill in provider, API key, and model first';
+      testError = $_('settings_trace.toast.fill_required');
       return;
     }
     testing   = true;
@@ -204,7 +205,7 @@
       aiKeyVerified.set(true);
       showSuccess($_('settings_trace.toast.connected'));
     } catch (e) {
-      testError = e.message || $_('settings_trace.toast.test_failed');
+      testError = localizeError(e.message) || $_('settings_trace.toast.test_failed');
       aiKeyVerified.set(false);
       showError(testError);
     } finally {

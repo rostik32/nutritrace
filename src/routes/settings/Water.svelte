@@ -3,6 +3,7 @@
   import Toggle from '../../components/settings/Toggle.svelte';
   import { showError } from '../../stores/toast.js';
   import { decimalInput, parseDecimal } from '../../lib/decimal-input.js';
+  import { displayContainerName } from '../../lib/default-names.js';
   import {
     waterUnit, waterShowInDiary, waterShowInStats, waterContainers,
   } from '../../stores/settings.js';
@@ -27,7 +28,7 @@
   function addContainer() {
     const name = _newContName.trim();
     const vol  = parseDecimal(_newContVolume);
-    if (!name || !vol || vol <= 0) { showError('Enter a valid name and volume'); return; }
+    if (!name || !vol || vol <= 0) { showError($_('settings_water.invalid_container')); return; }
     waterContainers.set([...$waterContainers, { id: Date.now().toString(), name, volumeMl: _displayToMl(vol, _newContUnit) }]);
     _newContName = ''; _newContVolume = '';
   }
@@ -37,17 +38,17 @@
 <div class="section-body">
 
   <!-- Group: Display -->
-  <p class="settings-group-heading">Display</p>
-  <p class="settings-group-sub">Unit shown for water values and where the water card appears.</p>
+  <p class="settings-group-heading">{$_('settings_water.display_title')}</p>
+  <p class="settings-group-sub">{$_('settings_water.display_desc')}</p>
   <div class="card settings-card">
     <div class="setting-row">
       <span class="setting-label">{$_('settings_water.display_unit')}</span>
       <div class="select-wrap" style="width:180px">
         <select class="select sel-sm" value={$waterUnit} on:change={e => waterUnit.set(e.target.value)}>
-          <option value="ml">Milliliters (ml)</option>
-          <option value="oz">Fluid ounces (fl oz)</option>
-          <option value="L">Liters (L)</option>
-          <option value="G">Gallons (G)</option>
+          <option value="ml">{$_('settings_water.unit_ml')}</option>
+          <option value="oz">{$_('settings_water.unit_oz')}</option>
+          <option value="L">{$_('settings_water.unit_l')}</option>
+          <option value="G">{$_('settings_water.unit_gal')}</option>
         </select>
       </div>
     </div>
@@ -65,7 +66,7 @@
 
   <!-- Group: Containers -->
   <p class="settings-group-heading">{$_('settings_water.containers_title')}</p>
-  <p class="settings-group-sub">Quick-add buttons shown in the Diary for logging water intake.</p>
+  <p class="settings-group-sub">{$_('settings_water.containers_desc')}</p>
   <div class="card settings-card">
     {#each $waterContainers as container, i}
       {#if i > 0}<div class="setting-divider"></div>{/if}
@@ -73,11 +74,11 @@
         <div style="display:flex;align-items:center;gap:10px;min-width:0">
           <span class="material-symbols-rounded" style="color:var(--accent);font-size:20px;flex-shrink:0">water_drop</span>
           <div style="min-width:0">
-            <div class="setting-label">{container.name}</div>
+            <div class="setting-label">{($_, displayContainerName(container.name))}</div>
             <div class="setting-desc">{_mlToDisplay(container.volumeMl, $waterUnit)} {$waterUnit}</div>
           </div>
         </div>
-        <button class="btn-icon" on:click={() => removeContainer(container.id)} title="Remove">
+        <button class="btn-icon" on:click={() => removeContainer(container.id)} title={$_('diary.water.remove')}>
           <span class="material-symbols-rounded" style="font-size:18px;color:var(--text-3)">delete</span>
         </button>
       </div>
@@ -99,7 +100,7 @@
           <option value="L">L</option>
           <option value="G">G</option>
         </select>
-        <button class="btn btn-primary" style="height:42px;white-space:nowrap" on:click={addContainer}>Add</button>
+        <button class="btn btn-primary" style="height:42px;white-space:nowrap" on:click={addContainer}>{$_('diary.water.add')}</button>
       </div>
     </div>
   </div>

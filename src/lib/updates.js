@@ -33,6 +33,7 @@ import { APP_VERSION } from './version.js';
 import { isNative } from './platform.js';
 import { pickApkAsset } from './apk-asset.js';
 import { DB } from './db.js';
+import { t } from './i18n-t.js';
 
 const GH_OWNER = 'TraceApps';
 const GH_REPO  = 'nutritrace';
@@ -408,11 +409,12 @@ export async function clearUpdateCache() {
 
 /** Format a byte count into a compact human-readable string. */
 export function formatBytes(n) {
-  if (!n || n < 0) return '0 B';
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
-  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  const size = (value, unit) => t(`updates.size.${unit}`, { value }, `{value} ${unit.toUpperCase()}`);
+  if (!n || n < 0) return size(0, 'b');
+  if (n < 1024) return size(n, 'b');
+  if (n < 1024 * 1024) return size((n / 1024).toFixed(1), 'kb');
+  if (n < 1024 * 1024 * 1024) return size((n / 1024 / 1024).toFixed(1), 'mb');
+  return size((n / 1024 / 1024 / 1024).toFixed(2), 'gb');
 }
 
 /**
@@ -489,8 +491,8 @@ export async function isApkStaged(latest) {
  *      Native download streams straight to disk.
  */
 export async function downloadAndInstallApk(latest, onProgress) {
-  if (!isNative) throw new Error('APK install only available in the Android app');
-  if (!latest?.apkAsset) throw new Error('No APK asset in this release');
+  if (!isNative) throw new Error(t('updates.apk_errors.android_only'));
+  if (!latest?.apkAsset) throw new Error(t('updates.no_apk_asset'));
   const { Filesystem, Directory } = await import('@capacitor/filesystem');
 
   const path = `updates/${latest.apkAsset.name}`;
@@ -551,7 +553,7 @@ export async function downloadAndInstallApk(latest, onProgress) {
       headers: { 'User-Agent': UA },
     });
   } catch (e) {
-    throw new Error(e?.message || 'Download failed');
+    throw new Error(e?.message || t('updates.apk_errors.download_failed'));
   } finally {
     if (progressHandle && typeof progressHandle.remove === 'function') {
       try { await progressHandle.remove(); } catch {}
@@ -575,7 +577,7 @@ export async function downloadAndInstallApk(latest, onProgress) {
       contentType: 'application/vnd.android.package-archive',
     });
   } catch (e) {
-    throw new Error(`Could not open installer: ${e?.message || e}`);
+    throw new Error(t('updates.apk_errors.open_installer_failed', { error: e?.message || e }));
   }
 }
 
@@ -584,13 +586,14 @@ export function formatAgo(dateOrIso) {
   if (!dateOrIso) return '';
   const d = dateOrIso instanceof Date ? dateOrIso : new Date(dateOrIso);
   const s = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
-  if (s < 60) return `${s}s ago`;
+  // Short relative time (updates.ago.*).
+  if (s < 60) return t('updates.ago.seconds', { count: s }, '{count}s ago');
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return t('updates.ago.minutes', { count: m }, '{count}m ago');
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return t('updates.ago.hours', { count: h }, '{count}h ago');
   const days = Math.floor(h / 24);
-  return `${days}d ago`;
+  return t('updates.ago.days', { count: days }, '{count}d ago');
 }
 
 /**

@@ -12,6 +12,8 @@
 import { DB } from './db.js';
 import { apiUrl, isNative, getServerUrl, getAuthToken } from './platform.js';
 import { Nutrition } from './nutrition.js';
+import { t } from './i18n-t.js';
+import { localizeError } from './server-errors.js';
 
 function _cfg() {
   const baseUrl = (DB.getSetting('cooktraceBaseUrl', '') || '').replace(/\/$/, '');
@@ -186,14 +188,14 @@ const CookTrace = {
   async testConnection() {
     try {
       const data = await _proxy('/api/v1/me');
-      if (!data || !data.user) return { ok: false, error: 'Empty response' };
+      if (!data || !data.user) return { ok: false, error: t('connected_services.empty_response') };
       const scopes = Array.isArray(data.scopes) ? data.scopes : [];
       if (!scopes.includes('read:recipes')) {
-        return { ok: false, error: 'Token is valid but missing the read:recipes scope. Mint a new token on CookTrace with that scope ticked.' };
+        return { ok: false, error: t('connected_services.cooktrace_missing_scope') };
       }
       return { ok: true, username: data.user.username, instance: data.instance };
     } catch (e) {
-      return { ok: false, error: e.message || 'Connection failed' };
+      return { ok: false, error: localizeError(e.message) || t('connected_services.connection_failed') };
     }
   },
 
@@ -242,7 +244,7 @@ const CookTrace = {
     );
 
     return {
-      name: recipe.name || 'Recipe',
+      name: recipe.name || t('connected_services.recipe_fallback_name'),
       imgUrl: recipe.img_url || '',
       items,
       nutrition: totals,

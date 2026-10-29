@@ -3,7 +3,7 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import { fold } from '../lib/fold.js';
   import { push } from 'svelte-spa-router';
-  import { _ } from 'svelte-i18n';
+  import { _, locale } from 'svelte-i18n';
   import DatePicker from '../components/ui/DatePicker.svelte';
   import DiaryExportSheet from '../components/diary/DiaryExportSheet.svelte';
   import DateInput  from '../components/ui/DateInput.svelte';
@@ -44,7 +44,8 @@
     buildDiaryWritePayload,
     _newUuid as _diaryUuid
   } from '../stores/diary.js';
-  import { mealNames, goals, energyUnit, weightUnit, lengthUnit, navStyle,
+  import { displayContainerName } from '../lib/default-names.js';
+  import { mealNames, displayMealNames, goals, energyUnit, weightUnit, lengthUnit, navStyle,
            diaryShowBrands, diaryShowThumbnails,
            diaryShowTimestamps, diaryShowMacroSummary, diaryPromptQuantity,
            diaryShowPortionSize, diaryShowNotes, diaryShowNutritionBar, diaryTotalsMode, macroLegendMode, distUnit,
@@ -72,6 +73,8 @@
   import { decimalInput, parseDecimal } from '../lib/decimal-input.js';
   import { pageScrollTop } from '../lib/scroll-anchor.js';
   import { focusDefaultField } from '../lib/default-field.js';
+  import { intlLocale } from '../i18n/index.js';
+  import { localizeError } from '../lib/server-errors.js';
 
   let addMealIdx = 0;
   let showAddAction = false;
@@ -85,7 +88,7 @@
       await deleteActivity(a.id);
       showSuccess($_('diary.toast.activity_removed'));
     } catch (e) {
-      showError(e?.message || $_('diary.errors.activity_delete_failed'));
+      showError(e?.message ? localizeError(e.message) : $_('diary.errors.activity_delete_failed'));
     }
   }
   function openActivityActionSheet(a) {
@@ -282,6 +285,14 @@
     _lockAndOpen(() => showEditSheet = true);
   }
 
+  // Quick Calories entries saved without a name carry the English default
+  // 'Quick Calories'; show that default in the app language. _lang is only
+  // there so markup calls rerun when the language changes.
+  function _qcName(it, _lang) {
+    const n = it?.name;
+    return (!n || n === 'Quick Calories') ? $_('diary.quick_calories.default_name') : n;
+  }
+
   // Open the same edit sheet but bound to a single ingredient inside a
   // split recipe parent. Saving routes through updateSplitChild so the
   // parent's _splitItems[] gets the change (and the parent's totals
@@ -372,7 +383,7 @@
     if (editItem.type === 'quick_calories') {
       const raw = parseDecimal(editKcalDisplay);
       if (!Number.isFinite(raw) || raw <= 0) {
-        showError(`Enter a positive ${$energyUnit === 'kJ' ? 'kJ' : 'kcal'} value.`);
+        showError($_('diary.errors.positive_energy', { values: { unit: $energyUnit === 'kJ' ? 'kJ' : 'kcal' } }));
         return;
       }
       const kcal = $energyUnit === 'kJ' ? Math.round(raw / 4.184) : Math.round(raw);
@@ -435,7 +446,7 @@
     showSuccess($_('diary.toast.updated'));
   }
 
-  $: meals = $mealNames || ['Breakfast','Lunch','Dinner','Snacks'];
+  $: meals = $displayMealNames;
   $: editCalc = (() => {
     if (!editItem) return {};
     const origPortion   = parseFloat(editItem.portion) || 100;
@@ -512,7 +523,7 @@
       const isQuick = it.type === 'quick_calories';
       const portion = isQuick ? null
         : amountAndUnit(Math.round((it.portion || it.amount || 100) * (it.quantity || 1) * 10) / 10, it.unit);
-      return { name: it.name || 'Item', value, isQuick, portion };
+      return { name: it.name || $_('diary.item_fallback'), value, isQuick, portion };
     }).filter(Boolean).sort((a, b) => b.value - a.value);
     const visible    = _nsShowAll ? rows : rows.slice(0, 5);
     const hidden     = _nsShowAll ? []   : rows.slice(5);
@@ -910,7 +921,7 @@
   function _onDropMealOnWeekDay(targetIso, mealIdx) {
     if (mealIdx == null || mealIdx < 0) return;
     if (targetIso === $currentDate) {
-      showInfo("Can't copy a meal onto the same day.");
+      showInfo($_('diary.toast.copy_same_day'));
       return;
     }
     // Open the same Copy sheet the meal ⋮ menu uses, pre-populated
@@ -964,9 +975,9 @@
     const dt = new Date(d + 'T12:00:00');
     const today = localDateStr();
     const yest  = localDateStr(new Date(Date.now() - 86400000));
-    if (d === today) return 'Today';
-    if (d === yest)  return 'Yesterday';
-    return dt.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' });
+    if (d === today) return $_('diary.day_complete.status.today');
+    if (d === yest)  return $_('diary.day_complete.status.yesterday');
+    return dt.toLocaleDateString(intlLocale(), { weekday:'short', month:'short', day:'numeric' });
   }
 
   function formatDateSub(d, fmt) {
@@ -982,7 +993,7 @@
       const dy = String(dt.getDate()).padStart(2,'0');
       return dy + '/' + m + '/' + dt.getFullYear();
     } else if (fmt === 'natural') {
-      return dt.toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' });
+      return dt.toLocaleDateString(intlLocale(), { day:'numeric', month:'short', year:'numeric' });
     }
     return d; // ISO default
   }
@@ -1045,7 +1056,7 @@
     try {
       await saveDiaryNote(_notesText);
     } catch (e) {
-      showError(e?.message || $_('diary.errors.note_save_failed'));
+      showError(e?.message ? localizeError(e.message) : $_('diary.errors.note_save_failed'));
     } finally {
       _notesSaving = false;
     }
@@ -1126,7 +1137,7 @@
         showInfo($_('diary.day_complete.unmarked_toast'));
       }
     } catch (e) {
-      showError(e?.message || $_('diary.day_complete.error_toast'));
+      showError(e?.message ? localizeError(e.message) : $_('diary.day_complete.error_toast'));
     }
   }
 
@@ -1169,7 +1180,7 @@
         }
       }
     } catch (e) {
-      showError(e?.message || $_('diary.day_complete.error_toast'));
+      showError(e?.message ? localizeError(e.message) : $_('diary.day_complete.error_toast'));
     }
   }
 
@@ -1208,10 +1219,10 @@
     saveAsMealSaving = true;
     try {
       await NtApi.createMeal({ name, notes: '', categories: [], items, imgUrl: '' });
-      showSuccess(`Saved "${name}" to Meals`);
+      showSuccess($_('diary.toast.saved_to_meals', { values: { name } }));
       showSaveAsMeal = false;
     } catch (err) {
-      showError(err?.message || 'Save failed');
+      showError(err?.message ? localizeError(err.message) : $_('common.errors.save_failed'));
     } finally {
       saveAsMealSaving = false;
     }
@@ -1224,11 +1235,11 @@
     const from = actionMealIdx;
     if (targetIdx == null || from == null) return;
     try {
-      if (targetIdx === from) { showInfo('Already in that meal'); return; }
+      if (targetIdx === from) { showInfo($_('diary.toast.already_in_meal')); return; }
       const n = await moveMealItems(from, targetIdx);
-      if (n) showSuccess(`Moved ${n} item${n === 1 ? '' : 's'} to ${meals[targetIdx]}`);
+      if (n) showSuccess($_('diary.toast.moved_items', { values: { count: n, meal: meals[targetIdx] } }));
     } catch (err) {
-      showError(err?.message || 'Action failed');
+      showError(err?.message ? localizeError(err.message) : $_('diary.errors.action_failed'));
     }
   }
 
@@ -1236,9 +1247,9 @@
     if (actionMealIdx == null) return;
     try {
       const n = await clearMealItems(actionMealIdx);
-      if (n) showSuccess(`Cleared ${n} item${n === 1 ? '' : 's'} from ${meals[actionMealIdx]}`);
+      if (n) showSuccess($_('diary.toast.cleared_items', { values: { count: n, meal: meals[actionMealIdx] } }));
     } catch (err) {
-      showError(err?.message || 'Clear failed');
+      showError(err?.message ? localizeError(err.message) : $_('diary.errors.clear_failed'));
     }
   }
 
@@ -1390,7 +1401,7 @@
     if (!isoStr) return '';
     try {
       const use24 = $timeFormat === '24h';
-      return new Date(isoStr).toLocaleTimeString(undefined, {
+      return new Date(isoStr).toLocaleTimeString(intlLocale(), {
         hour: '2-digit', minute: '2-digit', hour12: !use24
       });
     } catch { return ''; }
@@ -1445,7 +1456,7 @@
       deleted_uuids: { items: removedUuids, water: [] },
     }));
     await loadEntry($currentDate);
-    showSuccess(`${count} item${count !== 1 ? 's' : ''} removed`);
+    showSuccess($_('diary.toast.items_removed', { values: { count } }));
     exitSelectMode();
   }
 
@@ -1528,24 +1539,24 @@
   let copyBusy = false;
 
   $: copySourceName = copyMode === 'meal'
-    ? (meals[actionMealIdx] || 'meal')
-    : (actionItem?.name || 'item');
+    ? (meals[actionMealIdx] || $_('diary.confirm.clear_all_fallback'))
+    : (actionItem?.name || $_('diary.confirm.remove_fallback'));
 
   async function onConfirmCopy() {
     if (!copyDate || copyBusy) return;
     copyBusy = true;
     try {
       const targetMeal = Number(copyMeal) || 0;
-      const mealLabel  = meals[targetMeal] || 'meal';
+      const mealLabel  = meals[targetMeal] || $_('diary.confirm.clear_all_fallback');
       const sameDay    = copyDate === $currentDate;
       if (copyMode === 'meal') {
         const from = actionMealIdx;
         if (from == null) return;
         const n = await copyMealToDate(from, copyDate, targetMeal);
         if (n) showSuccess(sameDay
-          ? `Copied ${n} item${n === 1 ? '' : 's'} to ${mealLabel}`
-          : `Copied ${n} item${n === 1 ? '' : 's'} to ${mealLabel} on ${copyDate}`);
-        else showInfo('Nothing to copy');
+          ? $_('diary.toast.copied_items', { values: { count: n, meal: mealLabel } })
+          : $_('diary.toast.copied_items_on', { values: { count: n, meal: mealLabel, date: copyDate } }));
+        else showInfo($_('diary.toast.nothing_to_copy'));
       } else {
         if (!actionItem) return;
         const { addDiaryItem } = await import('../stores/diary.js');
@@ -1555,12 +1566,12 @@
         const { _i, id, ...rest } = actionItem;
         await addDiaryItem(rest, targetMeal, copyDate);
         showSuccess(sameDay
-          ? `Copied to ${mealLabel}`
-          : `Copied to ${mealLabel} on ${copyDate}`);
+          ? $_('diary.toast.copied_to', { values: { meal: mealLabel } })
+          : $_('diary.toast.copied_to_on', { values: { meal: mealLabel, date: copyDate } }));
       }
       showCopySheet = false;
     } catch (err) {
-      showError(err?.message || 'Copy failed');
+      showError(err?.message ? localizeError(err.message) : $_('diary.errors.copy_failed'));
     } finally {
       copyBusy = false;
     }
@@ -1574,13 +1585,13 @@
     if (!item || item._i == null) return;
     const ok = await splitRecipeItem(item._i);
     if (ok) {
-      showSuccess('Recipe split into ingredients');
+      showSuccess($_('diary.toast.recipe_split'));
       // Auto-expand the just-split parent so the user immediately sees
       // what was unpacked and can act on individual ingredients.
       _splitExpanded.add(item._i);
       _splitExpanded = _splitExpanded;
     } else {
-      showError("Couldn't split — no ingredients found on this item");
+      showError($_('diary.errors.split_failed'));
     }
   }
 
@@ -1629,7 +1640,7 @@
     if (!actionItem || mealIdx == null) return;
     await updateDiaryItem(actionItem._i, { meal: mealIdx });
     showMoveToMeal = false;
-    showSuccess('Moved to ' + (meals[mealIdx] || 'meal'));
+    showSuccess($_('diary.toast.moved_to', { values: { meal: meals[mealIdx] || $_('diary.confirm.clear_all_fallback') } }));
   }
 
   // ── Water ──────────────────────────────────────────────────────────────────
@@ -1846,7 +1857,7 @@
             deleted_uuids: { items: removedUuid ? [removedUuid] : [], water: [] },
           }));
           await loadEntry($currentDate);
-          showSuccess('Item replaced');
+          showSuccess($_('diary.toast.item_replaced'));
         }
       } catch (e) {
         console.warn('[diary] replace cleanup failed:', e.message);
@@ -1931,15 +1942,15 @@
        "put the hide button inside DaySummary's header" approach
        so DaySummary can go back to just %/g toggle + open_in_full. -->
   <header class="rail-title">
-    <span class="rail-title-text">Overview</span>
+    <span class="rail-title-text">{$_('diary.rail.overview')}</span>
     <div class="rail-title-actions">
       {#if _railMode === 'pinned'}
         <button
           type="button"
           class="rail-ctrl-btn"
           on:click={railHide}
-          aria-label="Hide widget panel"
-          title="Hide widgets (edge tab reopens)"
+          aria-label={$_('diary.rail.hide_aria')}
+          title={$_('diary.rail.hide_title')}
         >
           <span class="material-symbols-rounded">right_panel_close</span>
         </button>
@@ -1948,8 +1959,8 @@
           type="button"
           class="rail-ctrl-btn"
           on:click={railPin}
-          aria-label="Pin widget panel"
-          title="Pin widgets"
+          aria-label={$_('diary.rail.pin_aria')}
+          title={$_('diary.rail.pin_title')}
         >
           <span class="material-symbols-rounded">push_pin</span>
         </button>
@@ -1957,8 +1968,8 @@
           type="button"
           class="rail-ctrl-btn"
           on:click={() => _railOverlay = false}
-          aria-label="Close widget panel"
-          title="Close"
+          aria-label={$_('diary.rail.close_aria')}
+          title={$_('common.close')}
         >
           <span class="material-symbols-rounded">close</span>
         </button>
@@ -2023,7 +2034,7 @@
         placeholder={$_('diary.notes_placeholder')}
         rows="3"></textarea>
       <div class="rn-meta">
-        <span class="text-3 text-sm">{_notesSaving ? 'Saving…' : (_notesText ? `${_notesText.length} characters` : '')}</span>
+        <span class="text-3 text-sm">{_notesSaving ? $_('common.saving') : (_notesText ? $_('diary.notes_characters', { values: { count: _notesText.length } }) : '')}</span>
       </div>
     </section>
   {/if}
@@ -2058,7 +2069,7 @@
   <!-- Standard page-header — identical to every other page -->
   <header bind:this={_diaryHeaderEl} class="page-header diary-header" class:banner-gradient={$bannerStyle === 'gradient' && !selectMode} class:banner-animated={$bannerStyle === 'animated' && !selectMode}>
     {#if selectMode}
-      <h1 class="select-mode-title">{selectedItems.size} selected</h1>
+      <h1 class="select-mode-title">{$_('diary.select.selected', { values: { count: selectedItems.size } })}</h1>
     {:else}
       <h1>{$_('routes.diary.title')}</h1>
     {/if}
@@ -2075,15 +2086,15 @@
     </button>
     <button class="date-btn" on:click={openDatePicker} title={$_('diary.nav.jump_to_date')}>
       <span class="date-label">
-        {formatDate($currentDate)}
+        {formatDate($currentDate, $locale)}
         {#if $diaryShowNotes && (entry?.notes || '').trim()}
-          <span class="material-symbols-rounded date-note-indicator" title="Has notes">edit_note</span>
+          <span class="material-symbols-rounded date-note-indicator" title={$_('diary.has_notes')}>edit_note</span>
         {/if}
         {#if $diaryShowCompletion && _dayIsComplete}
-          <span class="material-symbols-rounded date-complete-indicator" title="Day marked complete" aria-label="Day marked complete">task_alt</span>
+          <span class="material-symbols-rounded date-complete-indicator" title={$_('diary.day_complete.marked_toast')} aria-label={$_('diary.day_complete.marked_toast')}>task_alt</span>
         {/if}
       </span>
-      <span class="date-sub">{formatDateSub($currentDate, $dateFormat)}</span>
+      <span class="date-sub">{formatDateSub($currentDate, $dateFormat, $locale)}</span>
     </button>
     <button class="btn-icon accent" on:click={nextDay} aria-label={$_('diary.nav.next_day')} title={$_('diary.nav.next_day')}>
       <span class="material-symbols-rounded">chevron_right</span>
@@ -2163,7 +2174,7 @@
                 const raw = String(entry.completed_at);
                 const iso = raw.includes('T') ? raw
                   : raw.replace(' ', 'T') + (raw.endsWith('Z') ? '' : 'Z');
-                return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                return new Date(iso).toLocaleTimeString(intlLocale(), { hour: 'numeric', minute: '2-digit' });
               } catch { return ''; }
             })()}
             {#if _ts}<span class="dds-sub">· {$_('diary.day_complete.status.closed_at', { values: { time: _ts } })}</span>{/if}
@@ -2256,8 +2267,8 @@
                  empty-slot confirm on slots the user has explicitly closed. -->
             <button class="btn-icon meal-complete-btn" class:meal-done={_mealDone}
               on:click|stopPropagation={() => _toggleMealCompletion(mealIdx)}
-              aria-label={_mealDone ? `Unmark ${meal} complete` : `Mark ${meal} complete`}
-              title={_mealDone ? `Unmark ${meal} complete` : `Mark ${meal} complete`}>
+              aria-label={$_(_mealDone ? 'diary.meal.unmark_complete' : 'diary.meal.mark_complete', { values: { meal } })}
+              title={$_(_mealDone ? 'diary.meal.unmark_complete' : 'diary.meal.mark_complete', { values: { meal } })}>
               <span class="material-symbols-rounded">{_mealDone ? 'task_alt' : 'radio_button_unchecked'}</span>
             </button>
           {/if}
@@ -2268,21 +2279,21 @@
               {_mealEnergy.value.toLocaleString()} {_mealEnergy.unit}
             </span>
           {/if}
-          <button class="btn-icon ml-auto meal-menu-btn" on:click={() => openMealActionSheet(mealIdx)} aria-label="Meal actions for {meal}" title="Meal actions">
+          <button class="btn-icon ml-auto meal-menu-btn" on:click={() => openMealActionSheet(mealIdx)} aria-label={$_('diary.meal.actions_for', { values: { meal } })} title={$_('diary.meal.actions')}>
             <span class="material-symbols-rounded">more_vert</span>
           </button>
           {#if $showQuickCalories}
-            <button class="btn-icon meal-quick-btn" on:click={() => openQuickCalories(mealIdx)} aria-label="Quick calories for {meal}" title="Quick Calories">
+            <button class="btn-icon meal-quick-btn" on:click={() => openQuickCalories(mealIdx)} aria-label={$_('diary.meal.quick_calories_for', { values: { meal } })} title={$_('diary.quick_calories.title')}>
               <span class="material-symbols-rounded">bolt</span>
             </button>
           {/if}
-          <button class="btn-icon accent" on:click={() => openAddFood(mealIdx)} aria-label="Add food to {meal}" title="Add food to {meal}">
+          <button class="btn-icon accent" on:click={() => openAddFood(mealIdx)} aria-label={$_('diary.meal.add_food_to', { values: { meal } })} title={$_('diary.meal.add_food_to', { values: { meal } })}>
             <span class="material-symbols-rounded">add</span>
           </button>
         </div>
 
         {#if items.length === 0}
-          <button type="button" class="meal-empty" on:click={() => openAddFood(mealIdx)} aria-label="Add food to {meal}">
+          <button type="button" class="meal-empty" on:click={() => openAddFood(mealIdx)} aria-label={$_('diary.meal.add_food_to', { values: { meal } })}>
             <span class="material-symbols-rounded meal-empty-icon" style="color:{mealColor(mealIdx)}">add_circle</span>
             <span class="meal-empty-text">{$_('diary.empty.tap_to_add_food')}</span>
           </button>
@@ -2305,7 +2316,7 @@
                 on:touchend={onItemTouchEnd}
                 on:contextmenu|preventDefault={() => { if (!selectMode) { actionItem = item; _lockAndOpen(() => showItemAction = true); } }}>
                 {#if selectMode}
-                  <button class="item-select-btn" on:click={() => toggleItemSelect(item)} aria-label="Toggle selection">
+                  <button class="item-select-btn" on:click={() => toggleItemSelect(item)} aria-label={$_('diary.select.toggle')}>
                     <span class="item-check material-symbols-rounded" class:item-check-on={selectedItems.has(item._i)}>
                       {selectedItems.has(item._i) ? 'check_circle' : 'radio_button_unchecked'}
                     </span>
@@ -2337,8 +2348,8 @@
                 </button>
                 {#if Array.isArray(item._splitItems) && item._splitItems.length > 0}
                   <button type="button" class="split-toggle" on:click|stopPropagation={() => toggleSplitExpand(item._i)}
-                    aria-label={_splitExpanded.has(item._i) ? 'Collapse ingredients' : 'Expand ingredients'}
-                    title={_splitExpanded.has(item._i) ? 'Collapse ingredients' : 'Expand ingredients'}>
+                    aria-label={_splitExpanded.has(item._i) ? $_('diary.split.collapse') : $_('diary.split.expand')}
+                    title={_splitExpanded.has(item._i) ? $_('diary.split.collapse') : $_('diary.split.expand')}>
                     <span class="material-symbols-rounded split-chevron" class:split-chevron-open={_splitExpanded.has(item._i)}>expand_more</span>
                   </button>
                 {/if}
@@ -2349,7 +2360,7 @@
                     {@const _ce = Nutrition.displayEnergy((Nutrition.calculate(child).calories || 0), $energyUnit)}
                     <div class="split-child">
                       <button type="button" class="split-child-btn" on:click={() => openEditChild(item._i, ci, child)}
-                        aria-label="Edit {child.name}" title="Edit serving size">
+                        aria-label={$_('diary.edit_name', { values: { name: child.name } })} title={$_('diary.split.edit_serving')}>
                         <span class="split-child-name truncate">{child.name}</span>
                         <span class="split-child-meta text-3 text-sm">
                           {amountAndUnit(Math.round((child.portion || 100) * (child.quantity || 1) * 10) / 10, child.unit)} · {_ce.value.toLocaleString()} {_ce.unit}
@@ -2376,7 +2387,7 @@
                     class:item-selected={selectMode && selectedItems.has(qItem._i)}
                     on:contextmenu|preventDefault={() => { if (!selectMode) { actionItem = qItem; _lockAndOpen(() => showItemAction = true); } }}>
                     {#if selectMode}
-                      <button class="item-select-btn" on:click={() => toggleItemSelect(qItem)} aria-label="Toggle selection">
+                      <button class="item-select-btn" on:click={() => toggleItemSelect(qItem)} aria-label={$_('diary.select.toggle')}>
                         <span class="item-check material-symbols-rounded" class:item-check-on={selectedItems.has(qItem._i)}>
                           {selectedItems.has(qItem._i) ? 'check_circle' : 'radio_button_unchecked'}
                         </span>
@@ -2389,7 +2400,7 @@
                         </div>
                       {/if}
                       <div class="item-info">
-                        <span class="item-name truncate">{qItem.name || 'Quick Calories'}</span>
+                        <span class="item-name truncate">{_qcName(qItem, $locale)}</span>
                         <span class="item-meta text-3 text-sm">
                           {_qE.value.toLocaleString()} {_qE.unit}
                           {#if $diaryShowTimestamps && qItem.addedAt} · {formatTime(qItem.addedAt)}{/if}
@@ -2411,7 +2422,7 @@
                   on:contextmenu|preventDefault={() => { if (!selectMode && _single) { actionItem = _quickItems[0]; _lockAndOpen(() => showItemAction = true); } }}>
                   <button class="diary-item-btn"
                     on:click={() => _single ? openEditItem(_quickItems[0]) : toggleQuickCalExpand(mealIdx)}
-                    aria-label={_single ? 'Edit Quick Calories entry' : (_expanded ? 'Collapse Quick Calorie entries' : 'Expand Quick Calorie entries')}>
+                    aria-label={_single ? $_('diary.quick_calories.edit_entry') : (_expanded ? $_('diary.quick_calories.collapse') : $_('diary.quick_calories.expand'))}>
                     {#if $diaryShowThumbnails}
                       <div class="item-thumb-placeholder">
                         <span class="material-symbols-rounded" style="font-size:18px;color:var(--accent)">bolt</span>
@@ -2419,18 +2430,18 @@
                     {/if}
                     <div class="item-info">
                       <span class="item-name truncate">
-                        {#if _single}{_quickItems[0]?.name || 'Quick Calories'}{:else}Quick Calories × {_quickItems.length}{/if}
+                        {#if _single}{_qcName(_quickItems[0], $locale)}{:else}{$_('diary.quick_calories.summed_count', { values: { count: _quickItems.length } })}{/if}
                       </span>
                       <span class="item-meta text-3 text-sm">
                         {_quickTotalEnergy.value.toLocaleString()} {_quickTotalEnergy.unit}
-                        {#if _quickItems.length > 1} · tap to {_expanded ? 'collapse' : 'expand'}{/if}
+                        {#if _quickItems.length > 1} · {_expanded ? $_('diary.quick_calories.tap_to_collapse') : $_('diary.quick_calories.tap_to_expand')}{/if}
                       </span>
                     </div>
                   </button>
                   {#if _quickItems.length > 1}
                     <button type="button" class="split-toggle" on:click|stopPropagation={() => toggleQuickCalExpand(mealIdx)}
-                      aria-label={_expanded ? 'Collapse Quick Calorie entries' : 'Expand Quick Calorie entries'}
-                      title={_expanded ? 'Collapse Quick Calorie entries' : 'Expand Quick Calorie entries'}>
+                      aria-label={_expanded ? $_('diary.quick_calories.collapse') : $_('diary.quick_calories.expand')}
+                      title={_expanded ? $_('diary.quick_calories.collapse') : $_('diary.quick_calories.expand')}>
                       <span class="material-symbols-rounded split-chevron" class:split-chevron-open={_expanded}>expand_more</span>
                     </button>
                   {/if}
@@ -2442,8 +2453,8 @@
                       <div class="split-child">
                         <button type="button" class="split-child-btn" on:click={() => openEditItem(qItem)}
                           on:contextmenu|preventDefault={() => { if (!selectMode) { actionItem = qItem; _lockAndOpen(() => showItemAction = true); } }}
-                          aria-label="Edit {qItem.name || 'Quick Calories'}" title="Edit entry">
-                          <span class="split-child-name truncate">{qItem.name || 'Quick Calories'}</span>
+                          aria-label={$_('diary.edit_name', { values: { name: _qcName(qItem, $locale) } })} title={$_('diary.edit_entry')}>
+                          <span class="split-child-name truncate">{_qcName(qItem, $locale)}</span>
                           <span class="split-child-meta text-3 text-sm">
                             {_qcE.value.toLocaleString()} {_qcE.unit}
                             {#if $diaryShowTimestamps && qItem.addedAt} · {formatTime(qItem.addedAt)}{/if}
@@ -2472,13 +2483,13 @@
           {#if mt}
             {@const _mtEnergy = Nutrition.displayEnergy(mt.cal, $energyUnit)}
             <button type="button" class="meal-macro-footer" on:click={() => mealTotalsIdx = mealIdx}
-              aria-label="Show {meal} nutrition totals" title="Show nutrition totals">
+              aria-label={$_('diary.meal.show_totals_for', { values: { meal } })} title={$_('diary.meal.show_totals')}>
               <div class="meal-macro-bar">
-                <div class="mmb-p" style="width:{mt.p}%" title="Protein {mt.p}%"></div>
-                <div class="mmb-c" style="width:{mt.c}%" title="Carbs {mt.c}%"></div>
-                <div class="mmb-f" style="width:{mt.f}%" title="Fat {mt.f}%"></div>
+                <div class="mmb-p" style="width:{mt.p}%" title={$_('diary.macro_title.protein', { values: { pct: mt.p } })}></div>
+                <div class="mmb-c" style="width:{mt.c}%" title={$_('diary.macro_title.carbs', { values: { pct: mt.c } })}></div>
+                <div class="mmb-f" style="width:{mt.f}%" title={$_('diary.macro_title.fat', { values: { pct: mt.f } })}></div>
               </div>
-              <span class="meal-macro-text text-3 text-sm"><span style="color:var(--macro-protein)">{mt.p}% P</span> · <span style="color:var(--macro-carbs)">{mt.c}% C</span> · <span style="color:var(--macro-fat)">{mt.f}% F</span> · <span style="color:var(--macro-calories)">{_mtEnergy.value.toLocaleString()} {_mtEnergy.unit}</span></span>
+              <span class="meal-macro-text text-3 text-sm"><span style="color:var(--macro-protein)">{$_('diary.macro_pct.p', { values: { pct: mt.p } })}</span> · <span style="color:var(--macro-carbs)">{$_('diary.macro_pct.c', { values: { pct: mt.c } })}</span> · <span style="color:var(--macro-fat)">{$_('diary.macro_pct.f', { values: { pct: mt.f } })}</span> · <span style="color:var(--macro-calories)">{_mtEnergy.value.toLocaleString()} {_mtEnergy.unit}</span></span>
             </button>
           {/if}
         {/if}
@@ -2545,7 +2556,7 @@
                   <div class="item-info">
                     <span class="item-name truncate">{a.name}</span>
                     <span class="item-meta text-3 text-sm">
-                      {#if a.duration_min}{a.duration_min} min{/if}{#if a.duration_min && a.distance} | {/if}{#if a.distance}{@const _dStr = String(a.distance).trim()}{_dStr}{#if /^\d+(\.\d+)?$/.test(_dStr)} {$distUnit || 'mi'}{/if}{/if}{#if (a.duration_min || a.distance)} | {/if}<span style="color:#4FFFB0">−{_aEnergy.value.toLocaleString()} {_aEnergy.unit}</span>{#if a.source === 'ai_estimated'} | <span class="text-3" title="Estimated by Trace">{$_('diary.activity.estimated_short')}</span>{/if}
+                      {#if a.duration_min}{$_('diary.activity.duration_min', { values: { n: a.duration_min } })}{/if}{#if a.duration_min && a.distance} | {/if}{#if a.distance}{@const _dStr = String(a.distance).trim()}{_dStr}{#if /^\d+(\.\d+)?$/.test(_dStr)} {$distUnit || 'mi'}{/if}{/if}{#if (a.duration_min || a.distance)} | {/if}<span style="color:#4FFFB0">−{_aEnergy.value.toLocaleString()} {_aEnergy.unit}</span>{#if a.source === 'ai_estimated'} | <span class="text-3" title={$_('diary.activity.estimated_by_trace')}>{$_('diary.activity.estimated_short')}</span>{/if}
                     </span>
                   </div>
                 </button>
@@ -2593,7 +2604,7 @@
               placeholder={$_('diary.notes_placeholder')}
               rows="3"></textarea>
             <div class="diary-notes-meta">
-              <span class="text-3 text-sm">{_notesSaving ? 'Saving…' : (_notesText ? `${_notesText.length} characters` : '')}</span>
+              <span class="text-3 text-sm">{_notesSaving ? $_('common.saving') : (_notesText ? $_('diary.notes_characters', { values: { count: _notesText.length } }) : '')}</span>
             </div>
           </div>
         {/if}
@@ -2624,9 +2635,9 @@
         type="button"
         class="rail-edge-tab"
         on:click={railToggleOverlay}
-        aria-label={_railOverlay ? 'Close widget panel' : 'Open widget panel'}
+        aria-label={_railOverlay ? $_('diary.rail.close_aria') : $_('diary.rail.open_aria')}
         aria-expanded={_railOverlay}
-        title={_railOverlay ? 'Close widgets' : 'Show widgets'}
+        title={_railOverlay ? $_('diary.rail.close_title') : $_('diary.rail.show_title')}
       >
         <span class="material-symbols-rounded" style="pointer-events:none">
           {_railOverlay ? 'chevron_right' : 'chevron_left'}
@@ -2684,7 +2695,7 @@
   <!-- Calorie progress strip -->
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="dbb-progress" on:click={() => barExpanded = !barExpanded}
-    title="Calories: {Math.round(calPct)}%">
+    title={$_('diary.bar.calories_pct', { values: { pct: Math.round(calPct) } })}>
     <div class="dbb-progress-fill"
       class:celebrating={_calGoalCelebrating}
       style="width:{_barsMounted ? calPct : 0}%;{calPct >= 100 ? 'background:var(--danger)' : ''}"></div>
@@ -2692,15 +2703,15 @@
   <!-- Macro proportion bar — outside button so title tooltips work on hover -->
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="dbb-macro-bar" on:click={() => barExpanded = !barExpanded}>
-    <div class="dbb-mb-p" style="width:{_barsMounted ? _mp.protein : 0}%" title="Protein {_mp.protein}%"></div>
-    <div class="dbb-mb-c" style="width:{_barsMounted ? _mp.carbs : 0}%"   title="Carbs {_mp.carbs}%"></div>
-    <div class="dbb-mb-f" style="width:{_barsMounted ? _mp.fat : 0}%"     title="Fat {_mp.fat}%"></div>
+    <div class="dbb-mb-p" style="width:{_barsMounted ? _mp.protein : 0}%" title={$_('diary.macro_title.protein', { values: { pct: _mp.protein } })}></div>
+    <div class="dbb-mb-c" style="width:{_barsMounted ? _mp.carbs : 0}%"   title={$_('diary.macro_title.carbs', { values: { pct: _mp.carbs } })}></div>
+    <div class="dbb-mb-f" style="width:{_barsMounted ? _mp.fat : 0}%"     title={$_('diary.macro_title.fat', { values: { pct: _mp.fat } })}></div>
   </div>
   <!-- Water progress strip (collapsed, always visible) -->
   {#if _waterShowInDiary}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div class="dbb-water-strip" on:click={() => barExpanded = !barExpanded}
-      title="Water: {_waterPct}%">
+      title={$_('diary.bar.water_pct', { values: { pct: _waterPct } })}>
       <div class="dbb-water-strip-fill"
         class:celebrating={_waterGoalCelebrating}
         style="width:{_barsMounted ? _waterPct : 0}%"></div>
@@ -2709,8 +2720,8 @@
 
   <!-- Text summary row — taps to expand/collapse -->
   <button class="dbb-summary-row" on:click={() => barExpanded = !barExpanded}
-    aria-label="{barExpanded ? 'Collapse' : 'Expand'} nutrition panel">
-    <span class="dbb-summary-text"><span style="color:var(--macro-protein)">{_mp.protein}% P</span> · <span style="color:var(--macro-carbs)">{_mp.carbs}% C</span> · <span style="color:var(--macro-fat)">{_mp.fat}% F</span> · <span style="color:var(--macro-calories)">{_sumEnergy.value.toLocaleString()} {_sumEnergy.unit}</span>{#if _waterShowInDiary} · <span style="color:var(--water-blue)"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle">water_drop</span> {_waterDisplay(_waterTotal)}</span>{/if}</span>
+    aria-label={barExpanded ? $_('diary.bar.collapse_panel') : $_('diary.bar.expand_panel')}>
+    <span class="dbb-summary-text"><span style="color:var(--macro-protein)">{$_('diary.macro_pct.p', { values: { pct: _mp.protein } })}</span> · <span style="color:var(--macro-carbs)">{$_('diary.macro_pct.c', { values: { pct: _mp.carbs } })}</span> · <span style="color:var(--macro-fat)">{$_('diary.macro_pct.f', { values: { pct: _mp.fat } })}</span> · <span style="color:var(--macro-calories)">{_sumEnergy.value.toLocaleString()} {_sumEnergy.unit}</span>{#if _waterShowInDiary} · <span style="color:var(--water-blue)"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle">water_drop</span> {_waterDisplay(_waterTotal)}</span>{/if}</span>
     <span class="dbb-chevron material-symbols-rounded">{barExpanded ? 'expand_more' : 'expand_less'}</span>
   </button>
 
@@ -2720,7 +2731,7 @@
       <!-- Consumed / Remaining toggle -->
       <div class="dbb-toggle-row">
         <button class="dbb-toggle-pill" on:click|stopPropagation={toggleTotalsMode}
-          aria-label="Toggle consumed/remaining">
+          aria-label={$_('diary.bar.toggle_totals_aria')}>
           <span class="dbb-tp-opt" class:dbb-tp-active={_totalsMode === 'consumed'}>{$_('diary_deep.consumed')}</span>
           <span class="dbb-tp-opt" class:dbb-tp-active={_totalsMode === 'remaining'}>{$_('diary_deep.remaining')}</span>
         </button>
@@ -2731,25 +2742,25 @@
           {#if _totalsMode === 'remaining'}
             {@const _remEnergy = Nutrition.displayEnergy(caloriesGoalAdjusted - Math.round($_calTween), $energyUnit)}
             <span class="dbb-num">{_remEnergy.value.toLocaleString()}</span>
-            <span class="dbb-unit">{#if $calorieGoalMode === 'dynamic' && _dynamicCaloriesOut != null}⚡ {:else if $calorieGoalMode === 'adaptive' && _adaptiveTdee != null}📈 {/if}{#if _effectiveActive > 0}<span class="material-symbols-rounded dbb-activity-cue" title="Adjusted for activity">directions_run</span> {/if}{_remEnergy.unit} left</span>
+            <span class="dbb-unit">{#if $calorieGoalMode === 'dynamic' && _dynamicCaloriesOut != null}⚡ {:else if $calorieGoalMode === 'adaptive' && _adaptiveTdee != null}📈 {/if}{#if _effectiveActive > 0}<span class="material-symbols-rounded dbb-activity-cue" title={$_('diary.bar.adjusted_for_activity')}>directions_run</span> {/if}{$_('diary.bar.unit_left', { values: { unit: _remEnergy.unit } })}</span>
           {:else}
             {@const _eatEnergy = Nutrition.displayEnergy($_calTween, $energyUnit)}
             <span class="dbb-num">{_eatEnergy.value.toLocaleString()}</span>
-            <span class="dbb-unit">{#if $calorieGoalMode === 'dynamic' && _dynamicCaloriesOut != null}⚡ {:else if $calorieGoalMode === 'adaptive' && _adaptiveTdee != null}📈 {/if}{_eatEnergy.unit} eaten</span>
+            <span class="dbb-unit">{#if $calorieGoalMode === 'dynamic' && _dynamicCaloriesOut != null}⚡ {:else if $calorieGoalMode === 'adaptive' && _adaptiveTdee != null}📈 {/if}{$_('diary.bar.unit_eaten', { values: { unit: _eatEnergy.unit } })}</span>
           {/if}
         </div>
         <div class="dbb-macros">
           <span class="dbb-macro" style="color:var(--macro-protein)">
             {#if _totalsMode === 'remaining' && protGoal != null}{Math.round((protGoal - $_protTween)*10)/10}{:else}{Math.round($_protTween*10)/10}{/if}
-            <span class="dbb-mlabel">g Protein</span>
+            <span class="dbb-mlabel">{$_('diary.bar.g_protein')}</span>
           </span>
           <span class="dbb-macro" style="color:var(--macro-carbs)">
             {#if _totalsMode === 'remaining' && carbGoal != null}{Math.round((carbGoal - $_carbTween)*10)/10}{:else}{Math.round($_carbTween*10)/10}{/if}
-            <span class="dbb-mlabel">g Carbs</span>
+            <span class="dbb-mlabel">{$_('diary.bar.g_carbs')}</span>
           </span>
           <span class="dbb-macro" style="color:var(--macro-fat)">
             {#if _totalsMode === 'remaining' && fatGoal != null}{Math.round((fatGoal - $_fatTween)*10)/10}{:else}{Math.round($_fatTween*10)/10}{/if}
-            <span class="dbb-mlabel">g Fat</span>
+            <span class="dbb-mlabel">{$_('diary.bar.g_fat')}</span>
           </span>
         </div>
       </div>
@@ -2758,7 +2769,7 @@
         {@const _aE = Nutrition.displayEnergy(_effectiveActive, $energyUnit)}
         {@const _adjE = Nutrition.displayEnergy(caloriesGoalAdjusted, $energyUnit)}
         <div class="dbb-activity-breakdown text-3 text-sm">
-          Goal {_gE.value.toLocaleString()} <span style="color:#4FFFB0">+ Activity {_aE.value.toLocaleString()}</span> = {_adjE.value.toLocaleString()} {_adjE.unit}
+          {$_('diary.bar.goal_value', { values: { value: _gE.value.toLocaleString() } })} <span style="color:#4FFFB0">+ {$_('diary.bar.activity_value', { values: { value: _aE.value.toLocaleString() } })}</span> = {_adjE.value.toLocaleString()} {_adjE.unit}
         </div>
       {/if}
       <!-- Water row -->
@@ -2771,7 +2782,7 @@
             </div>
             <span class="dbb-water-text">
               {#if _totalsMode === 'remaining'}
-                {_waterDisplay(Math.max(0, _waterGoalMl - _waterTotal))} left
+                {$_('diary.bar.amount_left', { values: { amount: _waterDisplay(Math.max(0, _waterGoalMl - _waterTotal)) } })}
               {:else}
                 {_waterDisplay(_waterTotal)}
               {/if}
@@ -2822,7 +2833,7 @@
       <div class="wc-bottle-wrap" class:wc-overflowing={_waterOverflow}>
         <svg class="wc-bottle-svg" class:wc-overflowing={_waterOverflow}
           viewBox="0 0 120 200" xmlns="http://www.w3.org/2000/svg"
-          aria-label="Water bottle, {_waterRawPct}% full">
+          aria-label={$_('diary.water.bottle_aria', { values: { pct: _waterRawPct } })}>
           <defs>
             <clipPath id="wc-clip-d">
               <path d="M 46 16 L 46 38 C 32 44 22 56 22 68 L 22 168 Q 22 184 37 184 L 83 184 Q 98 184 98 168 L 98 68 C 98 56 88 44 74 38 L 74 16 Z" />
@@ -2876,7 +2887,7 @@
         {#each _waterContainers as cont (cont.id)}
           <button class="wc-btn" on:click={() => _addWaterFromDiary(cont.volumeMl)}>
             <span class="material-symbols-rounded">water_drop</span>
-            <span class="wc-btn-name">{cont.name}</span>
+            <span class="wc-btn-name">{($_, displayContainerName(cont.name))}</span>
             <span class="wc-btn-vol">{_contDisplay(cont)}</span>
           </button>
         {/each}
@@ -2897,7 +2908,7 @@
     {#if _waterShowCustom}
       <div class="wc-custom-row" transition:slide={{ duration: 160 }}>
         <input class="input" type="text" inputmode="decimal" use:decimalInput
-          placeholder={`Amount (${_waterUnit === 'oz' ? 'fl oz' : _waterUnit})`}
+          placeholder={$_('diary.water.amount_placeholder', { values: { unit: _waterUnit === 'oz' ? 'fl oz' : _waterUnit } })}
           bind:value={_waterCustomAmt} bind:this={_waterCustomInput}
           on:keydown={e => e.key === 'Enter' && _addWaterCustom()} />
         <button class="btn btn-primary" on:click={_addWaterCustom}>{$_('diary.water.add')}</button>
@@ -2906,7 +2917,7 @@
 
     <!-- Today's log -->
     {#if _waterLogs.length > 0}
-      <p class="section-title" style="padding:12px 0 8px">Today's Log</p>
+      <p class="section-title" style="padding:12px 0 8px">{$_('diary.water.todays_log')}</p>
       <div class="card wc-log-card">
         {#each _waterLogs as log, i}
           {#if i > 0}<div class="wc-divider"></div>{/if}
@@ -2921,10 +2932,10 @@
                 on:keydown={e => { if (e.key === 'Enter') _saveWaterEdit(i); if (e.key === 'Escape') _waterEditIndex = -1; }}
                 autofocus />
               <span class="text-3 text-sm">{_waterUnit}</span>
-              <button class="btn-icon" on:click={() => _saveWaterEdit(i)} title="Save">
+              <button class="btn-icon" on:click={() => _saveWaterEdit(i)} title={$_('common.save')}>
                 <span class="material-symbols-rounded" style="font-size:18px;color:var(--accent)">check</span>
               </button>
-              <button class="btn-icon" on:click={() => _waterEditIndex = -1} title="Cancel">
+              <button class="btn-icon" on:click={() => _waterEditIndex = -1} title={$_('common.cancel')}>
                 <span class="material-symbols-rounded" style="font-size:18px;color:var(--text-3)">close</span>
               </button>
             </div>
@@ -2932,7 +2943,7 @@
             <div class="wc-log-row" role="button" tabindex="0"
               on:click={() => _startWaterEdit(i)}
               on:keydown={e => e.key === 'Enter' && _startWaterEdit(i)}
-              title="Tap to edit">
+              title={$_('diary.water.tap_to_edit')}>
               <span class="material-symbols-rounded wc-log-icon">water_drop</span>
               <div class="wc-log-info">
                 <span class="font-medium">{_waterDisplay(log.amount)}</span>
@@ -2958,7 +2969,7 @@
 </Sheet>
 
 <!-- Edit item sheet -->
-<Sheet bind:open={showEditSheet} instant={_editInstant} title={editItem ? editItem.name : ''} on:close={() => showEditSheet = false}>
+<Sheet bind:open={showEditSheet} instant={_editInstant} title={editItem ? (editItem.type === 'quick_calories' ? _qcName(editItem, $locale) : editItem.name) : ''} on:close={() => showEditSheet = false}>
   {#if editItem}
     <div class="edit-sheet-body" bind:this={_editSheetEl} on:keydown={_onEditSheetKey}>
       {#if editItem.type === 'quick_calories'}
@@ -2966,7 +2977,7 @@
              macros + optional name). No Serving Size / Unit / Number of
              Servings because the entry has no portion concept. -->
         {@const _qcUnit = $energyUnit === 'kJ' ? 'kJ' : 'kcal'}
-        <label class="form-label" for="qce-name">Name (optional)</label>
+        <label class="form-label" for="qce-name">{$_('diary.quick_calories.name_label')}</label>
         <input id="qce-name" class="input" type="text" maxlength="60"
                placeholder={$_('diary_deep.qce_name_ph')}
                bind:value={editName} />
@@ -3029,15 +3040,15 @@
         </div>
         <div class="edit-macro-pill" style="background:var(--macro-protein-dim)">
           <span class="edit-macro-val" style="color:var(--macro-protein)">{Math.round((editCalc.proteins || 0) * 10)/10}g</span>
-          <span class="edit-macro-label">protein</span>
+          <span class="edit-macro-label">{$_('diary.edit_item.protein_lc')}</span>
         </div>
         <div class="edit-macro-pill" style="background:var(--macro-carbs-dim)">
           <span class="edit-macro-val" style="color:var(--macro-carbs)">{Math.round((editCalc.carbohydrates || 0) * 10)/10}g</span>
-          <span class="edit-macro-label">carbs</span>
+          <span class="edit-macro-label">{$_('diary.edit_item.carbs_lc')}</span>
         </div>
         <div class="edit-macro-pill" style="background:var(--macro-fat-dim)">
           <span class="edit-macro-val" style="color:var(--macro-fat)">{Math.round((editCalc.fat || 0) * 10)/10}g</span>
-          <span class="edit-macro-label">fat</span>
+          <span class="edit-macro-label">{$_('diary.edit_item.fat_lc')}</span>
         </div>
       </div>
       <div style="display:flex;gap:12px;margin-bottom:16px">
@@ -3046,7 +3057,7 @@
           <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={editPortion} data-field="portion" style="width:100%" />
         </div>
         <div style="width:100px">
-          <label class="form-label" style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">Unit</label>
+          <label class="form-label" style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">{$_('diary.edit_item.unit')}</label>
           <UnitPicker bind:value={editUnit} />
         </div>
       </div>
@@ -3081,8 +3092,8 @@
 <Dialog
   bind:open={showDeleteDialog}
   title={$_('diary.confirm.remove_item', { values: { name: actionItem?.name || $_('diary.confirm.remove_fallback') } })}
-  message="This will remove it from your diary."
-  confirmText="Remove"
+  message={$_('diary.confirm.remove_item_msg')}
+  confirmText={$_('diary.confirm.remove')}
   dangerous
   on:confirm={doDelete}
 />
@@ -3090,9 +3101,9 @@
 <!-- Multi-delete confirm dialog -->
 <Dialog
   bind:open={showMultiDeleteDialog}
-  title="Delete {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''}?"
-  message="This will permanently remove the selected items from your diary."
-  confirmText="Delete"
+  title={$_('diary.confirm.delete_selected_title', { values: { count: selectedItems.size } })}
+  message={$_('diary.confirm.delete_selected_msg')}
+  confirmText={$_('common.delete')}
   dangerous
   on:confirm={doDeleteSelected}
 />
@@ -3102,18 +3113,18 @@
   bind:open={showItemAction}
   title={actionItem?.name || ''}
   actions={[
-    { label: 'Edit',            icon: 'edit',          value: 'edit'        },
-    { label: 'Replace',         icon: 'find_replace',  value: 'replace'     },
-    { label: 'Move to Meal',    icon: 'swap_horiz',    value: 'move'        },
-    { label: 'Copy',            icon: 'content_copy',  value: 'copy_to'     },
+    { label: $_('diary.item_actions.edit'),    icon: 'edit',          value: 'edit'        },
+    { label: $_('diary.item_actions.replace'), icon: 'find_replace',  value: 'replace'     },
+    { label: $_('diary.item_actions.move'),    icon: 'swap_horiz',    value: 'move'        },
+    { label: $_('diary.item_actions.copy'),    icon: 'content_copy',  value: 'copy_to'     },
     ...(actionItemFood ? [{
       label: actionItemFood.favorite ? $_('foods.picker.unsave_food') : $_('foods.picker.save_food'),
       icon: actionItemFood.favorite ? 'heart_minus' : 'favorite',
       value: 'saved',
     }] : []),
-    { label: 'Select Multiple', icon: 'checklist',     value: 'select'      },
-    ...(_actionItemIsRecipe ? [{ label: 'Split Recipe', icon: 'call_split', value: 'split' }] : []),
-    { label: 'Delete',          icon: 'delete',        value: 'delete', danger: true },
+    { label: $_('diary.item_actions.select'), icon: 'checklist',     value: 'select'      },
+    ...(_actionItemIsRecipe ? [{ label: $_('diary.item_actions.split'), icon: 'call_split', value: 'split' }] : []),
+    { label: $_('common.delete'),             icon: 'delete',        value: 'delete', danger: true },
   ]}
   on:select={onItemAction}
 />
@@ -3121,7 +3132,7 @@
 <!-- Move to meal action sheet -->
 <ActionSheet
   bind:open={showMoveToMeal}
-  title="Move to Meal"
+  title={$_('diary.item_actions.move')}
   actions={meals.map((m, i) => ({ label: m, icon: mealIcon(m), value: i }))}
   on:select={moveItemToMeal}
 />
@@ -3132,14 +3143,16 @@
   {@const _hasItems = _mealItems.length > 0}
   <ActionSheet
     bind:open={showMealAction}
-    title={meals[actionMealIdx] + (_hasItems ? ` · ${_mealItems.length} item${_mealItems.length === 1 ? '' : 's'}` : ' · empty')}
+    title={_hasItems
+      ? $_('diary.meal_actions.title_items', { values: { meal: meals[actionMealIdx], count: _mealItems.length } })
+      : $_('diary.meal_actions.title_empty', { values: { meal: meals[actionMealIdx] } })}
     actions={_hasItems ? [
-      { label: 'Move Items to…', icon: 'swap_horiz',   value: 'move'      },
-      { label: 'Copy',           icon: 'content_copy', value: 'copy_to'   },
-      { label: 'Save as Meal…',  icon: 'bookmark_add', value: 'save_meal' },
-      { label: 'Clear All Items', icon: 'delete_sweep', value: 'clear', danger: true },
+      { label: $_('diary.meal_actions.move_items'), icon: 'swap_horiz',   value: 'move'      },
+      { label: $_('diary.item_actions.copy'),       icon: 'content_copy', value: 'copy_to'   },
+      { label: $_('diary.meal_actions.save_meal'),  icon: 'bookmark_add', value: 'save_meal' },
+      { label: $_('diary.meal_actions.clear_all'),  icon: 'delete_sweep', value: 'clear', danger: true },
     ] : [
-      { label: 'Add Food', icon: 'add', value: 'add' },
+      { label: $_('diary.add_food'), icon: 'add', value: 'add' },
     ]}
     on:select={(e) => {
       if (e.detail?.value === 'add') openAddFood(actionMealIdx);
@@ -3151,7 +3164,7 @@
 <!-- Meal target picker (for copy/move items to…) -->
 <ActionSheet
   bind:open={showMealTargetPicker}
-  title="Move to meal"
+  title={$_('diary.meal_actions.move_to_title')}
   actions={meals.map((m, i) => ({ label: m, icon: mealIcon(m), value: i }))}
   on:select={onMealTargetPick}
 />
@@ -3172,13 +3185,13 @@
     on:click={() => { if (!_sheetLock) showCopySheet = false; }} on:keydown={() => {}}>
     <div class="bs-sheet copy-date-sheet" on:click|stopPropagation on:keydown={() => {}}>
       <div class="sheet-handle"></div>
-      <p class="sheet-title">Copy "{copySourceName}" to…</p>
+      <p class="sheet-title">{$_('diary.copy.title', { values: { name: copySourceName } })}</p>
       <label class="copy-date-label">
-        <span>Date</span>
+        <span>{$_('diary.copy.date')}</span>
         <DateInput bind:value={copyDate} />
       </label>
       <label class="copy-date-label">
-        <span>Meal</span>
+        <span>{$_('diary.copy.meal')}</span>
         <select bind:value={copyMeal} class="select sel-sm" style="width:100%">
           {#each meals as m, i}
             <option value={i}>{m}</option>
@@ -3188,7 +3201,7 @@
       <div class="copy-date-actions">
         <button class="btn btn-ghost" on:click={() => showCopySheet = false} disabled={copyBusy}>{$_('diary_deep.cancel')}</button>
         <button class="btn btn-primary" on:click={onConfirmCopy} disabled={!copyDate || copyBusy}>
-          {copyBusy ? 'Copying…' : 'Copy'}
+          {copyBusy ? $_('diary.copy.copying') : $_('diary.item_actions.copy')}
         </button>
       </div>
     </div>
@@ -3199,8 +3212,8 @@
 <Dialog
   bind:open={showClearMealDialog}
   title={$_('diary.confirm.clear_all_meal', { values: { meal: actionMealIdx != null ? meals[actionMealIdx] : $_('diary.confirm.clear_all_fallback') } })}
-  message="This will remove every item in this meal from your diary for {$currentDate}. This can't be undone."
-  confirmText="Clear"
+  message={$_('diary.confirm.clear_meal_msg', { values: { date: $currentDate } })}
+  confirmText={$_('diary.confirm.clear')}
   dangerous
   on:confirm={doClearMeal}
 />
@@ -3211,20 +3224,20 @@
     on:click={() => { if (!_sheetLock && !saveAsMealSaving) showSaveAsMeal = false; }} use:closeOnBack={() => { if (!saveAsMealSaving) showSaveAsMeal = false; }} on:keydown={() => {}}>
     <div class="bs-sheet copy-date-sheet" on:click|stopPropagation on:keydown={() => {}}>
       <div class="sheet-handle"></div>
-      <p class="sheet-title">Save {actionMealIdx != null ? meals[actionMealIdx] : 'meal'} to library</p>
+      <p class="sheet-title">{$_('diary.save_meal.title', { values: { meal: actionMealIdx != null ? meals[actionMealIdx] : $_('diary.confirm.clear_all_fallback') } })}</p>
       <label class="copy-date-label">
         <span>{$_('diary_deep.meal_name')}</span>
         <input type="text" bind:value={saveAsMealName} bind:this={saveAsMealNameInput}
-          class="copy-date-input" placeholder="e.g. Usual breakfast" />
+          class="copy-date-input" placeholder={$_('diary.save_meal.placeholder')} />
       </label>
       <p class="text-3 text-sm" style="margin:8px 0 0">
-        {#if actionMealIdx != null}{getMealItems(entry.items, actionMealIdx).length} item{getMealItems(entry.items, actionMealIdx).length === 1 ? '' : 's'} will be saved{/if}
+        {#if actionMealIdx != null}{$_('diary.save_meal.count', { values: { count: getMealItems(entry.items, actionMealIdx).length } })}{/if}
       </p>
       <div class="copy-date-actions">
         <button class="btn btn-ghost" disabled={saveAsMealSaving}
           on:click={() => showSaveAsMeal = false}>{$_('diary_deep.cancel')}</button>
         <button class="btn btn-primary" disabled={saveAsMealSaving || !saveAsMealName.trim()}
-          on:click={doSaveAsMeal}>{saveAsMealSaving ? 'Saving…' : 'Save'}</button>
+          on:click={doSaveAsMeal}>{saveAsMealSaving ? $_('common.saving') : $_('common.save')}</button>
       </div>
     </div>
   </div>
@@ -3251,7 +3264,7 @@
       <div class="sheet-handle"></div>
       <div class="sheet-header-row">
         <h3 class="sheet-title">{$_('diary_deep.body_stats')}</h3>
-        <button class="btn-icon sheet-close-btn" on:click={() => diaryShowBodyStats.set(false)} aria-label="Close" title="Close">
+        <button class="btn-icon sheet-close-btn" on:click={() => diaryShowBodyStats.set(false)} aria-label={$_('common.close')} title={$_('common.close')}>
           <span class="material-symbols-rounded">close</span>
         </button>
       </div>
@@ -3259,43 +3272,43 @@
       <div class="bs-sheet-body">
         <div class="bs-grid">
           {#if !($hiddenBodyStats||[]).includes('weight')}
-          <div><label class="form-label">Weight ({$weightUnit||'kg'})</label>
+          <div><label class="form-label">{$_('diary.body_stats.with_unit', { values: { label: $_('diary.body_stats.weight'), unit: $weightUnit||'kg' } })}</label>
             <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={bodyStatsData.weight} bind:this={weightInput} /></div>
           {/if}
           {#if !($hiddenBodyStats||[]).includes('body_fat')}
-          <div><label class="form-label">Body Fat %</label>
+          <div><label class="form-label">{$_('diary.body_stats.body_fat_pct')}</label>
             <input class="input" type="text" inputmode="decimal" use:decimalInput max="100" bind:value={bodyStatsData.body_fat} /></div>
           {/if}
           {#if !($hiddenBodyStats||[]).includes('body_water')}
-          <div><label class="form-label">Body Water %</label>
+          <div><label class="form-label">{$_('diary.body_stats.body_water_pct')}</label>
             <input class="input" type="text" inputmode="decimal" use:decimalInput max="100" bind:value={bodyStatsData.body_water} /></div>
           {/if}
           {#if !($hiddenBodyStats||[]).includes('neck')}
-          <div><label class="form-label">Neck ({$lengthUnit||'in'})</label>
+          <div><label class="form-label">{$_('diary.body_stats.with_unit', { values: { label: $_('diary.body_stats.neck'), unit: $lengthUnit||'in' } })}</label>
             <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={bodyStatsData.neck} /></div>
           {/if}
           {#if !($hiddenBodyStats||[]).includes('waist')}
-          <div><label class="form-label">Waist ({$lengthUnit||'in'})</label>
+          <div><label class="form-label">{$_('diary.body_stats.with_unit', { values: { label: $_('diary.body_stats.waist'), unit: $lengthUnit||'in' } })}</label>
             <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={bodyStatsData.waist} /></div>
           {/if}
           {#if !($hiddenBodyStats||[]).includes('hips')}
-          <div><label class="form-label">Hips ({$lengthUnit||'in'})</label>
+          <div><label class="form-label">{$_('diary.body_stats.with_unit', { values: { label: $_('diary.body_stats.hips'), unit: $lengthUnit||'in' } })}</label>
             <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={bodyStatsData.hips} /></div>
           {/if}
           {#if !($hiddenBodyStats||[]).includes('chest')}
-          <div><label class="form-label">Chest ({$lengthUnit||'in'})</label>
+          <div><label class="form-label">{$_('diary.body_stats.with_unit', { values: { label: $_('diary.body_stats.chest'), unit: $lengthUnit||'in' } })}</label>
             <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={bodyStatsData.chest} /></div>
           {/if}
           {#if !($hiddenBodyStats||[]).includes('thighs')}
-          <div><label class="form-label">Thighs ({$lengthUnit||'in'})</label>
+          <div><label class="form-label">{$_('diary.body_stats.with_unit', { values: { label: $_('diary.body_stats.thighs'), unit: $lengthUnit||'in' } })}</label>
             <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={bodyStatsData.thighs} /></div>
           {/if}
           {#if !($hiddenBodyStats||[]).includes('biceps')}
-          <div><label class="form-label">Biceps ({$lengthUnit||'in'})</label>
+          <div><label class="form-label">{$_('diary.body_stats.with_unit', { values: { label: $_('diary.body_stats.biceps'), unit: $lengthUnit||'in' } })}</label>
             <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={bodyStatsData.biceps} /></div>
           {/if}
           {#if !($hiddenBodyStats||[]).includes('calves')}
-          <div><label class="form-label">Calves ({$lengthUnit||'in'})</label>
+          <div><label class="form-label">{$_('diary.body_stats.with_unit', { values: { label: $_('diary.body_stats.calves'), unit: $lengthUnit||'in' } })}</label>
             <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={bodyStatsData.calves} /></div>
           {/if}
         </div>
@@ -3318,8 +3331,8 @@
       <div class="sheet-header-row">
         <h3 class="sheet-title">{$_('diary_deep.nutrition_summary')}</h3>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="text-3 text-sm">{formatDateSub($currentDate, $dateFormat)}</span>
-          <button class="btn-icon sheet-close-btn" on:click={() => diaryShowNutritionSummary.set(false)} aria-label="Close" title="Close">
+          <span class="text-3 text-sm">{formatDateSub($currentDate, $dateFormat, $locale)}</span>
+          <button class="btn-icon sheet-close-btn" on:click={() => diaryShowNutritionSummary.set(false)} aria-label={$_('common.close')} title={$_('common.close')}>
             <span class="material-symbols-rounded">close</span>
           </button>
         </div>
@@ -3336,8 +3349,8 @@
           <button
             class="ns-legend-toggle"
             on:click={() => macroLegendMode.set($macroLegendMode === 'grams' ? 'percent' : 'grams')}
-            aria-label="Toggle macro display between percent and grams"
-            title="Toggle percent / grams">
+            aria-label={$_('diary.macro_toggle_aria')}
+            title={$_('diary.macro_toggle_title')}>
             <span class="ns-lt-opt" class:ns-lt-active={$macroLegendMode === 'percent'}>%</span>
             <span class="ns-lt-opt" class:ns-lt-active={$macroLegendMode === 'grams'}>g</span>
           </button>
@@ -3388,15 +3401,15 @@
             {#if isOpen && _nsContributors}
               <div class="ns-contrib" transition:slide={{ duration: 160 }}>
                 <div class="ns-contrib-head">
-                  {_nsContributors.allShown ? 'All Contributors' : 'Top Contributors'}
+                  {_nsContributors.allShown ? $_('diary.summary.all_contributors') : $_('diary.summary.top_contributors')}
                 </div>
                 {#if _nsContributors.visible.length === 0}
-                  <div class="ns-contrib-empty">No items contribute to this nutrient.</div>
+                  <div class="ns-contrib-empty">{$_('diary.summary.no_contributors')}</div>
                 {:else}
                   {#each _nsContributors.visible as c}
                     <div class="ns-contrib-row">
                       <span class="ns-contrib-name">
-                        {c.name}{#if c.portion}<span class="ns-contrib-meta"> — {c.portion}</span>{/if}{#if c.isQuick}<span class="ns-contrib-meta"> (Quick entry)</span>{/if}
+                        {c.name}{#if c.portion}<span class="ns-contrib-meta"> — {c.portion}</span>{/if}{#if c.isQuick}<span class="ns-contrib-meta"> ({$_('diary.summary.quick_entry')})</span>{/if}
                       </span>
                       <span class="ns-contrib-val">{(Math.round(c.value*10)/10).toLocaleString()} {n.unit}</span>
                     </div>
@@ -3406,14 +3419,14 @@
                          on:click|stopPropagation={() => _nsShowAll = true}
                          on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _nsShowAll = true; } }}>
                       <span class="ns-contrib-name">
-                        + {_nsContributors.hiddenCount} more {_nsContributors.hiddenCount === 1 ? 'item' : 'items'}
-                        <span class="ns-contrib-meta">(tap to expand)</span>
+                        + {$_('diary.summary.more_items', { values: { count: _nsContributors.hiddenCount } })}
+                        <span class="ns-contrib-meta">({$_('diary.summary.tap_to_expand')})</span>
                       </span>
                       <span class="ns-contrib-val">{(Math.round(_nsContributors.hiddenSum*10)/10).toLocaleString()} {n.unit}</span>
                     </div>
                   {:else if _nsContributors.allShown && _nsContributors.visible.length > 5}
                     <button class="ns-contrib-collapse" on:click|stopPropagation={() => _nsShowAll = false}>
-                      Show top 5
+                      {$_('diary.summary.show_top_5')}
                     </button>
                   {/if}
                 {/if}
@@ -3427,7 +3440,7 @@
 {/if}
 
 <!-- Per-meal nutrition totals sheet -->
-<Sheet open={mealTotalsIdx != null} title={mealTotalsIdx != null ? `${meals[mealTotalsIdx]} totals` : ''}
+<Sheet open={mealTotalsIdx != null} title={mealTotalsIdx != null ? $_('diary.summary.meal_totals', { values: { meal: meals[mealTotalsIdx] } }) : ''}
   on:close={() => mealTotalsIdx = null}>
   {@const _nsMealEnergy = Nutrition.displayEnergy(_mealTotals.calories || 0, $energyUnit)}
   <div class="ns-body">
@@ -3458,7 +3471,7 @@
       {/each}
     </div>
     <div class="text-3 text-sm" style="text-align:center;padding:8px 0 4px">
-      {_mealTotalsItems.length} {_mealTotalsItems.length === 1 ? 'item' : 'items'}
+      {$_('diary.summary.items_count', { values: { count: _mealTotalsItems.length } })}
     </div>
   </div>
 </Sheet>

@@ -16,6 +16,8 @@
   import { onMount } from 'svelte';
   import { slide } from 'svelte/transition';
   import { _ } from 'svelte-i18n';
+  import { intlLocale } from '../../i18n/index.js';
+  import { localizeError } from '../../lib/server-errors.js';
   import { apiUrl, isNative, getServerUrl, getAuthToken } from '../../lib/platform.js';
   import { showSuccess, showError } from '../../stores/toast.js';
   import { confirmDialog } from '../../stores/confirmDialog.js';
@@ -70,7 +72,7 @@
       scopeDescriptions = data.scope_descriptions || {};
       mcpState = data.mcp_state || { enabled: false, write: false, destroy: false };
     } catch (e) {
-      showError(e.message);
+      showError(localizeError(e.message));
     } finally {
       loading = false;
     }
@@ -107,7 +109,7 @@
         }),
       });
       const data = await r.json();
-      if (!r.ok) { showError(data.error || $_('settings_api_tokens.toast.create_failed')); return; }
+      if (!r.ok) { showError(localizeError(data.error) || $_('settings_api_tokens.toast.create_failed')); return; }
 
       justCreatedRaw = data.raw;
       justCreatedName = data.token.name;
@@ -117,7 +119,7 @@
       newExpiresDays = '';
       await load();
     } catch (e) {
-      showError(e.message);
+      showError(localizeError(e.message));
     } finally {
       creating = false;
     }
@@ -136,12 +138,12 @@
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        showError(data.error || $_('settings_api_tokens.toast.revoke_failed')); return;
+        showError(localizeError(data.error) || $_('settings_api_tokens.toast.revoke_failed')); return;
       }
       showSuccess($_('settings_api_tokens.toast.revoked'));
       await load();
     } catch (e) {
-      showError(e.message);
+      showError(localizeError(e.message));
     }
   }
 
@@ -169,7 +171,7 @@
     if (sec < 3600) return $_('settings_api_tokens.row.min_ago', { values: { n: Math.floor(sec / 60) } });
     if (sec < 86400) return $_('settings_api_tokens.row.hr_ago',  { values: { n: Math.floor(sec / 3600) } });
     if (sec < 86400 * 30) return $_('settings_api_tokens.row.day_ago', { values: { n: Math.floor(sec / 86400) } });
-    return d.toLocaleDateString();
+    return d.toLocaleDateString(intlLocale());
   }
 </script>
 
@@ -245,10 +247,10 @@
                 <label class="form-label">{$_('settings_api_tokens.form.scopes')}</label>
                 {#if mcpState.enabled || mcpState.write || mcpState.destroy}
                   <div class="mcp-status">
-                    MCP on this server:
-                    <span class:on={mcpState.enabled}>read {mcpState.enabled ? '✓' : '✗'}</span>
-                    · <span class:on={mcpState.write}>write {mcpState.write ? '✓' : '✗'}</span>
-                    · <span class:on={mcpState.destroy}>destroy {mcpState.destroy ? '✓' : '✗'}</span>
+                    {$_('settings_api_tokens.mcp.status')}
+                    <span class:on={mcpState.enabled}>{$_('settings_api_tokens.mcp.read')} {mcpState.enabled ? '✓' : '✗'}</span>
+                    · <span class:on={mcpState.write}>{$_('settings_api_tokens.mcp.write')} {mcpState.write ? '✓' : '✗'}</span>
+                    · <span class:on={mcpState.destroy}>{$_('settings_api_tokens.mcp.destroy')} {mcpState.destroy ? '✓' : '✗'}</span>
                   </div>
                 {/if}
                 <div class="scope-grid">

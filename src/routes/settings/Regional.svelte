@@ -7,9 +7,9 @@
     language, dateFormat, timeFormat, energyUnit,
   } from '../../stores/settings.js';
 
-  const ENERGY_OPTS = [
-    { value: 'kcal', label: 'Calories (kcal)' },
-    { value: 'kJ',   label: 'Kilojoules (kJ)'  },
+  $: ENERGY_OPTS = [
+    { value: 'kcal', label: $_('settings.regional.energy_kcal') },
+    { value: 'kJ',   label: $_('settings.regional.energy_kj')   },
   ];
 
   // Save-on-change helper — matches parent's `set()` helper.
@@ -31,8 +31,8 @@
 <div class="section-body">
 
   <!-- Group: Language & Formats -->
-  <p class="settings-group-heading">Language &amp; Formats</p>
-  <p class="settings-group-sub">Interface language and how dates and times are shown.</p>
+  <p class="settings-group-heading">{$_('settings.regional.group_language')}</p>
+  <p class="settings-group-sub">{$_('settings.regional.group_language_sub')}</p>
   <div class="card settings-card">
     <div class="setting-row">
       <span class="setting-label">{$_('settings.regional.language')}</span>
@@ -67,8 +67,8 @@
   </div>
 
   <!-- Group: Units — metric / imperial preferences across the app -->
-  <p class="settings-group-heading">Units</p>
-  <p class="settings-group-sub">Unit choices apply everywhere the value shows.</p>
+  <p class="settings-group-heading">{$_('settings.regional.group_units')}</p>
+  <p class="settings-group-sub">{$_('settings.regional.group_units_sub')}</p>
   <div class="card settings-card">
     <div class="setting-row">
       <span class="setting-label">{$_('settings.regional.energy')}</span>

@@ -15,11 +15,12 @@
   import { get } from 'svelte/store';
   import { NtApi } from '../../lib/api.js';
   import { isNative } from '../../lib/platform.js';
-  import { mealNames, customNutriments, diaryShowAllNutrients } from '../../stores/settings.js';
+  import { displayMealNames, customNutriments, diaryShowAllNutrients } from '../../stores/settings.js';
   import { showSuccess, showError, showInfo } from '../../stores/toast.js';
   import {
     EXPORT_PRESETS, presetRange, localDate, buildDiaryCsv, diaryCsvFilename,
   } from '../../lib/diary-export.js';
+  import { localizeError } from '../../lib/server-errors.js';
 
   export let open = false;
 
@@ -95,7 +96,7 @@
       const { csv, rows } = buildDiaryCsv(days, {
         start: range.start,
         end: range.end,
-        mealNames: get(mealNames) || [],
+        mealNames: get(displayMealNames),
         showAll: get(diaryShowAllNutrients),
         customNutriments: get(customNutriments) || [],
       });
@@ -114,7 +115,7 @@
       }
       open = false;
     } catch (e) {
-      showError($_('diary_export.toast.failed', { values: { error: e.message } }));
+      showError($_('diary_export.toast.failed', { values: { error: localizeError(e.message) } }));
     } finally {
       exporting = false;
     }

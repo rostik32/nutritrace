@@ -18,25 +18,22 @@
     </div>
     <div class="setting-divider"></div>
     <div class="about-desc">
-      Trace Every Bite — Personal Nutrition Tracker. NutriTrace is a self-hosted nutrition,
-      wellness, and fitness tracker built for privacy. Your data lives on your server, not
-      in the cloud. Features food diary, wellness integrations (Fitbit, Garmin, Withings,
-      Health Connect), AI assistant, workout GPS maps, goal tracking, and more.
+      {$_('settings_about.description')}
     </div>
     <div class="setting-divider"></div>
     <div class="about-row">
       <span class="material-symbols-rounded about-feat-icon">database</span>
-      <span>Self-hosted — your data, your server</span>
+      <span>{$_('settings_about.feature_self_hosted')}</span>
     </div>
     <div class="setting-divider"></div>
     <div class="about-row">
       <span class="material-symbols-rounded about-feat-icon">phone_android</span>
-      <span>Native Android app with offline support, plus a PWA for any browser</span>
+      <span>{$_('settings_about.feature_native')}</span>
     </div>
     <div class="setting-divider"></div>
     <div class="about-row">
       <span class="material-symbols-rounded about-feat-icon">lock</span>
-      <span>No tracking, no ads, no third-party analytics</span>
+      <span>{$_('settings_about.feature_no_tracking')}</span>
     </div>
     <div class="setting-divider"></div>
     <div class="about-row">
@@ -63,19 +60,7 @@
     </div>
     <div class="setting-divider"></div>
     <div class="about-desc" style="font-size:11px;color:var(--text-3);line-height:1.5">
-      <strong>Disclaimer.</strong> NutriTrace is not medical, health, or nutrition-professional
-      software. It does not provide medical advice, diagnosis, treatment, or personalized nutrition
-      prescriptions. Food entries, calorie and macro tracking, Trace AI suggestions, Smart Log
-      parsing, Scan Label output, Goal Insights, Adaptive TDEE recommendations, wellness scores
-      (readiness, stress, sleep quality), and any analytical output are for informational and
-      self-tracking purposes only. Nutrition decisions can interact with medical conditions
-      (diabetes, eating disorders, food allergies, pregnancy, breastfeeding, pediatric needs,
-      kidney or liver disease, metabolic disorders) in ways this app cannot assess. Consult a
-      qualified healthcare professional, registered dietitian, or licensed nutritionist before
-      starting a new eating plan, calorie target, or making significant dietary changes. Trace
-      AI answers can be incorrect or incomplete; treat them as a starting point, not a substitute
-      for human judgment or professional advice. Food nutrition data from Open Food Facts is
-      community-curated and may contain inaccuracies. Use at your own risk.
+      <strong>{$_('settings_about.disclaimer_title')}</strong> {$_('settings_about.disclaimer_body')}
     </div>
   </div>
 </div>

@@ -23,6 +23,7 @@
            diaryShowCompletion } from '../stores/settings.js';
   import FastingInsights from '../components/diary/FastingInsights.svelte';
   import { isNative } from '../lib/platform.js';
+  import { intlLocale } from '../i18n/index.js';
   import { foldText } from '../lib/search-text.js';
 
   let _waterShowInStats = DB.getSetting('waterShowInStats', true);
@@ -115,30 +116,30 @@
   }
   $: WELLNESS_METRICS = [
     ...(_hasWellness ? [
-      ...(_wlVisible('steps')             ? [{ value: 'wl_steps',  label: 'Steps',        unit: 'steps', apiSource: 'fitgarm', apiField: 'steps' }] : []),
-      ...(_wlVisible('active_minutes')    ? [{ value: 'wl_active', label: 'Active Min.',   unit: 'min',   apiSource: 'fitgarm', apiField: 'active_minutes' }] : []),
-      ...(_wlVisible('sleep_duration_min')? [{ value: 'wl_sleep',  label: 'Sleep',         unit: 'hr',    apiSource: 'fitgarm', apiField: 'sleep_duration_min', fmtVal: v => Math.round(v / 6) / 10 }] : []),
-      ...(_wlVisible('resting_hr')        ? [{ value: 'wl_rhr',    label: 'Resting HR',    unit: 'bpm',   apiSource: 'fitgarm', apiField: 'resting_hr' }] : []),
-      ...(_wlVisible('hrv_daily_rmssd')   ? [{ value: 'wl_hrv',    label: 'HRV',           unit: 'ms',    apiSource: 'fitgarm', apiField: 'hrv_daily_rmssd' }] : []),
-      ...(_wlVisible('spo2_avg')          ? [{ value: 'wl_spo2',   label: 'SpO2',          unit: '%',     apiSource: 'fitgarm', apiField: 'spo2_avg' }] : []),
+      ...(_wlVisible('steps')             ? [{ value: 'wl_steps',  label: $_('statistics_page.metric.steps'), unit: $_('wellness_page.unit.steps'), apiSource: 'fitgarm', apiField: 'steps' }] : []),
+      ...(_wlVisible('active_minutes')    ? [{ value: 'wl_active', label: $_('statistics_page.metric.active_min'), unit: $_('wellness_page.unit.min'), apiSource: 'fitgarm', apiField: 'active_minutes' }] : []),
+      ...(_wlVisible('sleep_duration_min')? [{ value: 'wl_sleep',  label: $_('statistics_page.metric.sleep'), unit: $_('statistics_page.unit.hr'), apiSource: 'fitgarm', apiField: 'sleep_duration_min', fmtVal: v => Math.round(v / 6) / 10 }] : []),
+      ...(_wlVisible('resting_hr')        ? [{ value: 'wl_rhr',    label: $_('statistics_page.metric.resting_hr'), unit: $_('wellness_page.unit.bpm'), apiSource: 'fitgarm', apiField: 'resting_hr' }] : []),
+      ...(_wlVisible('hrv_daily_rmssd')   ? [{ value: 'wl_hrv',    label: $_('statistics_page.metric.hrv'), unit: $_('wellness_page.unit.ms'), apiSource: 'fitgarm', apiField: 'hrv_daily_rmssd' }] : []),
+      ...(_wlVisible('spo2_avg')          ? [{ value: 'wl_spo2',   label: $_('statistics_page.metric.spo2'),          unit: '%',     apiSource: 'fitgarm', apiField: 'spo2_avg' }] : []),
     ] : []),
     ...(($withingsEnabled || $fitbitFamilyEnabled) && _wlVisible('muscle_mass_kg') ? [
-      { value: 'wl_muscle', label: 'Muscle Mass',   unit: '',      apiSource: 'withings', apiField: 'muscle_mass_kg', isWeight: true },
+      { value: 'wl_muscle', label: $_('statistics_page.metric.muscle_mass'),   unit: '',      apiSource: 'withings', apiField: 'muscle_mass_kg', isWeight: true },
     ] : []),
   ];
 
   // All available metrics = NUTRIMENTS + body stats + wellness
   $: BODY_STATS = [
-    { value: 'weight',     label: 'Weight',     unit: $weightUnit || 'lb' },
-    { value: 'neck',       label: 'Neck',       unit: $lengthUnit || 'in' },
-    { value: 'waist',      label: 'Waist',      unit: $lengthUnit || 'in' },
-    { value: 'hips',       label: 'Hips',       unit: $lengthUnit || 'in' },
-    { value: 'chest',      label: 'Chest',      unit: $lengthUnit || 'in' },
-    { value: 'thighs',     label: 'Thighs',     unit: $lengthUnit || 'in' },
-    { value: 'biceps',     label: 'Biceps',     unit: $lengthUnit || 'in' },
-    { value: 'calves',     label: 'Calves',     unit: $lengthUnit || 'in' },
-    { value: 'body_fat',   label: 'Body Fat',   unit: '%'  },
-    { value: 'body_water', label: 'Body Water', unit: '%'  },
+    { value: 'weight',     label: $_('statistics_page.metric.weight'),     unit: $weightUnit || 'lb' },
+    { value: 'neck',       label: $_('statistics_page.metric.neck'),       unit: $lengthUnit || 'in' },
+    { value: 'waist',      label: $_('statistics_page.metric.waist'),      unit: $lengthUnit || 'in' },
+    { value: 'hips',       label: $_('statistics_page.metric.hips'),       unit: $lengthUnit || 'in' },
+    { value: 'chest',      label: $_('statistics_page.metric.chest'),      unit: $lengthUnit || 'in' },
+    { value: 'thighs',     label: $_('statistics_page.metric.thighs'),     unit: $lengthUnit || 'in' },
+    { value: 'biceps',     label: $_('statistics_page.metric.biceps'),     unit: $lengthUnit || 'in' },
+    { value: 'calves',     label: $_('statistics_page.metric.calves'),     unit: $lengthUnit || 'in' },
+    { value: 'body_fat',   label: $_('statistics_page.metric.body_fat'),   unit: '%'  },
+    { value: 'body_water', label: $_('statistics_page.metric.body_water'), unit: '%'  },
   ];
   // Metric identifier: nutriments use `.id`, everything else uses `.value`.
   // Coalesce so the ordering + hide stores work with a single string key.
@@ -146,7 +147,7 @@
   $: _rawMetrics = [
     ...NUTRIMENTS.filter(n => n.default),
     ...BODY_STATS.filter(s => !($hiddenBodyStats||[]).includes(s.value)),
-    ...(_waterShowInStats ? [{ value: 'water', label: 'Water', unit: _waterUnit }] : []),
+    ...(_waterShowInStats ? [{ value: 'water', label: $_('statistics_page.metric.water'), unit: _waterUnit }] : []),
     ...WELLNESS_METRICS,
   ];
   // Apply the user's Statistics-specific hide list, then reorder by the
@@ -186,13 +187,13 @@
   }
 
   const RANGES = [
-    { value: '7',   label: '1W'  },
-    { value: '14',  label: '2W'  },
-    { value: '30',  label: '1M'  },
-    { value: '90',  label: '3M'  },
-    { value: '180', label: '6M'  },
-    { value: '365', label: '1Y'  },
-    { value: 'all', label: 'All' },
+    { value: '7',   label: 'statistics_page.range_short.w1' },
+    { value: '14',  label: 'statistics_page.range_short.w2' },
+    { value: '30',  label: 'statistics_page.range_short.m1' },
+    { value: '90',  label: 'statistics_page.range_short.m3' },
+    { value: '180', label: 'statistics_page.range_short.m6' },
+    { value: '365', label: 'statistics_page.range_short.y1' },
+    { value: 'all', label: 'statistics_page.range_short.all' },
   ];
 
   async function loadData() {
@@ -482,7 +483,7 @@
       : data.filter(d => Number.isFinite(d.val));
     const labels = displayData.map(d => {
       const dt = new Date(d.date + 'T12:00:00');
-      return dt.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+      return dt.toLocaleDateString(intlLocale(), { month:'short', day:'numeric' });
     });
     const values = displayData.map(d => d.val);
     const datasets = [{
@@ -505,7 +506,7 @@
     if ($statsAvgLine && summary) {
       datasets.push({
         type: 'line',
-        label: 'Average',
+        label: $_('statistics_page.overlay.average'),
         data: displayData.map(() => summary.avg),
         borderColor: isDark ? 'rgba(255,193,7,0.7)' : 'rgba(217,119,6,0.7)',
         borderWidth: 1.5,
@@ -544,7 +545,7 @@
       const isAdaptiveOrDynamic = metric === 'calories' && ($calorieGoalMode === 'dynamic' || $calorieGoalMode === 'adaptive');
       datasets.push({
         type: 'line',
-        label: isAdaptiveOrDynamic ? 'Base Goal' : 'Goal',
+        label: isAdaptiveOrDynamic ? $_('statistics_page.overlay.base_goal') : $_('statistics_page.overlay.goal'),
         data: displayData.map(() => _goalVal),
         borderColor: isDark ? 'rgba(129,140,248,0.8)' : 'rgba(99,102,241,0.8)',
         borderWidth: 1.5,
@@ -568,7 +569,7 @@
         });
         datasets.push({
           type: 'line',
-          label: 'Trend',
+          label: $_('statistics_page.overlay.trend'),
           data: trendData,
           borderColor: isDark ? 'rgba(251,146,60,0.8)' : 'rgba(234,88,12,0.8)',
           borderWidth: 2,
@@ -743,10 +744,10 @@
       buckets[bucket].push({ ...m, _key: key });
     }
     const groups = [];
-    if (buckets.nutrient.length) groups.push({ label: 'Nutrition', metrics: buckets.nutrient });
-    if (buckets.body.length)     groups.push({ label: 'Body',      metrics: buckets.body });
-    if (buckets.water.length)    groups.push({ label: 'Water',     metrics: buckets.water });
-    if (buckets.wellness.length) groups.push({ label: 'Wellness',  metrics: buckets.wellness });
+    if (buckets.nutrient.length) groups.push({ label: $_('statistics_page.group.nutrition'), metrics: buckets.nutrient });
+    if (buckets.body.length)     groups.push({ label: $_('statistics_page.group.body'), metrics: buckets.body });
+    if (buckets.water.length)    groups.push({ label: $_('statistics_page.group.water'), metrics: buckets.water });
+    if (buckets.wellness.length) groups.push({ label: $_('statistics_page.group.wellness'), metrics: buckets.wellness });
     return groups;
   })();
 
@@ -788,7 +789,7 @@
     }
     const arr = [...map.entries()].map(([key, entries]) => {
       const dt = new Date(key + '-01T12:00:00');
-      const label = dt.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      const label = dt.toLocaleDateString(intlLocale(), { month: 'long', year: 'numeric' });
       return { key, label, count: entries.length, entries: entries.slice().reverse() };
     });
     arr.sort((a, b) => b.key.localeCompare(a.key));
@@ -894,13 +895,17 @@
 
   $: calFirstDay    = new Date(calYear, calMonth, 1).getDay();
   $: calDaysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  $: calMonthName   = new Date(calYear, calMonth, 1).toLocaleDateString(undefined, { month: 'long' });
+  $: calMonthName   = new Date(calYear, calMonth, 1).toLocaleDateString(intlLocale(), { month: 'long' });
   const _yearRange  = Array.from({ length: 22 }, (_, i) => new Date().getFullYear() - 10 + i);
-  const _monthNames = [
-    {idx:0,s:'Jan'},{idx:1,s:'Feb'},{idx:2,s:'Mar'},{idx:3,s:'Apr'},
-    {idx:4,s:'May'},{idx:5,s:'Jun'},{idx:6,s:'Jul'},{idx:7,s:'Aug'},
-    {idx:8,s:'Sep'},{idx:9,s:'Oct'},{idx:10,s:'Nov'},{idx:11,s:'Dec'},
-  ];
+  // Month / weekday names follow the app language.
+  const _monthNames = Array.from({ length: 12 }, (_x, idx) => ({
+    idx, s: new Date(2024, idx, 1).toLocaleDateString(intlLocale(), { month: 'short' }),
+  }));
+  // Calendar grid starts on Sunday (getDay() === 0); 2024-01-07 is a Sunday.
+  const _weekdayNames = Array.from({ length: 7 }, (_x, i) => {
+    const s = new Date(2024, 0, 7 + i).toLocaleDateString(intlLocale(), { weekday: 'short' }).slice(0, 2);
+    return s.charAt(0).toLocaleUpperCase(intlLocale()) + s.slice(1);
+  });
 
   function _todayStr() { return localDateStr(); }
 
@@ -927,8 +932,8 @@
   }
 
   function fmtDate(iso) {
-    if (!iso) return 'Pick date';
-    return new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    if (!iso) return $_('statistics_page.cal.pick_date');
+    return new Date(iso + 'T12:00:00').toLocaleDateString(intlLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
   }
   function openCal(which) {
     showCalFor = which; showYearPicker = false; showMonthPicker = false;
@@ -967,8 +972,8 @@
   <!-- Desktop left rail: grouped metric picker. Hidden on mobile; the
        horizontal metric-scroll below still owns metric selection there. -->
   <aside class="stats-left-rail">
-    <div class="stats-rail-heading">Metrics</div>
-    <input class="stats-rail-search" type="search" placeholder="Filter metrics…" bind:value={_railQuery} />
+    <div class="stats-rail-heading">{$_('statistics_page.rail.metrics')}</div>
+    <input class="stats-rail-search" type="search" placeholder={$_('statistics_page.rail.filter_ph')} bind:value={_railQuery} />
     {#each groupedMetrics as g}
       {@const _filtered = g.metrics.filter(m => !_railQuery || foldText(m.label).includes(foldText(_railQuery)))}
       {#if _filtered.length}
@@ -998,14 +1003,14 @@
       <div class="range-pills" use:dragScroll>
         {#each RANGES as r}
           <button class="range-btn" class:active={range === r.value} on:click={() => range = r.value}>
-            {r.label}
+            {$_(r.label)}
           </button>
         {/each}
         <button class="range-btn" class:active={range === 'custom'} on:click={() => range = 'custom'}>
-          Custom
+          {$_('statistics_page.range_short.custom')}
         </button>
       </div>
-      <button class="chart-type-btn" title="Toggle chart type"
+      <button class="chart-type-btn" title={$_('statistics_page.toggle_chart_type')}
         on:click={() => statsChartType.set($statsChartType === 'bar' ? 'line' : 'bar')}>
         <span class="material-symbols-rounded" style="font-size:18px">
           {$statsChartType === 'bar' ? 'show_chart' : 'bar_chart'}
@@ -1081,7 +1086,7 @@
         <!-- CSV export lives on the chart itself so mobile and large-screen
              both get it. Was previously desktop-rail-only. -->
         <button class="chart-csv" type="button" on:click={_exportCsv}
-          title="Export CSV" aria-label="Export CSV">
+          title={$_('diary_export.export_csv')} aria-label={$_('diary_export.export_csv')}>
           <span class="material-symbols-rounded">download</span>
         </button>
       {/if}
@@ -1109,11 +1114,11 @@
                    the current metric — the loader re-runs via the metric
                    reactive at line ~647. -->
               <div class="stats-empty-alts text-3 text-sm">
-                Try
+                {$_('statistics_page.empty.alts_try')}
                 {#each _emptyAlternatives as alt, i}
-                  <button class="stats-empty-alt-link" type="button" on:click={() => metric = alt}>{_altLabel(alt)}</button>{#if i < _emptyAlternatives.length - 2}, {:else if i === _emptyAlternatives.length - 2} or {/if}
+                  <button class="stats-empty-alt-link" type="button" on:click={() => metric = alt}>{_altLabel(alt)}</button>{#if i < _emptyAlternatives.length - 2}, {:else if i === _emptyAlternatives.length - 2} {$_('statistics_page.empty.alts_or')} {/if}
                 {/each}
-                . You may have data there.
+                . {$_('statistics_page.empty.alts_suffix')}
               </div>
             {/if}
           </div>
@@ -1146,14 +1151,14 @@
                   <div class="timeline-row">
                     <button class="timeline-date-link" type="button"
                       on:click={() => _drillIntoDate(row.date)}
-                      title={metric.startsWith('wl_') ? 'Open this day in Wellness' : 'Open this day in Diary'}
-                      aria-label={metric.startsWith('wl_') ? `Open Wellness for ${row.date}` : `Open Diary for ${row.date}`}>
+                      title={metric.startsWith('wl_') ? $_('statistics_page.history.open_day_wellness') : $_('statistics_page.history.open_day_diary')}
+                      aria-label={metric.startsWith('wl_') ? $_('statistics_page.history.open_wellness_for', { values: { date: row.date } }) : $_('statistics_page.history.open_diary_for', { values: { date: row.date } })}>
                       {(() => {
                         const dt = new Date(row.date + 'T12:00:00');
                         const fmt = $dateFormat || 'ISO';
                         if (fmt === 'US') { const mm=String(dt.getMonth()+1).padStart(2,'0'),dd=String(dt.getDate()).padStart(2,'0'); return mm+'/'+dd+'/'+dt.getFullYear(); }
                         if (fmt === 'EU') { const mm=String(dt.getMonth()+1).padStart(2,'0'),dd=String(dt.getDate()).padStart(2,'0'); return dd+'/'+mm+'/'+dt.getFullYear(); }
-                        if (fmt === 'natural') return dt.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
+                        if (fmt === 'natural') return dt.toLocaleDateString(intlLocale(),{day:'numeric',month:'short',year:'numeric'});
                         return row.date;
                       })()}
                     </button>
@@ -1168,14 +1173,14 @@
                 <div class="timeline-row">
                   <button class="timeline-date-link" type="button"
                     on:click={() => _drillIntoDate(row.date)}
-                    title={metric.startsWith('wl_') ? 'Open this day in Wellness' : 'Open this day in Diary'}
-                    aria-label={metric.startsWith('wl_') ? `Open Wellness for ${row.date}` : `Open Diary for ${row.date}`}>
+                    title={metric.startsWith('wl_') ? $_('statistics_page.history.open_day_wellness') : $_('statistics_page.history.open_day_diary')}
+                    aria-label={metric.startsWith('wl_') ? $_('statistics_page.history.open_wellness_for', { values: { date: row.date } }) : $_('statistics_page.history.open_diary_for', { values: { date: row.date } })}>
                     {(() => {
                       const dt = new Date(row.date + 'T12:00:00');
                       const fmt = $dateFormat || 'ISO';
                       if (fmt === 'US') { const m=String(dt.getMonth()+1).padStart(2,'0'),d=String(dt.getDate()).padStart(2,'0'); return m+'/'+d+'/'+dt.getFullYear(); }
                       if (fmt === 'EU') { const m=String(dt.getMonth()+1).padStart(2,'0'),d=String(dt.getDate()).padStart(2,'0'); return d+'/'+m+'/'+dt.getFullYear(); }
-                      if (fmt === 'natural') return dt.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
+                      if (fmt === 'natural') return dt.toLocaleDateString(intlLocale(),{day:'numeric',month:'short',year:'numeric'});
                       return row.date;
                     })()}
                   </button>
@@ -1196,7 +1201,7 @@
   </div>
   <!-- Desktop right rail: KPI stack + overlay toggles. Hidden on mobile. -->
   <aside class="stats-right-rail">
-    <div class="stats-rail-heading">Summary</div>
+    <div class="stats-rail-heading">{$_('statistics_page.rail.summary')}</div>
     {#if summary}
       <div class="stats-rail-kpi">
         <span class="stats-rail-kpi-lbl">{$_('statistics_page.summary.average')}</span>
@@ -1226,7 +1231,7 @@
       {#if $diaryShowCompletion && completionStats && completionStats.total > 0}
         <!-- #207: adherence pulse; independent of the selected metric. -->
         <div class="stats-rail-kpi">
-          <span class="stats-rail-kpi-lbl" title="Days marked complete over the viewed range. Purely how consistently you closed the day, not whether goals were hit.">Marked complete</span>
+          <span class="stats-rail-kpi-lbl" title={$_('statistics_page.rail.marked_complete_tooltip')}>{$_('statistics_page.rail.marked_complete')}</span>
           <span class="stats-rail-kpi-val">
             {completionStats.marked} / {completionStats.total}
             <span class="stats-rail-delta" class:good={completionStats.pct >= 70} class:neutral={completionStats.pct < 70}>
@@ -1241,7 +1246,7 @@
              goals (goal.min only) → up is good; else lower is good. -->
         {@const _tGood = _goalValReactive == null ? null : (_goalIsMin ? _trendDelta >= 0 : _trendDelta <= 0)}
         <div class="stats-rail-kpi">
-          <span class="stats-rail-kpi-lbl" title="Last 7-day average vs the previous 7 days. Deep trend analysis lives on the chart itself — this is the quick pulse.">Weekly trend</span>
+          <span class="stats-rail-kpi-lbl" title={$_('statistics_page.rail.weekly_trend_tooltip')}>{$_('statistics_page.rail.weekly_trend')}</span>
           <span class="stats-rail-kpi-val">
             <span class="stats-rail-delta"
               class:good={_tGood === true}
@@ -1256,21 +1261,21 @@
       <p class="stats-rail-empty text-3 text-sm">{$_('statistics_page.empty.no_data')}</p>
     {/if}
 
-    <div class="stats-rail-heading" style="margin-top:16px">Overlays</div>
+    <div class="stats-rail-heading" style="margin-top:16px">{$_('statistics_page.rail.overlays')}</div>
     <label class="stats-rail-check">
       <input type="checkbox" checked={$statsAvgLine}
         on:change={(e) => statsAvgLine.set(e.currentTarget.checked)} />
-      <span>Average</span>
+      <span>{$_('statistics_page.overlay.average')}</span>
     </label>
     <label class="stats-rail-check">
       <input type="checkbox" checked={$statsGoalLine}
         on:change={(e) => statsGoalLine.set(e.currentTarget.checked)} />
-      <span>Goal</span>
+      <span>{$_('statistics_page.overlay.goal')}</span>
     </label>
     <label class="stats-rail-check">
       <input type="checkbox" checked={$statsTrendLine}
         on:change={(e) => statsTrendLine.set(e.currentTarget.checked)} />
-      <span>Trend</span>
+      <span>{$_('statistics_page.overlay.trend')}</span>
     </label>
     <!-- TODO: compare mode (#5) — needs loader refactor to accept a
          metric argument (loadSeries(metricId) → { labels, values }).
@@ -1288,10 +1293,10 @@
     on:click={() => showCalFor = null} on:keydown={() => {}}>
     <div class="stat-cal-sheet" on:click|stopPropagation on:keydown={() => {}}>
       <div class="sheet-handle"></div>
-      <div class="cal-title">{showCalFor === 'start' ? 'From' : 'To'} date</div>
+      <div class="cal-title">{showCalFor === 'start' ? $_('statistics_page.cal.from_date') : $_('statistics_page.cal.to_date')}</div>
       <!-- Month / year nav -->
       <div class="dp-nav">
-        <button class="btn-icon dp-nav-btn" on:click={calPrevMonth} aria-label="Previous month" title="Previous month">
+        <button class="btn-icon dp-nav-btn" on:click={calPrevMonth} aria-label={$_('statistics_page.cal.prev_month')} title={$_('statistics_page.cal.prev_month')}>
           <span class="material-symbols-rounded">chevron_left</span>
         </button>
         <div class="dp-month-year">
@@ -1302,7 +1307,7 @@
             {calYear}<span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;margin-left:2px">{showYearPicker ? 'expand_less' : 'expand_more'}</span>
           </button>
         </div>
-        <button class="btn-icon dp-nav-btn" on:click={calNextMonth} aria-label="Next month" title="Next month">
+        <button class="btn-icon dp-nav-btn" on:click={calNextMonth} aria-label={$_('statistics_page.cal.next_month')} title={$_('statistics_page.cal.next_month')}>
           <span class="material-symbols-rounded">chevron_right</span>
         </button>
       </div>
@@ -1322,7 +1327,7 @@
         </div>
       {:else}
         <div class="dp-grid">
-          {#each ['Su','Mo','Tu','We','Th','Fr','Sa'] as dh}
+          {#each _weekdayNames as dh}
             <div class="dp-dh">{dh}</div>
           {/each}
           {#each {length: calFirstDay} as _}<div></div>{/each}

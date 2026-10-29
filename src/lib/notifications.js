@@ -7,6 +7,8 @@
 
 import { settingPrefix } from './setting-key.js';
 import { isNative, resolveAssetUrl } from './platform.js';
+import { t } from './i18n-t.js';
+import { displayMealName } from './default-names.js';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
 // Verbose notification logs gated on dev OR opt-in verbose mode
@@ -37,7 +39,7 @@ async function _ensureChannel() {
     await LN.createChannel({
       id: 'nutritrace',
       name: 'NutriTrace',
-      description: 'NutriTrace notifications',
+      description: t('notify.channel_description', null, 'NutriTrace notifications'),
       importance: 4, // HIGH
       visibility: 1, // PUBLIC
       sound: 'default',
@@ -61,8 +63,8 @@ async function _ensureUpdateChannel() {
   try {
     await LN.createChannel({
       id: 'nutritrace-updates',
-      name: 'App updates',
-      description: 'Notifies you when a new app version is available.',
+      name: t('notify.updates_channel_name', null, 'App updates'),
+      description: t('notify.updates_channel_description', null, 'Notifies you when a new app version is available.'),
       importance: 2, // LOW: no sound, no vibration, no heads-up
       visibility: 1, // PUBLIC
     });
@@ -160,8 +162,8 @@ export async function scheduleWaterReminders(intervalMin = 120) {
     if (at <= new Date()) at.setDate(at.getDate() + 1);
     notifications.push({
       id: id++,
-      title: '💧 Hydration Reminder',
-      body: 'Time to drink some water! Stay hydrated.',
+      title: '💧 ' + t('notify.water_title'),
+      body: t('notify.water_body'),
       schedule: { at, every: 'day', allowWhileIdle: true },
     });
   }
@@ -184,7 +186,7 @@ export async function cancelWaterReminders() {
 // ── Meal reminders ──────────────────────────────────────────────────────────
 
 /** Schedule repeating daily meal reminders at specified times */
-export async function scheduleMealReminders(times = ['08:00', '12:00', '18:00'], mealNames = ['Breakfast', 'Lunch', 'Dinner']) {
+export async function scheduleMealReminders(times = ['08:00', '12:00', '18:00'], mealNames = [t('meal_names.breakfast'), t('meal_names.lunch'), t('meal_names.dinner')]) {
   if (!isNative) return;
   if (_USE_NATIVE_WORKER) { await cancelMealReminders(); return; }
   const LN = _getLN();
@@ -199,8 +201,8 @@ export async function scheduleMealReminders(times = ['08:00', '12:00', '18:00'],
     if (at <= new Date()) at.setDate(at.getDate() + 1);
     notifications.push({
       id: 2000 + i,
-      title: '🍽️ Meal Reminder',
-      body: `Time to log your ${mealNames[i] || 'meal'}!`,
+      title: '🍽️ ' + t('notify.meal_title'),
+      body: mealNames[i] ? t('notify.meal_body', { meal: displayMealName(mealNames[i]) }) : t('notify.meal_body_generic'),
       schedule: { at, every: 'day', allowWhileIdle: true },
     });
   });
@@ -294,15 +296,22 @@ function _resetCelebrations() {
   }
 }
 
-const GOAL_LABELS = {
-  calories: 'Calorie', proteins: 'Protein', carbohydrates: 'Carbs', fat: 'Fat',
-  fiber: 'Fiber', sodium: 'Sodium', sugars: 'Sugar', 'saturated-fat': 'Saturated Fat',
-  cholesterol: 'Cholesterol', potassium: 'Potassium', calcium: 'Calcium',
-  iron: 'Iron', 'vitamin-c': 'Vitamin C', 'vitamin-a': 'Vitamin A',
-  'vitamin-d': 'Vitamin D', water_ml: 'Water',
-  sleep_duration_min: 'Sleep', steps: 'Steps', active_minutes: 'Active Minutes',
-  distance_km: 'Distance', calories_out: 'Calories Burned',
-};
+// Goal names come from notify.goal_labels.<key> (hyphens → underscores),
+// looked up when the notification is built so they follow the app language.
+const GOAL_LABEL_KEYS = new Set([
+  'calories', 'proteins', 'carbohydrates', 'fat', 'fiber', 'sodium', 'sugars',
+  'saturated-fat', 'cholesterol', 'potassium', 'calcium', 'iron', 'vitamin-c',
+  'vitamin-a', 'vitamin-d', 'water_ml', 'sleep_duration_min', 'steps',
+  'active_minutes', 'distance_km', 'calories_out',
+]);
+function _goalLabel(key) {
+  return GOAL_LABEL_KEYS.has(key) ? t(`notify.goal_labels.${key.replace(/-/g, '_')}`) : key;
+}
+// Word units (steps, min) are translated; symbols (kcal, g, mg…) stay.
+function _goalUnit(key) {
+  const unit = GOAL_UNITS[key] || '';
+  return unit === 'steps' || unit === 'min' ? t(`notify.units.${unit}`) : unit;
+}
 
 const GOAL_UNITS = {
   calories: 'kcal', proteins: 'g', carbohydrates: 'g', fat: 'g',
@@ -357,12 +366,12 @@ export async function checkGoals(goals, values) {
       _persistCelebrations();
       const serverClaimed = await _claimCelebrationServer(key);
       if (!serverClaimed) { _dlog(`[notifications] ${key} already celebrated on another device`); continue; }
-      const label = GOAL_LABELS[key] || key;
-      const unit = GOAL_UNITS[key] || '';
+      const label = _goalLabel(key);
+      const unit = _goalUnit(key);
       const tgt = goal.min ?? goal.max;
       _dlog(`[notifications] FIRING goal celebration for ${key}: ${val} >= ${tgt}`);
-      await notify('notifGoalCelebrations', '🎯 Goal Reached!',
-        `You hit your ${label} goal: ${Math.round(val).toLocaleString()} ${unit} (target: ${Math.round(tgt).toLocaleString()})`, 5);
+      await notify('notifGoalCelebrations', '🎯 ' + t('notify.goal_title'),
+        t('notify.goal_body', { label, value: Math.round(val).toLocaleString(), unit, target: Math.round(tgt).toLocaleString() }), 5);
     }
 
     // Calorie goal specific
@@ -372,8 +381,8 @@ export async function checkGoals(goals, values) {
         _persistCelebrations();
         const serverClaimed = await _claimCelebrationServer('cal_max');
         if (!serverClaimed) continue;
-        await notify('notifCalorieGoal', '🔥 Calorie Target Reached',
-          `You've hit ${Math.round(val).toLocaleString()} kcal — your daily target is ${Math.round(goal.max).toLocaleString()} kcal`, 6);
+        await notify('notifCalorieGoal', '🔥 ' + t('notify.calorie_title'),
+          t('notify.calorie_body', { value: Math.round(val).toLocaleString(), target: Math.round(goal.max).toLocaleString() }), 6);
       }
     }
   }
@@ -393,8 +402,8 @@ export async function checkStepGoal(steps, goal) {
     _persistCelebrations();
     const serverClaimed = await _claimCelebrationServer('steps_hit');
     if (!serverClaimed) return;
-    await notify('notifStepGoal', '👟 Step Goal Reached!',
-      `You've walked ${steps.toLocaleString()} steps — goal was ${goal.toLocaleString()}!`, 5);
+    await notify('notifStepGoal', '👟 ' + t('notify.steps_title'),
+      t('notify.steps_body', { steps: steps.toLocaleString(), goal: goal.toLocaleString() }), 5);
   } else if (!_celebratedToday.has('steps_midday')) {
     const hour = new Date().getHours();
     if (hour >= 12 && hour <= 14 && steps < goal * 0.5) {
@@ -403,8 +412,8 @@ export async function checkStepGoal(steps, goal) {
       const serverClaimed = await _claimCelebrationServer('steps_midday');
       if (!serverClaimed) return;
       const remaining = goal - steps;
-      await notify('notifStepGoal', '🚶 Step Goal Progress',
-        `You're at ${steps.toLocaleString()} steps — ${remaining.toLocaleString()} to go!`, 4);
+      await notify('notifStepGoal', '🚶 ' + t('notify.steps_progress_title'),
+        t('notify.steps_progress_body', { steps: steps.toLocaleString(), remaining: remaining.toLocaleString() }), 4);
     }
   }
 }
@@ -511,7 +520,7 @@ export async function sendGotify(url, token, title, message, priority = 5) {
 /** Test Gotify connection */
 export async function testGotify(url, token) {
   try {
-    await sendGotify(url, token, 'NutriTrace', 'Test notification — Gotify is connected!', 5);
+    await sendGotify(url, token, 'NutriTrace', t('notify.gotify_test'), 5);
     return true;
   } catch {
     return false;
@@ -534,8 +543,8 @@ export async function scheduleWeighInReminder(timeStr = '07:00') {
 
   await LN.schedule({ notifications: [{
     id: 4000,
-    title: '⚖️ Weigh-in Reminder',
-    body: 'Time to step on the scale!',
+    title: '⚖️ ' + t('notify.weigh_in_title'),
+    body: t('notify.weigh_in_body'),
     schedule: { at, every: 'day', allowWhileIdle: true },
     channelId: 'nutritrace',
   }]});
@@ -587,8 +596,8 @@ export async function showUpdateNotification(latest) {
       notifications: [{
         id: UPDATE_NOTIFICATION_ID,
         channelId: 'nutritrace-updates',
-        title: 'NutriTrace update available',
-        body: `${latest.version} is ready. Tap to install.`,
+        title: t('notify.update_title'),
+        body: t('notify.update_body', { version: latest.version }),
         // Extras ride along so the tap handler knows which version to
         // install without re-fetching from GitHub.
         extra: { version: latest.version, notesUrl: latest.notesUrl || '' },

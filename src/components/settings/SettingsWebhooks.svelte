@@ -17,6 +17,8 @@
    */
   import { slide } from 'svelte/transition';
   import { _ } from 'svelte-i18n';
+  import { intlLocale } from '../../i18n/index.js';
+  import { localizeError } from '../../lib/server-errors.js';
   import { apiUrl } from '../../lib/platform.js';
   import { showSuccess, showError } from '../../stores/toast.js';
   import { confirmDialog } from '../../stores/confirmDialog.js';
@@ -58,7 +60,7 @@
       eventDescriptions = data.event_descriptions || {};
       webhooksEnabled = !!data.webhooks_enabled;
     } catch (e) {
-      showError(e.message);
+      showError(localizeError(e.message));
     } finally {
       loading = false;
     }
@@ -89,7 +91,7 @@
         }),
       });
       const data = await r.json();
-      if (!r.ok) { showError(data.error || $_('settings_webhooks.toast.create_failed')); return; }
+      if (!r.ok) { showError(localizeError(data.error) || $_('settings_webhooks.toast.create_failed')); return; }
 
       justCreatedSecret = data.secret;
       justCreatedUrl = data.webhook.url;
@@ -99,7 +101,7 @@
       newSecret = '';
       await load();
     } catch (e) {
-      showError(e.message);
+      showError(localizeError(e.message));
     } finally {
       creating = false;
     }
@@ -118,12 +120,12 @@
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        showError(data.error || $_('settings_webhooks.toast.delete_failed')); return;
+        showError(localizeError(data.error) || $_('settings_webhooks.toast.delete_failed')); return;
       }
       showSuccess($_('settings_webhooks.toast.deleted'));
       await load();
     } catch (e) {
-      showError(e.message);
+      showError(localizeError(e.message));
     }
   }
 
@@ -135,10 +137,10 @@
         body: JSON.stringify({ enabled: !w.enabled }),
       });
       const data = await r.json();
-      if (!r.ok) { showError(data.error || $_('settings_webhooks.toast.update_failed')); return; }
+      if (!r.ok) { showError(localizeError(data.error) || $_('settings_webhooks.toast.update_failed')); return; }
       await load();
     } catch (e) {
-      showError(e.message);
+      showError(localizeError(e.message));
     }
   }
 
@@ -150,12 +152,12 @@
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
       });
       const data = await r.json();
-      if (!r.ok) { showError(data.error || $_('settings_webhooks.toast.test_failed')); return; }
+      if (!r.ok) { showError(localizeError(data.error) || $_('settings_webhooks.toast.test_failed')); return; }
       if (data.ok) showSuccess($_('settings_webhooks.toast.test_delivered'));
-      else showError(data.last_delivery_error || $_('settings_webhooks.toast.test_failed'));
+      else showError(localizeError(data.last_delivery_error) || $_('settings_webhooks.toast.test_failed'));
       await load();
     } catch (e) {
-      showError(e.message);
+      showError(localizeError(e.message));
     } finally {
       testingId = null;
     }
@@ -184,7 +186,7 @@
     if (sec < 3600) return $_('settings_webhooks.row.min_ago', { values: { n: Math.floor(sec / 60) } });
     if (sec < 86400) return $_('settings_webhooks.row.hr_ago', { values: { n: Math.floor(sec / 3600) } });
     if (sec < 86400 * 30) return $_('settings_webhooks.row.day_ago', { values: { n: Math.floor(sec / 86400) } });
-    return d.toLocaleDateString();
+    return d.toLocaleDateString(intlLocale());
   }
 </script>
 
@@ -241,7 +243,7 @@
                   {#if w.last_delivery_status === 'success'}
                     <span class="status-badge status-success">{$_('settings_webhooks.row.status_success')}</span>
                   {:else if w.last_delivery_status === 'failed'}
-                    <span class="status-badge status-failed" title={w.last_delivery_error || ''}>{$_('settings_webhooks.row.status_failed')}</span>
+                    <span class="status-badge status-failed" title={localizeError(w.last_delivery_error) || ''}>{$_('settings_webhooks.row.status_failed')}</span>
                   {/if}
                 </span>
               </div>

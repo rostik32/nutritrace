@@ -10,6 +10,8 @@
  */
 import { NUTRIMENTS } from './nutrition.js';
 import { getOpenAIChatParams } from './openai-chat-params.js';
+import { t } from './i18n-t.js';
+import { localizeError } from './server-errors.js';
 
 // Nutrition schema for the propose_* tools — generated from the canonical
 // NUTRIMENTS list so adding a new nutrient anywhere in the app automatically
@@ -247,15 +249,15 @@ export async function callAI({ provider, apiKey, model, messages, systemPrompt, 
   // Local endpoints don't need an API key; cloud ones do. Other providers
   // still require a key.
   if (!apiKey && provider !== 'oai-compat') {
-    throw new Error('No API key configured. Add one in Settings → AI Assistant.');
+    throw new Error(t('ai_models.errors.no_api_key'));
   }
   switch (provider) {
     case 'claude':     return _callClaudeWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall, signal);
     case 'openai':     return _callOpenAIWithTools(apiKey, renamedModel(model), messages, systemPrompt, tools, onToolCall, 'https://api.openai.com', signal);
     case 'gemini':     return _callGeminiWithTools(apiKey, model, messages, systemPrompt, tools, onToolCall, signal);
     case 'oai-compat': {
-      if (!baseUrl) throw new Error('OpenAI Compatible provider needs a Base URL. Set one in Settings → AI Assistant.');
-      if (!model)   throw new Error('OpenAI Compatible provider needs a model name. Set one in Settings → AI Assistant.');
+      if (!baseUrl) throw new Error(t('ai_models.errors.needs_base_url'));
+      if (!model)   throw new Error(t('ai_models.errors.needs_model'));
       return _callOpenAIWithTools(apiKey || 'no-key', model, messages, systemPrompt, tools, onToolCall, baseUrl.replace(/\/+$/, ''), signal);
     }
     default: throw new Error(`Unknown AI provider: ${provider}`);
@@ -309,8 +311,8 @@ export async function callAIProxy({ messages, systemPrompt, tools, onToolCall, s
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      if (res.status === 401) throw new Error('Not signed in — sign in again to use AI features.');
-      throw new Error(data.error || `AI proxy error ${res.status}`);
+      if (res.status === 401) throw new Error(t('ai_models.errors.not_signed_in'));
+      throw new Error(localizeError(data.error) || `AI proxy error ${res.status}`);
     }
 
     // No tools fired — final reply, return it.
@@ -385,6 +387,35 @@ export const AI_MODELS = {
     { value: '__custom__',             label: 'Custom…'                               },
   ],
 };
+
+// Picker labels in the app language: brand and model names stay, the
+// generic words ("cheapest", "Custom…", "OpenAI Compatible") are read from
+// ai_models.* each time a label is used. English stays as the fallback.
+const _MODEL_TAG_KEYS = {
+  'fast, cheapest': 'fast_cheapest', 'cheapest': 'cheapest', 'cheap': 'cheap',
+  'fast': 'fast', 'balanced': 'balanced', 'smarter': 'smarter',
+  'most capable': 'most_capable', 'previous': 'previous',
+};
+function _translateLabel(entry, labelFn) {
+  Object.defineProperty(entry, 'label', { get: labelFn, enumerable: true, configurable: true });
+}
+for (const p of AI_PROVIDERS) {
+  if (p.value === 'oai-compat') {
+    const en = p.label;
+    _translateLabel(p, () => t('ai_models.openai_compatible', null, en));
+  }
+}
+for (const list of Object.values(AI_MODELS)) {
+  for (const m of list) {
+    const en = m.label;
+    if (m.value === '__custom__') { _translateLabel(m, () => t('ai_models.custom', null, en)); continue; }
+    const match = en.match(/^(.*) \(([^)]+)\)$/);
+    const key = match && _MODEL_TAG_KEYS[match[2]];
+    if (!key) continue;
+    const [, name, tag] = match;
+    _translateLabel(m, () => `${name} (${t(`ai_models.tags.${key}`, null, tag)})`);
+  }
+}
 
 // Used when no model is chosen. Someone who picked a model keeps it.
 export const AI_DEFAULT_MODELS = {

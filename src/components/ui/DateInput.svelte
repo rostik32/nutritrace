@@ -12,6 +12,7 @@
 <script>
   import Sheet from './Sheet.svelte';
   import DatePicker from './DatePicker.svelte';
+  import { _ } from 'svelte-i18n';
   import { dateFormat } from '../../stores/settings.js';
 
   export let value = '';
@@ -105,13 +106,13 @@
     on:keydown={e => { if (e.key === 'Enter') { e.preventDefault(); applyText(); e.target.blur(); } }} />
   <button type="button" class="btn-icon date-input-calendar"
     on:click={() => showPicker = true}
-    aria-label="Open calendar">
+    aria-label={$_('ui.date_input.open_calendar')}>
     <span class="material-symbols-rounded">calendar_month</span>
   </button>
 </div>
 
 {#if showPicker}
-  <Sheet bind:open={showPicker} title="Pick a date">
+  <Sheet bind:open={showPicker} title={$_('ui.date_input.pick_date')}>
     <div class="date-input-sheet-body">
       <DatePicker bind:value {min} {max} on:select={onPickerSelect} />
     </div>

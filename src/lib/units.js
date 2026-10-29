@@ -12,6 +12,7 @@
  * without per-food knowledge, so nutrition for those scales by the
  * portion number only (the current pre-fix behavior).
  */
+import { t } from './i18n-t.js';
 
 export const UNIT_GROUPS = [
   {
@@ -54,6 +55,26 @@ export const UNIT_GROUPS = [
   },
 ];
 
+// Group titles and full unit names read the app language each time they
+// are used (units.groups.*, units.names.*); the English above is the fallback.
+// `abbr` is the stored value and never changes.
+const _GROUP_KEYS = {
+  'Mass — Metric': 'mass_metric', 'Mass — US': 'mass_us',
+  'Volume — Metric': 'volume_metric', 'Volume — US': 'volume_us', 'Count': 'count',
+};
+function _localizedGetter(obj, prop, key) {
+  const en = obj[prop];
+  Object.defineProperty(obj, prop, {
+    get() { return t(key, null, en); },
+    enumerable: true,
+    configurable: true,
+  });
+}
+for (const g of UNIT_GROUPS) {
+  _localizedGetter(g, 'label', `units.groups.${_GROUP_KEYS[g.label]}`);
+  for (const u of g.units) _localizedGetter(u, 'full', `units.names.${u.abbr.replace(/\s+/g, '_')}`);
+}
+
 /**
  * Grams-per-unit conversion table for the mass-convertible units.
  *
@@ -94,7 +115,7 @@ export function unitGroupsWithCustoms(customs) {
   const list = Array.isArray(customs) ? customs.filter(c => c && c.abbr) : [];
   if (list.length === 0) return UNIT_GROUPS;
   return [
-    { label: 'Custom', units: list.map(c => ({ abbr: c.abbr, full: c.full || c.abbr })) },
+    { label: t('units.groups.custom', null, 'Custom'), units: list.map(c => ({ abbr: c.abbr, full: c.full || c.abbr })) },
     ...UNIT_GROUPS,
   ];
 }

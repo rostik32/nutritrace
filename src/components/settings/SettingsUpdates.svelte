@@ -19,6 +19,7 @@
    */
   import { onMount } from 'svelte';
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../../lib/server-errors.js';
   import Toggle from './Toggle.svelte';
   import { APP_VERSION } from '../../lib/version.js';
   import { isNative } from '../../lib/platform.js';
@@ -95,7 +96,7 @@
       await refreshCacheInfo();
       showSuccess($_('updates.storage.cleared'));
     } catch (e) {
-      showError(e?.message || String(e));
+      showError(localizeError(e?.message || String(e)));
     } finally {
       clearing = false;
     }
@@ -163,7 +164,7 @@
         await cancelUpdateNotification();
       } catch { /* silent */ }
     } catch (e) {
-      installFailed = e?.message || String(e);
+      installFailed = localizeError(e?.message || String(e));
       showError($_('updates.install_failed'));
     } finally {
       downloading = false;

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { push, querystring } from 'svelte-spa-router';
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../lib/server-errors.js';
   import { currentUser } from '../stores/auth.js';
   import { loadServerSettings } from '../stores/settings.js';
   import { validatePassword, passwordStrength } from '../lib/validation.js';
@@ -38,7 +39,7 @@
     if (!username.trim()) { error = $_('accept_invite.errors.username_required'); return; }
     if (!password)        { error = $_('reset_password.errors.required'); return; }
     const pwErr = validatePassword(password);
-    if (pwErr) { error = pwErr; return; }
+    if (pwErr) { error = localizeError(pwErr); return; }
     if (password !== confirm) { error = $_('reset_password.errors.mismatch'); return; }
     loading = true; error = '';
     try {
@@ -49,7 +50,7 @@
         body: JSON.stringify({ token, username: username.trim(), password, full_name: fullName.trim() || undefined }),
       });
       const data = await res.json();
-      if (!res.ok) { error = data.error || $_('accept_invite.errors.failed'); return; }
+      if (!res.ok) { error = data.error ? localizeError(data.error) : $_('accept_invite.errors.failed'); return; }
       localStorage.setItem('wl:userId', String(data.user.id));
       currentUser.set(data.user);
       await loadServerSettings();

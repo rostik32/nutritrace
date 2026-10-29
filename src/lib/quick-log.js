@@ -18,6 +18,7 @@ import { offNutritionStatus, needsFullLookup } from './off-nutrition.js';
 import { callAI, callAIProxy } from './aiChat.js';
 import { envLocks } from '../stores/settings.js';
 import { foldText } from './search-text.js';
+import { t } from './i18n-t.js';
 
 // ── Step 1: AI parses the input string into structured items ──────────────
 
@@ -115,7 +116,7 @@ export async function parseInput(text, userMealNames) {
   const envLocked = !!locks.ai;
   // OpenAI-compatible endpoints (Ollama etc.) don't need an API key.
   if (!apiKey && provider !== 'oai-compat' && !envLocked) {
-    throw new Error('AI provider not configured. Set up the AI Assistant in Settings first.');
+    throw new Error(t('smart_log.errors.ai_not_configured'));
   }
 
   const waterContainers = DB.getSetting('waterContainers', []);
@@ -151,7 +152,7 @@ export async function parseInput(text, userMealNames) {
     return { meal, items };
   } catch (e) {
     console.warn('[quick-log] AI returned non-JSON:', jsonText.slice(0, 200));
-    throw new Error('AI parser returned invalid JSON. Try rephrasing your input.');
+    throw new Error(t('smart_log.errors.invalid_json'));
   }
 }
 

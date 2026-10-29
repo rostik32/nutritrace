@@ -12,6 +12,7 @@
  */
 import { NUTRIMENTS } from './nutrition.js';
 import { FIXED_COLUMNS } from './food-import-template.js';
+import { t } from './i18n-t.js';
 
 const NUTRIENT_IDS = new Set(NUTRIMENTS.map(n => n.id));
 
@@ -23,10 +24,10 @@ function _coerceNumber(v) {
 
 function _normalizeFood(raw, rowNum) {
   const name = (raw.name || '').toString().trim();
-  if (!name) return { ok: false, error: { row: rowNum, message: 'Missing required field: name', raw } };
+  if (!name) return { ok: false, error: { row: rowNum, message: t('bulk_import.errors.missing_name', null, 'Missing required field: name'), raw } };
 
   const calories = _coerceNumber(raw.nutrition?.calories ?? raw.calories);
-  if (calories == null) return { ok: false, error: { row: rowNum, message: 'Missing or invalid calories', raw } };
+  if (calories == null) return { ok: false, error: { row: rowNum, message: t('bulk_import.errors.invalid_calories', null, 'Missing or invalid calories'), raw } };
 
   const nutrition = { calories };
   for (const n of NUTRIMENTS) {
@@ -54,17 +55,17 @@ export function parseJson(text) {
   try {
     data = JSON.parse(text);
   } catch (e) {
-    out.errors.push({ row: 0, message: `Invalid JSON: ${e.message}`, raw: null });
+    out.errors.push({ row: 0, message: t('bulk_import.errors.invalid_json', { error: e.message }, 'Invalid JSON: {error}'), raw: null });
     return out;
   }
   const foods = Array.isArray(data) ? data : Array.isArray(data?.foods) ? data.foods : null;
   if (!foods) {
-    out.errors.push({ row: 0, message: 'Expected an array of foods or { foods: [...] }', raw: data });
+    out.errors.push({ row: 0, message: t('bulk_import.errors.expected_array', null, 'Expected an array of foods or { foods: [...] }'), raw: data });
     return out;
   }
   foods.forEach((raw, i) => {
     if (!raw || typeof raw !== 'object') {
-      out.errors.push({ row: i + 1, message: 'Row is not an object', raw });
+      out.errors.push({ row: i + 1, message: t('bulk_import.errors.row_not_object', null, 'Row is not an object'), raw });
       return;
     }
     const r = _normalizeFood(raw, i + 1);
@@ -122,14 +123,14 @@ export function parseCsv(text) {
   const out = { valid: [], errors: [] };
   const lines = _splitCsvLines(text);
   if (lines.length < 2) {
-    out.errors.push({ row: 0, message: 'CSV must have a header row plus at least one data row', raw: null });
+    out.errors.push({ row: 0, message: t('bulk_import.errors.csv_too_short', null, 'CSV must have a header row plus at least one data row'), raw: null });
     return out;
   }
   const headers = _splitCsvRow(lines[0]).map(h => h.trim());
   const hasName = headers.includes('name');
   const hasCalories = headers.includes('calories');
   if (!hasName || !hasCalories) {
-    out.errors.push({ row: 0, message: `CSV header must include "name" and "calories" (got: ${headers.join(', ')})`, raw: headers });
+    out.errors.push({ row: 0, message: t('bulk_import.errors.csv_header', { columns: headers.join(', ') }, 'CSV header must include "name" and "calories" (got: {columns})'), raw: headers });
     return out;
   }
   for (let i = 1; i < lines.length; i++) {

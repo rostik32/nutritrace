@@ -26,6 +26,8 @@
   import DateInput from '../ui/DateInput.svelte';
   import { decimalInput, parseDecimal } from '../../lib/decimal-input.js';
   import TimePicker from '../ui/TimePicker.svelte';
+  import { intlLocale } from '../../i18n/index.js';
+  import { localizeError } from '../../lib/server-errors.js';
 
   const BUILTIN_PRESETS = [
     { label: '14:10', hours: 14 },
@@ -86,21 +88,21 @@
     try {
       const { notify } = await import('../../lib/notifications.js');
       const hours = ((_active.goal_hours) || 16).toFixed(1);
-      await notify('fastingNotifyOnGoal', 'Fast goal reached', `You've hit your ${hours}h fast goal.`, 5);
+      await notify('fastingNotifyOnGoal', $_('fasting.notify_title'), $_('fasting.notify_body', { values: { hours } }), 5);
     } catch {}
   }
 
   function _fmtElapsed(ms) {
-    if (ms <= 0) return '0h 0m';
+    if (ms <= 0) return $_('fasting.duration_hm', { values: { h: 0, m: 0 } });
     const totalMin = Math.floor(ms / 60000);
     const h = Math.floor(totalMin / 60);
     const m = totalMin % 60;
-    return `${h}h ${m}m`;
+    return $_('fasting.duration_hm', { values: { h, m } });
   }
 
   function _fmtTime(d) {
     if (!d) return '';
-    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return d.toLocaleTimeString(intlLocale(), { hour: 'numeric', minute: '2-digit' });
   }
 
   // Format a date for the active-fast meta line. Disambiguates when the
@@ -119,8 +121,8 @@
     const diffDays = Math.round((target - today) / 86400000);
     const time = _fmtTime(d);
     if (diffDays === 0) return time;
-    if (diffDays === 1) return `Tomorrow ${time}`;
-    if (diffDays === -1) return `Yesterday ${time}`;
+    if (diffDays === 1) return $_('fasting.tomorrow_at', { values: { time } });
+    if (diffDays === -1) return $_('fasting.yesterday_at', { values: { time } });
     // Beyond ±1 day, render the date in the user's chosen format.
     const fmt = $dateFormat || 'natural';
     const m  = String(d.getMonth() + 1).padStart(2, '0');
@@ -130,23 +132,23 @@
     if (fmt === 'US')   datePart = `${m}/${day}/${y}`;
     else if (fmt === 'EU')  datePart = `${day}/${m}/${y}`;
     else if (fmt === 'ISO') datePart = `${y}-${m}-${day}`;
-    else datePart = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    else datePart = d.toLocaleDateString(intlLocale(), { month: 'short', day: 'numeric' });
     return `${datePart}, ${time}`;
   }
 
   function _fmtAgo(ms) {
     const min = Math.floor(ms / 60000);
-    if (min < 60) return min <= 1 ? 'just now' : `${min}m ago`;
+    if (min < 60) return min <= 1 ? $_('fasting.ago.just_now') : $_('fasting.ago.minutes', { values: { n: min } });
     const h = Math.floor(min / 60);
-    if (h < 24) return `${h}h ago`;
+    if (h < 24) return $_('fasting.ago.hours', { values: { n: h } });
     const d = Math.floor(h / 24);
-    return d === 1 ? 'yesterday' : `${d}d ago`;
+    return d === 1 ? $_('fasting.ago.yesterday') : $_('fasting.ago.days', { values: { n: d } });
   }
 
   async function _onStart() {
     const hrs = _showCustom ? parseDecimal(_customHours) : _selectedHours;
     if (!Number.isFinite(hrs) || hrs <= 0) {
-      showError('Enter a goal between 1 and 168 hours.');
+      showError($_('fasting.errors.goal_range'));
       return;
     }
     fastingDefaultHours.set(hrs);
@@ -157,9 +159,10 @@
 
   async function _onEnd() {
     const ok = await confirmDialog({
-      title: 'End your fast?',
-      message: `You've been fasting for ${_fmtElapsed($elapsedMs)}.`,
-      confirmText: 'End Fast',
+      title: $_('fasting.end_title'),
+      message: $_('fasting.end_message', { values: { elapsed: _fmtElapsed($elapsedMs) } }),
+      confirmText: $_('fasting.end_fast'),
+      cancelText: $_('common.cancel'),
     });
     if (!ok) return;
     await endFast();
@@ -168,14 +171,14 @@
   function _saveCustomPreset() {
     const hrs = parseDecimal(_customHours);
     if (!Number.isFinite(hrs) || hrs <= 0 || hrs > 168) {
-      showError('Enter a valid goal between 1 and 168 hours.');
+      showError($_('fasting.errors.goal_range_valid'));
       return;
     }
-    const name = (_customName || `${hrs}h`).trim().slice(0, 20);
+    const name = (_customName || $_('fasting.hours_short', { values: { h: hrs } })).trim().slice(0, 20);
     const next = [...($fastingCustomPresets || []), { name, hours: hrs }].slice(-3);
     fastingCustomPresets.set(next);
     _customName = '';
-    showSuccess(`Saved "${name}" as a preset`);
+    showSuccess($_('fasting.preset_saved', { values: { name } }));
   }
 
   async function _removeCustomPreset(idx) {
@@ -198,17 +201,17 @@
     const [yy, mm, dd] = _editStartDate.split('-').map(n => parseInt(n));
     const [hh, mi]     = _editStartTime.split(':').map(n => parseInt(n));
     const newStart = new Date(yy, mm - 1, dd, hh, mi, 0, 0);
-    if (isNaN(newStart.getTime())) { showError('Invalid date/time'); return; }
-    if (newStart.getTime() > Date.now()) { showError('Start time can\'t be in the future'); return; }
+    if (isNaN(newStart.getTime())) { showError($_('fasting.errors.invalid_datetime')); return; }
+    if (newStart.getTime() > Date.now()) { showError($_('fasting.errors.start_future')); return; }
     if (newStart.getTime() < Date.now() - 7 * 24 * 3600 * 1000) {
-      showError('Start time too far in the past (max 7 days ago)'); return;
+      showError($_('fasting.errors.start_too_old')); return;
     }
     try {
       await NtApi.patch(`/api/fasts/${_active.id}`, { start_at: newStart.toISOString() });
       await loadFasting();
       _editingStart = false;
-      showSuccess('Start time updated');
-    } catch (e) { showError(e?.message || 'Could not update'); }
+      showSuccess($_('fasting.start_updated'));
+    } catch (e) { showError(e?.message ? localizeError(e.message) : $_('fasting.errors.update_failed')); }
   }
 </script>
 
@@ -221,7 +224,7 @@
         <div class="fast-idle-title">{$_('fasting.start_fasting')}</div>
         {#if _lastFast}
           <div class="fast-last-hint">
-            Last fast: <strong>{_lastFastDuration.toFixed(1)}h</strong> · ended {_lastFastAgo}
+            {$_('fasting.last_fast')} <strong>{$_('fasting.hours_short', { values: { h: _lastFastDuration.toFixed(1) } })}</strong> · {$_('fasting.ended_ago', { values: { ago: _lastFastAgo } })}
           </div>
         {/if}
         <div class="fast-idle-presets">
@@ -236,29 +239,29 @@
               class:active={!_showCustom && _selectedHours === p.hours}
               on:click={() => { _showCustom = false; _selectedHours = p.hours; }}
               on:contextmenu|preventDefault={async () => {
-                if (await confirmDialog({ title: `Remove "${p.name}"?`, confirmText: 'Remove', dangerous: true })) {
+                if (await confirmDialog({ title: $_('fasting.remove_preset_title', { values: { name: p.name } }), confirmText: $_('fasting.remove'), cancelText: $_('common.cancel'), dangerous: true })) {
                   _removeCustomPreset(i);
                 }
               }}
-              title="Long-press to remove">
+              title={$_('fasting.long_press_remove')}>
               {p.name}
             </button>
           {/each}
           <button class="fast-preset" class:active={_showCustom}
             on:click={() => { _showCustom = true; if (!_customHours) _customHours = String(_selectedHours); }}>
-            Custom
+            {$_('fasting.custom')}
           </button>
         </div>
         {#if _showCustom}
           <div class="fast-custom" transition:slide={{ duration: 140 }}>
             <input class="input" type="text" inputmode="decimal" use:decimalInput bind:value={_customHours}
               placeholder={$_('fasting.hours_ph')} />
-            <span class="fast-custom-suffix">hours</span>
+            <span class="fast-custom-suffix">{$_('fasting.hours_suffix')}</span>
             {#if ($fastingCustomPresets || []).length < 3}
               <input class="input fast-custom-name" type="text" maxlength="20"
                 placeholder={$_('fasting.name_ph')} bind:value={_customName} />
               <button class="btn-icon fast-custom-save" on:click={_saveCustomPreset}
-                title="Save as preset" aria-label="Save as preset">
+                title={$_('fasting.save_preset')} aria-label={$_('fasting.save_preset')}>
                 <span class="material-symbols-rounded">bookmark_add</span>
               </button>
             {/if}
@@ -274,15 +277,15 @@
         <span class="material-symbols-rounded fast-icon">{_reached ? 'check_circle' : 'timer'}</span>
         <div class="fast-active-main">
           <div class="fast-active-title">
-            {_reached ? 'Goal Reached' : 'Fasting'} · <strong>{_fmtElapsed($elapsedMs)}</strong>
+            {_reached ? $_('fasting.goal_reached') : $_('fasting.fasting')} · <strong>{_fmtElapsed($elapsedMs)}</strong>
           </div>
           <div class="fast-active-meta">
             <button class="fast-edit-start" on:click={_openEditStart}
-              title="Edit start time" aria-label="Edit start time">
-              Started: {_fmtDateTime(_startedAt)}
+              title={$_('fasting.edit_start')} aria-label={$_('fasting.edit_start')}>
+              {$_('fasting.started', { values: { time: _fmtDateTime(_startedAt) } })}
               <span class="material-symbols-rounded">edit</span>
             </button>
-            · Goal: {_active.goal_hours}h · Target: {_fmtDateTime(_targetEnd)}
+            · {$_('fasting.goal_target', { values: { hours: _active.goal_hours, time: _fmtDateTime(_targetEnd) } })}
           </div>
         </div>
         <button class="btn btn-secondary fast-end-btn" on:click={_onEnd}>{$_('fasting.end_fast')}</button>
@@ -298,7 +301,7 @@
           </div>
           <div class="fast-edit-actions">
             <button class="btn btn-secondary" on:click={() => _editingStart = false}>{$_('fasting.cancel')}</button>
-            <button class="btn btn-primary" on:click={_saveEditStart}>Save</button>
+            <button class="btn btn-primary" on:click={_saveEditStart}>{$_('common.save')}</button>
           </div>
         </div>
       {/if}

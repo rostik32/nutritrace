@@ -44,7 +44,7 @@
   import NutritionFactsBox from './NutritionFactsBox.svelte';
   import { resolveAssetUrl } from '../../lib/platform.js';
   import { Nutrition, energyUnitSuffix } from '../../lib/nutrition.js';
-  import { energyUnit, mealNames, disableAnimations } from '../../stores/settings.js';
+  import { energyUnit, displayMealNames, disableAnimations } from '../../stores/settings.js';
   import { NtApi } from '../../lib/api.js';
   import { confirmDialog } from '../../stores/confirmDialog.js';
   import { showSuccess, showError } from '../../stores/toast.js';
@@ -81,7 +81,7 @@
   // one-action commit so a suggestion adds noise without speeding the
   // common case.
   let _mealPickerOpen = false;
-  $: _mealActions = (($mealNames || ['Breakfast','Lunch','Dinner','Snacks'])
+  $: _mealActions = ($displayMealNames
     .map((label, value) => ({ label, value })));
 
   // Image URL: NT foods carry `imgUrl` (camelCase). OFF / USDA picker rows
@@ -159,8 +159,8 @@
     const ok = await confirmDialog({
       title: $_('foods.detail.delete_confirm_title'),
       message: $_('foods.detail.delete_confirm_body', { values: { name: _displayFood.name } }),
-      confirmLabel: $_('common.delete'),
-      cancelLabel: $_('common.cancel'),
+      confirmText: $_('common.delete'),
+      cancelText: $_('common.cancel'),
       dangerous: true,
     });
     if (!ok) return;
@@ -196,8 +196,8 @@
         {#if onDismiss}
           <button type="button" class="detail-embedded-close"
             on:click={onDismiss}
-            aria-label="Clear detail preview"
-            title="Clear preview">
+            aria-label={$_('ui.food_detail.clear_preview_aria')}
+            title={$_('ui.food_detail.clear_preview')}>
             <span class="material-symbols-rounded">close</span>
           </button>
         {/if}
@@ -280,7 +280,7 @@
            we just prompt the user to select something. -->
       <div class="detail-embedded-empty">
         <span class="material-symbols-rounded">restaurant_menu</span>
-        <p>Pick a food from the list to preview.</p>
+        <p>{$_('ui.food_detail.empty')}</p>
       </div>
     {/if}
   </div>

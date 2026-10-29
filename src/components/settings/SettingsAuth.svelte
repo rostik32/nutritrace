@@ -1,6 +1,7 @@
 <script>
   import { slide } from 'svelte/transition';
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../../lib/server-errors.js';
   import Toggle from './Toggle.svelte';
   import { showSuccess, showError } from '../../stores/toast.js';
   import { currentUser, userMgmtActive } from '../../stores/auth.js';
@@ -48,7 +49,7 @@
         logo_url: 'https://cdn.simpleicons.org/auth0/EB5424',
       },
       issuer_hint: 'https://<your-tenant>.auth0.com/',
-      help: 'Auth0 adds custom claims under a namespaced URL like "https://nutritrace.app/roles" — leave the admin claim blank for now and contact your tenant admin to set up a rule that exposes role membership.',
+      helpKey: 'settings_auth.preset_help.auth0',
       hides: [],
     },
     {
@@ -63,7 +64,7 @@
         logo_url: 'https://cdn.simpleicons.org/authelia/000000',
       },
       issuer_hint: 'https://auth.example.com',
-      help: 'Authelia\'s issuer URL is the root URL where Authelia is served — no path suffix.',
+      helpKey: 'settings_auth.preset_help.authelia',
       hides: [],
     },
     {
@@ -78,7 +79,7 @@
         logo_url: '/icons/sso/authentik.svg',
       },
       issuer_hint: 'https://auth.example.com/application/o/<your-app-slug>/',
-      help: 'Issuer URL is the "OpenID Configuration Issuer" shown on the Provider page in Authentik. Make sure your Application uses an OAuth2/OIDC Provider and you\'ve added the redirect URI shown above to its allowed list.',
+      helpKey: 'settings_auth.preset_help.authentik',
       hides: [],
     },
     {
@@ -94,7 +95,7 @@
         logo_url: 'https://cdn.simpleicons.org/google/4285F4',
       },
       issuer_hint: 'https://accounts.google.com',
-      help: 'Google\'s issuer URL is fixed. Group/role claims are not available with standard scopes — admin role mapping is hidden for this provider; promote Google users manually after first login.',
+      helpKey: 'settings_auth.preset_help.google',
       hides: ['admin_group_claim', 'admin_group_value'],
     },
     {
@@ -109,7 +110,7 @@
         logo_url: 'https://cdn.simpleicons.org/keycloak/4D4D4D',
       },
       issuer_hint: 'https://auth.example.com/realms/<your-realm>',
-      help: 'Add a "groups" mapper to your client\'s default scope so the groups claim is included in the ID token.',
+      helpKey: 'settings_auth.preset_help.keycloak',
       hides: [],
     },
     {
@@ -124,12 +125,13 @@
         logo_url: '/icons/sso/pocket-id.svg',
       },
       issuer_hint: 'https://id.example.com',
-      help: 'Pocket ID uses passkeys for primary auth — your users won\'t need a password at the IdP either. Add the redirect URI shown above to the OIDC client in Pocket ID admin.',
+      helpKey: 'settings_auth.preset_help.pocket_id',
       hides: [],
     },
     {
       id: 'custom',
       name: 'Custom / Generic OIDC',
+      nameKey: 'settings_auth.preset_custom_name',
       icon: 'badge',
       defaults: {
         scope: 'openid profile email',
@@ -139,7 +141,7 @@
         logo_url: '',
       },
       issuer_hint: 'https://your-idp.example.com',
-      help: 'Any OpenID Connect 1.0 compliant provider that supports Authorization Code Flow + PKCE + Discovery should work here.',
+      helpKey: 'settings_auth.preset_help.custom',
       hides: [],
     },
   ];
@@ -268,7 +270,7 @@
         body: JSON.stringify(body),
       });
       const data = await r.json();
-      if (!r.ok) { showError(data?.error || $_('common.errors.save_failed')); return; }
+      if (!r.ok) { showError(localizeError(data?.error) || $_('common.errors.save_failed')); return; }
       showSuccess(isEdit ? $_('settings_auth.toast.provider_updated') : $_('settings_auth.toast.provider_created'));
       oidcEditing = null;
       await loadData();
@@ -301,7 +303,7 @@
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        showError(data?.error || $_('common.errors.delete_failed')); return;
+        showError(localizeError(data?.error) || $_('common.errors.delete_failed')); return;
       }
       showSuccess($_('settings_auth.toast.provider_deleted'));
       await loadData();
@@ -322,7 +324,7 @@
         body: JSON.stringify({ enabled: next }),
       });
       const data = await r.json();
-      if (!r.ok) { showError(data?.error || $_('common.errors.save_failed')); return; }
+      if (!r.ok) { showError(localizeError(data?.error) || $_('common.errors.save_failed')); return; }
       enablePasswordLogin = !!data.enable_email_password_login;
       showSuccess(enablePasswordLogin ? $_('settings_auth.toast.password_login_enabled') : $_('settings_auth.toast.password_login_disabled'));
     } catch { showError($_('common.errors.cant_reach_server')); }
@@ -424,7 +426,7 @@
               <div class="text-3 text-sm">end_session_endpoint: {oidcTestResult.end_session_endpoint || '—'}</div>
             {:else}
               <strong style="color:var(--danger)">{$_('settings_auth.providers.discovery_failed')}</strong>
-              <div class="text-3 text-sm">{oidcTestResult.error}</div>
+              <div class="text-3 text-sm">{localizeError(oidcTestResult.error)}</div>
             {/if}
           </div>
         {/if}
@@ -441,21 +443,21 @@
                       class="oidc-preset-card"
                       class:selected={oidcSelectedPreset === preset.id}
                       on:click={() => oidcSelectedPreset = preset.id}
-                      title={preset.name}
+                      title={preset.nameKey ? $_(preset.nameKey) : preset.name}
                     >
                       {#if preset.defaults.logo_url}
                         <img src={resolveAssetUrl(preset.defaults.logo_url)} alt="" class="oidc-preset-logo" />
                       {:else}
                         <span class="material-symbols-rounded oidc-preset-icon">{preset.icon}</span>
                       {/if}
-                      <span class="oidc-preset-name">{preset.name}</span>
+                      <span class="oidc-preset-name">{preset.nameKey ? $_(preset.nameKey) : preset.name}</span>
                     </button>
                   {/each}
                 </div>
-                {#if oidcPreset.help}
+                {#if oidcPreset.helpKey}
                   <div class="text-3 text-sm" style="margin-top:8px;line-height:1.4">
                     <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle">info</span>
-                    {oidcPreset.help}
+                    {$_(oidcPreset.helpKey)}
                   </div>
                 {/if}
               </div>

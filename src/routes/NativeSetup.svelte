@@ -1,5 +1,6 @@
 <script>
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../lib/server-errors.js';
   import { setNativeMode, setServerUrl, setAuthToken, resolveAssetUrl, iconUrl, explainConnectError } from '../lib/platform.js';
   import { showError, showSuccess } from '../stores/toast.js';
   import { DB } from '../lib/db.js';
@@ -73,7 +74,7 @@
       passwordLoginEnabled = discoveredPasswordEnabled;
       step = 'server-auth';
     } catch (e) {
-      showError(explainConnectError(e, url));
+      showError(localizeError(explainConnectError(e, url)));
     } finally {
       connecting = false;
     }
@@ -102,7 +103,7 @@
       showSuccess($_('native_setup.errors.connected'));
       window.location.reload();
     } catch (e) {
-      showError(explainConnectError(e, validatedUrl));
+      showError(localizeError(explainConnectError(e, validatedUrl)));
     } finally {
       connecting = false;
     }

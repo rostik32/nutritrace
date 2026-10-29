@@ -1,8 +1,9 @@
 /**
  * Diary → CSV export for a chosen period (Diary → Export sheet).
  *
- * Pure helpers with no browser or Svelte imports so node --test can load
- * them; the sheet component does the fetching and the file download.
+ * Pure helpers with no browser imports so node --test can load them (text
+ * comes through i18n-t.js, which falls back to English there); the sheet
+ * component does the fetching and the file download.
  *
  * One row per logged item. Amount is portion × quantity, the same figure
  * the diary shows; nutrient values come from Nutrition.calculate, so they
@@ -12,6 +13,7 @@
  * period. A missing value is an empty cell, never 0.
  */
 import { Nutrition, NUTRIMENTS } from './nutrition.js';
+import { t } from './i18n-t.js';
 
 export const EXPORT_PRESETS = ['today', 'yesterday', 'week', 'month'];
 
@@ -76,6 +78,12 @@ function itemAmount(item) {
  *   days outside [start, end] are dropped (an older server ignores the period)
  * @returns {{csv: string, rows: number}}  rows = logged items written
  */
+// Column titles in the app language (English when svelte-i18n isn't set up).
+function csvHeaders() {
+  return [['date', 'Date'], ['meal', 'Meal'], ['food', 'Food'], ['brand', 'Brand'], ['amount', 'Amount'], ['unit', 'Unit']]
+    .map(([k, en]) => t(`diary_export.csv.${k}`, null, en));
+}
+
 export function buildDiaryCsv(days, { start, end, mealNames = [], showAll = false, customNutriments = [] } = {}) {
   const inRange = (days || [])
     .filter(d => d && d.date >= start && d.date <= end)
@@ -89,7 +97,7 @@ export function buildDiaryCsv(days, { start, end, mealNames = [], showAll = fals
     for (const { item, meal } of items) {
       records.push({
         date: day.date,
-        meal: mealNames[meal] || `Meal ${meal + 1}`,
+        meal: mealNames[meal] || t('diary_export.csv.meal_n', { n: meal + 1 }, 'Meal {n}'),
         item,
         ...itemAmount(item),
         nutrition: Nutrition.calculate(item),
@@ -101,7 +109,7 @@ export function buildDiaryCsv(days, { start, end, mealNames = [], showAll = fals
     .filter(c => records.some(r => fmtNumber(r.nutrition[c.id]) !== ''));
 
   const lines = [
-    ['Date', 'Meal', 'Food', 'Brand', 'Amount', 'Unit', ...columns.map(c => c.header)].map(csvEscape).join(','),
+    [...csvHeaders(), ...columns.map(c => c.header)].map(csvEscape).join(','),
     ...records.map(r => [
       r.date, r.meal, r.item.name || '', r.item.brand || '', r.amount, r.unit,
       ...columns.map(c => fmtNumber(r.nutrition[c.id])),

@@ -10,6 +10,8 @@
   // Matches both '/settings' and '/settings/*' via startsWith.
   $: _embedded = ($location || '').startsWith('/settings');
   import { _ } from 'svelte-i18n';
+  import { localizeError } from '../lib/server-errors.js';
+  import { intlLocale } from '../i18n/index.js';
   import { get } from 'svelte/store';
   import { currentUser, userMgmtActive, logout as logoutAuth } from '../stores/auth.js';
   import { NtApi } from '../lib/api.js';
@@ -44,10 +46,10 @@
     if (want) {
       // Verify hardware right at toggle-on so we surface failures immediately
       // instead of letting a user enable a setting that never works.
-      const ok = await biometric.authenticate('Enable biometric sign-in');
+      const ok = await biometric.authenticate($_('profile.biometric.enable_prompt'));
       if (!ok) {
         biometricLoginEnabled.set(false);
-        showError('Biometric verification was canceled or failed.');
+        showError($_('profile.biometric.verify_failed'));
         return;
       }
       // Stash the current JWT so the next sign-in can unlock with biometric.
@@ -97,7 +99,7 @@
     try {
       const res = await fetch(apiUrl('/api/auth/me'), { method: 'DELETE', credentials: 'include', headers: _headers() });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { showError(data?.error || $_('profile.errors.delete_account_failed')); deletingAccount = false; return; }
+      if (!res.ok) { showError(data?.error ? localizeError(data.error) : $_('profile.errors.delete_account_failed')); deletingAccount = false; return; }
       localStorage.removeItem('wl:userId');
       await loadAuthState();
       showSuccess($_('profile.account_deleted'));
@@ -110,7 +112,13 @@
 
   $: pwScore = passwordStrength(new_password);
 
-  const GENDERS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
+  // Stored values stay English (they are data); only the labels are translated.
+  const GENDERS = [
+    ['Male', 'profile.gender_options.male'],
+    ['Female', 'profile.gender_options.female'],
+    ['Non-binary', 'profile.gender_options.non_binary'],
+    ['Prefer not to say', 'profile.gender_unset'],
+  ];
 
   let full_name  = '';
   let nickname   = '';
@@ -239,7 +247,7 @@
     window.location.href = apiUrl(`/api/auth/oidc/login/${providerId}?link=1&return=${ret}`);
   }
   async function unlink(linkId) {
-    if (!confirm('Unlink this provider? You won\'t be able to sign in with it again until you re-link.')) return;
+    if (!confirm($_('profile.unlink_confirm'))) return;
     unlinking = linkId;
     try {
       const csrf = localStorage.getItem('nt:csrf');
@@ -249,7 +257,7 @@
         headers: _headers(csrf ? { 'X-CSRF-Token': csrf } : {}),
       });
       const data = await r.json();
-      if (!r.ok) { showError(data?.error || $_('common.errors.unlink_failed')); return; }
+      if (!r.ok) { showError(data?.error ? localizeError(data.error) : $_('common.errors.unlink_failed')); return; }
       linkedProviders = data.links || [];
       showSuccess($_('common.unlinked'));
     } catch (e) {
@@ -265,7 +273,7 @@
   async function changePassword() {
     if (new_password !== new_password2) { showError($_('reset_password.errors.mismatch')); return; }
     const pwErr = validatePassword(new_password);
-    if (pwErr) { showError(pwErr); return; }
+    if (pwErr) { showError(localizeError(pwErr)); return; }
     pwSaving = true;
     try {
       const body = hasPassword
@@ -278,7 +286,7 @@
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) { showError(data.error || $_('common.errors.failed')); return; }
+      if (!res.ok) { showError(data.error ? localizeError(data.error) : $_('common.errors.failed')); return; }
       showSuccess($_('profile.password_changed'));
       changingPassword = false;
       cur_password = new_password = new_password2 = '';
@@ -319,7 +327,7 @@
     <div class="avatar-section">
       <button class="avatar-btn" on:click={pickAvatar} disabled={uploading} title={$_('profile.change_photo')}>
         {#if avatar_url}
-          <img class="avatar-img" src={resolveAssetUrl(avatar_url)} alt="avatar" />
+          <img class="avatar-img" src={resolveAssetUrl(avatar_url)} alt={$_('profile.avatar_alt')} />
         {:else}
           <span class="material-symbols-rounded avatar-placeholder">person</span>
         {/if}
@@ -364,7 +372,7 @@
         <div class="select-wrap">
           <select class="select" bind:value={gender}>
             <option value="">{$_('profile.gender_unset')}</option>
-            {#each GENDERS as g}<option value={g}>{g}</option>{/each}
+            {#each GENDERS as [g, key]}<option value={g}>{$_(key)}</option>{/each}
           </select>
         </div>
       </div>
@@ -385,7 +393,7 @@
                 <div class="oidc-link-info">
                   <span class="oidc-link-name">{l.display_name || 'OIDC'}</span>
                   {#if l.last_login_at}
-                    <span class="oidc-link-meta text-3 text-sm">last sign-in {new Date(l.last_login_at).toLocaleDateString()}</span>
+                    <span class="oidc-link-meta text-3 text-sm">{$_('profile.last_sign_in', { values: { date: new Date(l.last_login_at).toLocaleDateString(intlLocale()) } })}</span>
                   {/if}
                 </div>
                 <button class="btn btn-ghost btn-sm" on:click={() => unlink(l.id)} disabled={unlinking === l.id}>
@@ -406,7 +414,7 @@
                 {:else}
                   <span class="material-symbols-rounded oidc-link-icon">add_link</span>
                 {/if}
-                <span>{$_('profile.link_with')} {p.display_name || 'SSO'}</span>
+                <span>{$_('profile.link_with_provider', { values: { provider: p.display_name || 'SSO' } })}</span>
               </button>
             {/each}
           </div>
@@ -472,9 +480,9 @@
           <span class="security-label">{$_('login.biometric.sign_in_button')}</span>
           <div class="security-desc">
             {#if _biometricSupported}
-              Use fingerprint or face unlock instead of typing your password each time. Your password is still required on the first sign-in. Sign-in sessions stay valid for up to a year by default — admins can change this in <strong>Settings → Users → Session Duration</strong>.
+              {@html $_('profile.biometric.desc')}
             {:else}
-              Set up a fingerprint or face unlock in <strong>Android Settings → Security</strong> first, then come back here.
+              {@html $_('profile.biometric.not_enrolled')}
             {/if}
           </div>
         </div>

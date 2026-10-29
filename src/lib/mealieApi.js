@@ -8,6 +8,7 @@
 import { DB } from './db.js';
 import { apiUrl, isNative, getServerUrl, getAuthToken } from './platform.js';
 import { Nutrition } from './nutrition.js';
+import { t } from './i18n-t.js';
 
 function _cfg() {
   const baseUrl = (DB.getSetting('mealieBaseUrl', '') || '').replace(/\/$/, '');
@@ -116,7 +117,7 @@ const Mealie = {
     }
 
     return {
-      name:      recipe.name || 'Unnamed Recipe',
+      name:      recipe.name || t('connected_services.unnamed_recipe'),
       brand,
       portion:   100,
       unit:      'serving',

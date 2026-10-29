@@ -38,26 +38,26 @@
       key: n.id, label: n.label, group: 'nutrient',
     }));
     const bodyAll = [
-      { key:'weight', label:'Weight' }, { key:'neck', label:'Neck' }, { key:'waist', label:'Waist' },
-      { key:'hips', label:'Hips' }, { key:'chest', label:'Chest' }, { key:'thighs', label:'Thighs' },
-      { key:'biceps', label:'Biceps' }, { key:'calves', label:'Calves' },
-      { key:'body_fat', label:'Body Fat %' }, { key:'body_water', label:'Body Water %' },
+      { key:'weight', label:$_('statistics_page.metric.weight') }, { key:'neck', label:$_('statistics_page.metric.neck') }, { key:'waist', label:$_('statistics_page.metric.waist') },
+      { key:'hips', label:$_('statistics_page.metric.hips') }, { key:'chest', label:$_('statistics_page.metric.chest') }, { key:'thighs', label:$_('statistics_page.metric.thighs') },
+      { key:'biceps', label:$_('statistics_page.metric.biceps') }, { key:'calves', label:$_('statistics_page.metric.calves') },
+      { key:'body_fat', label:$_('statistics_page.metric.body_fat_pct') }, { key:'body_water', label:$_('statistics_page.metric.body_water_pct') },
     ].filter(b => !($hiddenBodyStats||[]).includes(b.key)).map(b => ({ ...b, group: 'body' }));
     const water = ($waterShowInStats ?? DB.getSetting('waterShowInStats', true))
-      ? [{ key: 'water', label: 'Water', group: 'water' }]
+      ? [{ key: 'water', label: $_('statistics_page.metric.water'), group: 'water' }]
       : [];
     const hasWellness = $fitbitFamilyEnabled || $garminEnabled;
     const wellness = [
       ...(hasWellness ? [
-        ...(_wlVisibleForStats('steps')             ? [{ key:'wl_steps',  label:'Steps' }] : []),
-        ...(_wlVisibleForStats('active_minutes')    ? [{ key:'wl_active', label:'Active Minutes' }] : []),
-        ...(_wlVisibleForStats('sleep_duration_min')? [{ key:'wl_sleep',  label:'Sleep' }] : []),
-        ...(_wlVisibleForStats('resting_hr')        ? [{ key:'wl_rhr',    label:'Resting HR' }] : []),
-        ...(_wlVisibleForStats('hrv_daily_rmssd')   ? [{ key:'wl_hrv',    label:'HRV' }] : []),
-        ...(_wlVisibleForStats('spo2_avg')          ? [{ key:'wl_spo2',   label:'SpO2' }] : []),
+        ...(_wlVisibleForStats('steps')             ? [{ key:'wl_steps',  label:$_('statistics_page.metric.steps') }] : []),
+        ...(_wlVisibleForStats('active_minutes')    ? [{ key:'wl_active', label:$_('statistics_page.metric.active_minutes') }] : []),
+        ...(_wlVisibleForStats('sleep_duration_min')? [{ key:'wl_sleep',  label:$_('statistics_page.metric.sleep') }] : []),
+        ...(_wlVisibleForStats('resting_hr')        ? [{ key:'wl_rhr',    label:$_('statistics_page.metric.resting_hr') }] : []),
+        ...(_wlVisibleForStats('hrv_daily_rmssd')   ? [{ key:'wl_hrv',    label:$_('statistics_page.metric.hrv') }] : []),
+        ...(_wlVisibleForStats('spo2_avg')          ? [{ key:'wl_spo2',   label:$_('statistics_page.metric.spo2') }] : []),
       ] : []),
       ...(($withingsEnabled || $fitbitFamilyEnabled) && _wlVisibleForStats('muscle_mass_kg')
-        ? [{ key:'wl_muscle', label:'Muscle Mass' }] : []),
+        ? [{ key:'wl_muscle', label:$_('statistics_page.metric.muscle_mass') }] : []),
     ].map(w => ({ ...w, group: 'wellness' }));
     return [...nut, ...bodyAll, ...water, ...wellness];
   })();
@@ -124,21 +124,21 @@
 <div class="section-body">
 
   <!-- Group: Chart Options -->
-  <p class="settings-group-heading">Chart Options</p>
-  <p class="settings-group-sub">Default chart type and overlays applied across the Statistics page.</p>
+  <p class="settings-group-heading">{$_('settings_stats.chart_options')}</p>
+  <p class="settings-group-sub">{$_('settings_stats.chart_options_desc')}</p>
   <div class="card settings-card">
     <div class="setting-row">
       <span class="setting-label">{$_('settings_stats.default_chart')}</span>
       <div class="select-wrap" style="width:110px">
         <select class="select sel-sm" bind:value={statsChartType}>
-          <option value="bar">Bar</option>
-          <option value="line">Line</option>
+          <option value="bar">{$_('settings_stats.chart_bar')}</option>
+          <option value="line">{$_('settings_stats.chart_line')}</option>
         </select>
       </div>
     </div>
     <div class="setting-divider"></div>
     <div class="setting-row">
-      <div><span class="setting-label">Lock Y-Axis To Zero</span><div class="setting-desc">Body stats (weight, HRV, RHR, etc.) always auto-fit. This toggle applies to nutrient and counted-metric charts.</div></div>
+      <div><span class="setting-label">{$_('settings_stats.y_zero')}</span><div class="setting-desc">{$_('settings_stats.y_zero_desc')}</div></div>
       <Toggle checked={statsYZero} on:change={e => { statsYZero = e.detail; set('statsYZero', e.detail); }} />
     </div>
     <div class="setting-divider"></div>
@@ -151,7 +151,7 @@
     <div class="setting-row">
       <div>
         <span class="setting-label">{$_('settings_stats.include_today')}</span>
-        <div class="setting-desc">For cumulative metrics (calories, water, steps, etc.) today is partial until the day ends. Off by default — the chart looks cleaner. Statistics page also has an inline toggle for one-off overrides.</div>
+        <div class="setting-desc">{$_('settings_stats.include_today_desc')}</div>
       </div>
       <Toggle checked={statsIncludeTodayLocal} on:change={e => { statsIncludeTodayLocal = e.detail; set('statsIncludeToday', e.detail); }} />
     </div>
@@ -159,15 +159,15 @@
     <div class="setting-row">
       <div>
         <span class="setting-label">{$_('settings_stats.show_empty_days')}</span>
-        <div class="setting-desc">Keep every date in the chart's range visible even when nothing was logged that day. Lets gaps in logging show up rather than collapsing into a denser chart that hides them. Applies to both bar and line charts.</div>
+        <div class="setting-desc">{$_('settings_stats.show_empty_days_desc')}</div>
       </div>
       <Toggle checked={statsShowEmptyDaysLocal} on:change={e => { statsShowEmptyDaysLocal = e.detail; set('statsShowEmptyDays', e.detail); }} />
     </div>
   </div>
 
   <!-- Group: Categories -->
-  <p class="settings-group-heading">{$_('settings.statistics.categories') || 'Categories'}</p>
-  <p class="settings-group-sub">{$_('settings.statistics.categories_help') || 'Drag to reorder the metric chips on the Statistics page. Toggle off any category you never look at.'}</p>
+  <p class="settings-group-heading">{$_('settings.statistics.categories')}</p>
+  <p class="settings-group-sub">{$_('settings.statistics.categories_help')}</p>
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="card settings-card drag-list"
     on:pointermove={onSMDragMove}
@@ -190,7 +190,7 @@
       </div>
     {/each}
     {#if orderedStatsMetrics.length === 0}
-      <div class="setting-row"><span class="text-3 text-sm">No metrics available.</span></div>
+      <div class="setting-row"><span class="text-3 text-sm">{$_('settings_stats.no_metrics')}</span></div>
     {/if}
   </div>
 </div>
