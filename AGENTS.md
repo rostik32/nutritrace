@@ -28,9 +28,31 @@ its `AGENTS.md` too — its rules (no secrets, write history, back up first) app
 4. Keep upstream merges cheap: minimal diffs in upstream files; fork-only tooling lives in `diaitika/`,
    `openspec/`, `.claude/`, this file and `DEVELOPMENT.md`.
 5. Before opening a PR: `npm test` and `npm run i18n:check` pass on Node 24; every new user-facing
-   string is a key in `src/i18n/en.json`.
+   string is a key in `src/i18n/en.json`, translated in every supported language (see Localization), and
+   `i18n:check` shows `ru.json` and `uk.json` at 100% with 0 missing.
 6. Never touch production from here. Deploying is a separate step: follow
    `../diaitika-infra/docs/runbooks/update-nutritrace.md` step by step (rule 9 in `../diaitika-infra/AGENTS.md`).
+
+## Localization
+
+Supported languages: English (`en`, source), Russian (`ru`), Ukrainian (`uk`). Every change that adds or
+changes user-facing text ships with all three in the same PR — no "translate later":
+
+- No hard-coded UI text: markup, `title` / `aria-label` / `placeholder`, toasts, `confirm()` and messages
+  built in `src/lib` / `src/stores` all go through `$_()` (or `t()` from `src/lib/i18n-t.js` in plain JS).
+- New key → add it to `en.json`, `ru.json` and `uk.json`. Changed English meaning → rename the key and
+  translate it again (the check can't see stale translations).
+- Whole sentences with `{placeholders}`, never concatenated fragments. Counts use ICU plurals; `ru` and `uk`
+  need `one` / `few` / `many` / `other`.
+- Natural UI language, formal «вы» / «ви», and the terms already used in the file (Дневник / Щоденник,
+  Продукты / Продукти, Здоровье / Здоров’я…). Brand names (NutriTrace, Trace, Open Food Facts, USDA, Fitbit…),
+  unit symbols and food database content stay as they are.
+- Server error text shown to the user: add it to the map in `src/lib/server-errors.js` (`server_errors.*` keys).
+- Dates: pass `intlLocale()` (from `src/i18n/index.js`), not `undefined`, to `toLocale*String`.
+- Store English defaults in data, translate them only for display (see `src/lib/default-names.js`).
+- Other locale files (`de`, `fr`, …) belong to upstream's Weblate; don't machine-fill them.
+- Adding a supported language: a full `<code>.json`, `register()` and `AVAILABLE_LOCALES` in
+  `src/i18n/index.js`, and update this list.
 
 ## Rules
 

@@ -48,7 +48,7 @@ Optional: a realistic food catalog — import CIQUAL with the scripts in `diaiti
 
 ```bash
 npm test               # node --test, ~900 tests, a couple of minutes
-npm run i18n:check     # every user-facing string must be a key in src/i18n/en.json
+npm run i18n:check     # every user-facing string is a key in en.json; ru.json and uk.json must be 100%
 npm run build          # production bundle
 ```
 
