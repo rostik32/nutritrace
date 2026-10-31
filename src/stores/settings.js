@@ -31,7 +31,7 @@ export const USER_PREFS = new Set([
   'bodyStatsOrder','hiddenBodyStats','foodCategories','customUnits',
   'diaryShowNutritionBar','diaryTotalsMode','macroLegendMode',
   'diaryShowBrands','diaryShowTimestamps','diaryShowThumbnails',
-  'diaryShowAllNutrients','diaryShowNutritionUnits','diaryShowMacroSummary',
+  'diaryShowAllNutrients','diaryShowNutritionUnits','diaryShowMacroSummary','diaryMacroDisplay',
   'diaryPromptQuantity','diaryShowPortionSize','diaryShowNotes','warnUnitMismatch','showUnitMetadata',
   'diaryShowCompletion',
   'diaryDefaultField',
@@ -566,6 +566,7 @@ export const diaryShowThumbnails    = createSettingStore('diaryShowThumbnails', 
 export const diaryShowAllNutrients  = createSettingStore('diaryShowAllNutrients',   false);
 export const diaryShowNutritionUnits= createSettingStore('diaryShowNutritionUnits', true);
 export const diaryShowMacroSummary  = createSettingStore('diaryShowMacroSummary',   true);
+export const diaryMacroDisplay      = createSettingStore('diaryMacroDisplay',       'grams'); // 'grams' | 'percent' — macros in the meal footers and the bottom bar
 export const diaryPromptQuantity    = createSettingStore('diaryPromptQuantity',     true);
 // Issues #69 + #70: opt-in master toggle that exposes the nutrition basis,
 // serving units, and density UI in the Food Editor + on the Add to Diary

@@ -553,6 +553,7 @@
   let pickShown = { mealRecent: HISTORY_FIRST, mealMost: HISTORY_FIRST, allRecent: HISTORY_FIRST, allMost: HISTORY_FIRST };
   let pickSelection = new Map();     // ticked food -> { portion, unit, servings }
   let qtyPromptTick = false;         // the quantity sheet saves a tick instead of adding
+  let pickFilter = '';               // narrows the history tabs; kept apart from `search`, which runs the search pipeline
   $: pickSub = PICK_SUB_IDS[pickSubIndex];
   $: _pickHistoryActive = pickMode && activeTab === 0 && pickSub !== 'search';
   $: _pickSubTabs = [
@@ -578,6 +579,10 @@
   $: _pickMealKey = pickSub === 'most' ? 'mealMost' : 'mealRecent';
   $: _pickMealName = $displayMealNames[Number(pickMeal) || 0] || '';
   $: _pickAllKey = pickSub === 'most' ? 'allMost' : 'allRecent';
+  $: _pickQ = pickFilter.trim();
+  $: _pickMealShown = _pickFiltered(_pickMealRows, _pickQ);
+  $: _pickAllShown = _pickFiltered(_pickAllRows, _pickQ);
+  $: _pickSavedShown = _pickFiltered(_pickSaved, _pickQ);
   $: if (pickMode) loadPickHistory();
 
   // The diary days of the last 90 days, from the server when online and from
@@ -597,6 +602,10 @@
       const hasHistory = buildFoodHistory(pickDays, { today }).all.recent.length > 0;
       if (!hasHistory && !pickSubTouched) pickSubIndex = 0;
     }
+  }
+
+  function _pickFiltered(rows, q) {
+    return q ? rows.filter(r => _fuzzyMatch({ name: r.name, brand: r.food?.brand }, q)) : rows;
   }
 
   function selectPickSub(i, el) {
@@ -2212,6 +2221,14 @@
   {/if}
 {/snippet}
 
+<!-- Barcode scanner button: right of the picker's sub-tabs, else at the end
+     of the search row. -->
+{#snippet scanButton()}
+  <button class="btn-icon foods-scan-btn" on:click={() => scannerOpen = true} aria-label={$_('foods.scan_barcode')} title={$_('foods.scan_barcode')}>
+    <span class="material-symbols-rounded">barcode_scanner</span>
+  </button>
+{/snippet}
+
 <div class="page-shell">
   <!-- Manage-mode action icons — fixed at top-right, matches Diary UX -->
   {#if manageMode}
@@ -2284,22 +2301,28 @@
             on:click={e => selectPickSub(i, e.currentTarget)}>{tab.label}</button>
         {/each}
       </div>
+      {@render scanButton()}
     </div>
   {/if}
 
-  <div class="foods-search" class:pick-hidden={_pickHistoryActive}>
-    <span class="material-symbols-rounded foods-search-icon">search</span>
+  <div class="foods-search">
     <div class="foods-search-input-wrap">
-      <input
-        class="foods-search-input"
-        type="search"
-        placeholder={$_('foods.search_placeholder')}
-        bind:this={_searchInputEl}
-        bind:value={search}
-      />
-      <button class="btn-scan-inline" on:click={() => scannerOpen = true} aria-label={$_('foods.scan_barcode')} title={$_('foods.scan_barcode')}>
-        <span class="material-symbols-rounded">barcode_scanner</span>
-      </button>
+      {#if _pickHistoryActive}
+        <input
+          class="foods-search-input"
+          type="search"
+          placeholder={$_('foods.picker.filter_placeholder')}
+          bind:value={pickFilter}
+        />
+      {:else}
+        <input
+          class="foods-search-input"
+          type="search"
+          placeholder={$_('foods.search_placeholder')}
+          bind:this={_searchInputEl}
+          bind:value={search}
+        />
+      {/if}
     </div>
     {#if activeTab === 0 && !_foodsRailMode && !_pickHistoryActive}
       <button class="btn-icon foods-filter-btn" class:active={_fsFilterActive}
@@ -2308,6 +2331,9 @@
         <span class="material-symbols-rounded">tune</span>
         {#if _fsFilterActive}<span class="foods-filter-dot"></span>{/if}
       </button>
+    {/if}
+    {#if !(pickMode && activeTab === 0)}
+      {@render scanButton()}
     {/if}
   </div>
 
@@ -2445,7 +2471,16 @@
     </li>
   {/snippet}
 
+  {#snippet pickNoMatches()}
+    <div class="empty-state">
+      <span class="material-symbols-rounded empty-icon">search_off</span>
+      <p>{$_('foods.picker.no_filter_matches', { values: { q: _pickQ } })}</p>
+    </div>
+  {/snippet}
+
   {#snippet pickBlock(title, icon, color, rows, shownKey)}
+    <!-- While the list is filtered, a block with no matches is left out. -->
+    {#if !(_pickQ && rows.length === 0)}
     <p class="pick-block-title">
       <span class="material-symbols-rounded pick-block-icon" style="color:{color}">{icon}</span>{title}
     </p>
@@ -2463,6 +2498,7 @@
         </button>
       {/if}
     {/if}
+    {/if}
   {/snippet}
 
   <div class="page-content">
@@ -2479,9 +2515,11 @@
             <span class="material-symbols-rounded empty-icon">favorite_border</span>
             <p>{$_('foods.picker.saved_empty')}</p>
           </div>
+        {:else if _pickSavedShown.length === 0}
+          {@render pickNoMatches()}
         {:else}
           <ul class="food-list">
-            {#each _pickSaved as row (row.key)}
+            {#each _pickSavedShown as row (row.key)}
               {@render pickRow(row)}
             {/each}
           </ul>
@@ -2492,10 +2530,12 @@
           <p>{$_('foods.picker.no_history')}</p>
           <button class="btn btn-secondary" on:click={() => pickSubIndex = 0}>{$_('foods.picker.tab_search')}</button>
         </div>
+      {:else if _pickHistoryActive && _pickQ && _pickMealShown.length === 0 && _pickAllShown.length === 0}
+        {@render pickNoMatches()}
       {:else if _pickHistoryActive}
         {@render pickBlock($_('foods.picker.this_meal', { values: { meal: _pickMealName } }),
-          mealIcon(_pickMealName), mealColor(Number(pickMeal) || 0), _pickMealRows, _pickMealKey)}
-        {@render pickBlock($_('foods.picker.all_meals'), 'history', 'var(--text-3)', _pickAllRows, _pickAllKey)}
+          mealIcon(_pickMealName), mealColor(Number(pickMeal) || 0), _pickMealShown, _pickMealKey)}
+        {@render pickBlock($_('foods.picker.all_meals'), 'history', 'var(--text-3)', _pickAllShown, _pickAllKey)}
       {:else if !fsState.query}
         <div class="empty-state">
           <span class="material-symbols-rounded empty-icon">search</span>
@@ -3616,7 +3656,7 @@
     gap: 8px;
     padding: 0 var(--page-px) 6px;
   }
-  .foods-search-icon { font-size: 20px; color: var(--text-3); flex-shrink: 0; }
+  .foods-scan-btn { flex-shrink: 0; color: var(--accent); }
   /* Foods tab: filter button right of the search box (phones; the wide
      layout shows the filter panel in the left rail instead). */
   .foods-filter-btn { position: relative; flex-shrink: 0; }
@@ -3658,7 +3698,7 @@
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-full);
-    padding: 7px 40px 7px 14px;
+    padding: 7px 14px;
     font-size: 15px;
     color: var(--text-1);
     outline: none;
@@ -3915,8 +3955,8 @@
 
   .food-item.food-selected { background: var(--accent-dim); }
 
-  .foods-search.pick-hidden { display: none; }
-  .pick-sub-tabs { padding-top: 0; }
+  .pick-sub-tabs { padding-top: 0; display: flex; align-items: stretch; gap: 8px; }
+  .pick-sub-tabs .pick-sub-bar { flex: 1; min-width: 0; }
   .pick-sub-bar {
     display: flex; gap: 2px; padding: 3px;
     background: var(--surface-2); border-radius: var(--radius-md);

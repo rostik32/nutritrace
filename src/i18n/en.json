@@ -1170,6 +1170,11 @@
       "c": "{pct}% C",
       "f": "{pct}% F"
     },
+    "macro_g": {
+      "p": "{g}g P",
+      "c": "{g}g C",
+      "f": "{g}g F"
+    },
     "macro_title": {
       "protein": "Protein {pct}%",
       "carbs": "Carbs {pct}%",
@@ -1243,6 +1248,8 @@
       "nothing_here": "Nothing logged here in the last 90 days",
       "no_history": "Nothing logged in the last 90 days yet. Search for a food to add it.",
       "saved_empty": "No saved foods yet. Tap the heart on a food, or long-press it in the diary and choose Add to Saved.",
+      "filter_placeholder": "Search this list",
+      "no_filter_matches": "Nothing here matches “{q}”",
       "save_card": "Save",
       "loading": "Loading your history…",
       "save_food": "Add to Saved",
@@ -1659,7 +1666,11 @@
     "show_units": "Show Nutrition Units",
     "show_units_desc": "Append \"g\" / \"mg\" / etc. after numeric values",
     "show_macro_summary": "Show Macro Summary Per Meal",
-    "show_macro_summary_desc": "P/C/F bar at the bottom of each meal, tap it for full nutrient breakdown",
+    "show_macro_summary_line_desc": "P/C/F line at the bottom of each meal, tap it for full nutrient breakdown",
+    "macro_display": "Show Macros As",
+    "macro_display_desc": "Protein, carbs and fat in the meal summaries and the bottom bar",
+    "opt_macro_grams": "Grams",
+    "opt_macro_percent": "Percent",
     "ask_quantity": "Ask For Quantity When Adding",
     "ask_quantity_desc": "Prompt for portion size before adding a food (otherwise use the food's default)",
     "default_field": "Default Field",
