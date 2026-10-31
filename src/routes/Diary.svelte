@@ -47,7 +47,7 @@
   import { displayContainerName } from '../lib/default-names.js';
   import { mealNames, displayMealNames, goals, energyUnit, weightUnit, lengthUnit, navStyle,
            diaryShowBrands, diaryShowThumbnails,
-           diaryShowTimestamps, diaryShowMacroSummary, diaryPromptQuantity,
+           diaryShowTimestamps, diaryShowMacroSummary, diaryMacroDisplay, diaryPromptQuantity,
            diaryShowPortionSize, diaryShowNotes, diaryShowNutritionBar, diaryTotalsMode, macroLegendMode, distUnit,
            diaryShowAllNutrients, diaryShowNutritionUnits, visibleNutriments, hiddenBodyStats,
            showQuickCalories, quickCaloriesDisplay,
@@ -949,7 +949,7 @@
   $: _barExpandedExtra = barExpanded
     ? (52 + 48 + ($diaryShowNutritionBar && nutritionBarItems.length > 0 ? 8 + nutritionBarItems.length * 28 : 0) + 8 + (_waterShowInDiary ? 40 : 0))
     : 0;
-  $: _barBaseH = 46 + (_waterShowInDiary ? 8 : 0);
+  $: _barBaseH = 38 + (_waterShowInDiary ? 8 : 0);
   $: contentPad = _hasBottomNav
     ? `calc(var(--nav-h) + ${_barBaseH + _barExpandedExtra + 12}px)`
     : `${_barBaseH + _barExpandedExtra + 12}px`;
@@ -1267,7 +1267,8 @@
     // (it'd stop at the comma and yield 29), truncating meal kcal totals
     // above 1000 to the leading digit(s). The template handles display-side
     // commas via _mtEnergy.value.toLocaleString() below. (Issue #51)
-    return { cal: Math.round(cal), p, c, f };
+    return { cal: Math.round(cal), p, c, f,
+      pg: Math.round(t.proteins || 0), cg: Math.round(t.carbohydrates || 0), fg: Math.round(t.fat || 0) };
   }
 
   function getMealItems(entryItems, mealIdx) {
@@ -1929,6 +1930,16 @@
     && mealColsW - mealFoldLeftW - mealHinge >= 280;
 </script>
 
+<!-- Protein · carbs · fat for the meal footers and the bottom bar, in grams
+     or as a share of energy (Settings → Diary → Show macros as). -->
+{#snippet macroText(p, c, f, pg, cg, fg)}
+  {#if $diaryMacroDisplay === 'percent'}
+    <span style="color:var(--macro-protein)">{$_('diary.macro_pct.p', { values: { pct: p } })}</span> · <span style="color:var(--macro-carbs)">{$_('diary.macro_pct.c', { values: { pct: c } })}</span> · <span style="color:var(--macro-fat)">{$_('diary.macro_pct.f', { values: { pct: f } })}</span>
+  {:else}
+    <span style="color:var(--macro-protein)">{$_('diary.macro_g.p', { values: { g: pg } })}</span> · <span style="color:var(--macro-carbs)">{$_('diary.macro_g.c', { values: { g: cg } })}</span> · <span style="color:var(--macro-fat)">{$_('diary.macro_g.f', { values: { g: fg } })}</span>
+  {/if}
+{/snippet}
+
 <!-- Rail widgets snippet. Defined at the top level so it's in
      scope for BOTH render sites: (a) the sticky in-grid aside
      inside .diary-content for pinned mode, and (b) the portaled
@@ -2484,12 +2495,7 @@
             {@const _mtEnergy = Nutrition.displayEnergy(mt.cal, $energyUnit)}
             <button type="button" class="meal-macro-footer" on:click={() => mealTotalsIdx = mealIdx}
               aria-label={$_('diary.meal.show_totals_for', { values: { meal } })} title={$_('diary.meal.show_totals')}>
-              <div class="meal-macro-bar">
-                <div class="mmb-p" style="width:{mt.p}%" title={$_('diary.macro_title.protein', { values: { pct: mt.p } })}></div>
-                <div class="mmb-c" style="width:{mt.c}%" title={$_('diary.macro_title.carbs', { values: { pct: mt.c } })}></div>
-                <div class="mmb-f" style="width:{mt.f}%" title={$_('diary.macro_title.fat', { values: { pct: mt.f } })}></div>
-              </div>
-              <span class="meal-macro-text text-3 text-sm"><span style="color:var(--macro-protein)">{$_('diary.macro_pct.p', { values: { pct: mt.p } })}</span> · <span style="color:var(--macro-carbs)">{$_('diary.macro_pct.c', { values: { pct: mt.c } })}</span> · <span style="color:var(--macro-fat)">{$_('diary.macro_pct.f', { values: { pct: mt.f } })}</span> · <span style="color:var(--macro-calories)">{_mtEnergy.value.toLocaleString()} {_mtEnergy.unit}</span></span>
+              <span class="meal-macro-text text-3 text-sm">{@render macroText(mt.p, mt.c, mt.f, mt.pg, mt.cg, mt.fg)} · <span style="color:var(--macro-calories)">{_mtEnergy.value.toLocaleString()} {_mtEnergy.unit}</span></span>
             </button>
           {/if}
         {/if}
@@ -2700,13 +2706,6 @@
       class:celebrating={_calGoalCelebrating}
       style="width:{_barsMounted ? calPct : 0}%;{calPct >= 100 ? 'background:var(--danger)' : ''}"></div>
   </div>
-  <!-- Macro proportion bar — outside button so title tooltips work on hover -->
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="dbb-macro-bar" on:click={() => barExpanded = !barExpanded}>
-    <div class="dbb-mb-p" style="width:{_barsMounted ? _mp.protein : 0}%" title={$_('diary.macro_title.protein', { values: { pct: _mp.protein } })}></div>
-    <div class="dbb-mb-c" style="width:{_barsMounted ? _mp.carbs : 0}%"   title={$_('diary.macro_title.carbs', { values: { pct: _mp.carbs } })}></div>
-    <div class="dbb-mb-f" style="width:{_barsMounted ? _mp.fat : 0}%"     title={$_('diary.macro_title.fat', { values: { pct: _mp.fat } })}></div>
-  </div>
   <!-- Water progress strip (collapsed, always visible) -->
   {#if _waterShowInDiary}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -2721,7 +2720,7 @@
   <!-- Text summary row — taps to expand/collapse -->
   <button class="dbb-summary-row" on:click={() => barExpanded = !barExpanded}
     aria-label={barExpanded ? $_('diary.bar.collapse_panel') : $_('diary.bar.expand_panel')}>
-    <span class="dbb-summary-text"><span style="color:var(--macro-protein)">{$_('diary.macro_pct.p', { values: { pct: _mp.protein } })}</span> · <span style="color:var(--macro-carbs)">{$_('diary.macro_pct.c', { values: { pct: _mp.carbs } })}</span> · <span style="color:var(--macro-fat)">{$_('diary.macro_pct.f', { values: { pct: _mp.fat } })}</span> · <span style="color:var(--macro-calories)">{_sumEnergy.value.toLocaleString()} {_sumEnergy.unit}</span>{#if _waterShowInDiary} · <span style="color:var(--water-blue)"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle">water_drop</span> {_waterDisplay(_waterTotal)}</span>{/if}</span>
+    <span class="dbb-summary-text">{@render macroText(_mp.protein, _mp.carbs, _mp.fat, Math.round($_protTween), Math.round($_carbTween), Math.round($_fatTween))} · <span style="color:var(--macro-calories)">{_sumEnergy.value.toLocaleString()} {_sumEnergy.unit}</span>{#if _waterShowInDiary} · <span style="color:var(--water-blue)"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle">water_drop</span> {_waterDisplay(_waterTotal)}</span>{/if}</span>
     <span class="dbb-chevron material-symbols-rounded">{barExpanded ? 'expand_more' : 'expand_less'}</span>
   </button>
 
@@ -4866,9 +4865,6 @@
     background: var(--surface-3); overflow: hidden;
     display: flex; margin-bottom: 6px;
   }
-  .mmb-p { background: linear-gradient(90deg, #BA68C8, var(--macro-protein)); }
-  .mmb-c { background: linear-gradient(90deg, #00E676, var(--macro-carbs)); }
-  .mmb-f { background: linear-gradient(90deg, var(--macro-fat), #E65100); }
   .meal-macro-text { display: block; }
 
   /* Nutrition bar (inside bottom bar) */
@@ -4911,17 +4907,6 @@
   .dbb-progress-fill.celebrating {
     animation: goal-pulse 1.2s ease-out;
   }
-  /* Colored macro proportion bar (standalone — not inside button so title tooltips work) */
-  .dbb-macro-bar {
-    height: 8px;
-    background: var(--surface-3);
-    display: flex;
-    overflow: hidden;
-    cursor: pointer;
-  }
-  .dbb-mb-p { background: linear-gradient(90deg, #BA68C8, var(--macro-protein)); transition: width 0.7s cubic-bezier(0.34, 1.2, 0.64, 1); }
-  .dbb-mb-c { background: linear-gradient(90deg, #00E676, var(--macro-carbs)); transition: width 0.7s cubic-bezier(0.34, 1.2, 0.64, 1); }
-  .dbb-mb-f { background: linear-gradient(90deg, var(--macro-fat), #E65100); transition: width 0.7s cubic-bezier(0.34, 1.2, 0.64, 1); }
   /* Text summary row button */
   .dbb-summary-row {
     display: flex;
